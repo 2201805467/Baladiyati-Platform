@@ -12,9 +12,9 @@ return new class extends Migration {
             $table->string('alt_phone', 20)->nullable();
             $table->string('category', 50);
             $table->text('description')->nullable();
-            $table->unsignedBigInteger('added_by');
+            $table->unsignedBigInteger('added_by')->nullable();
             $table->boolean('is_active')->default(true);
-            $table->foreign('added_by')->references('id')->on('users')->onDelete('cascade');
+            $table->foreign('added_by')->references('id')->on('users')->onDelete('set null');
         });
     }
     public function down(): void {

@@ -5,16 +5,16 @@ use Illuminate\Support\Facades\Schema;
 
 return new class extends Migration {
     public function up(): void {
-        Schema::create('areas', function (Blueprint $table) {
+        Schema::create('departments', function (Blueprint $table) {
             $table->id();
-            $table->string('area_name', 100);
-            $table->string('city', 100);
-            $table->text('boundary_coords')->nullable();
+            $table->string('dept_name', 100)->unique();
+            $table->text('description')->nullable();
+            $table->boolean('is_active')->default(true);
             $table->timestamp('created_at')->useCurrent();
             $table->timestamp('updated_at')->nullable();
         });
     }
     public function down(): void {
-        Schema::dropIfExists('areas');
+        Schema::dropIfExists('departments');
     }
 };

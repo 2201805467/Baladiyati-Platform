@@ -14,10 +14,10 @@ return new class extends Migration {
             $table->tinyInteger('progress_percent')->default(0);
             $table->date('start_date')->nullable();
             $table->date('end_date')->nullable();
-            $table->unsignedBigInteger('added_by');
+            $table->unsignedBigInteger('added_by')->nullable();
             $table->string('status', 50)->default('planned');
             $table->foreign('area_id')->references('id')->on('areas')->onDelete('set null');
-            $table->foreign('added_by')->references('id')->on('users')->onDelete('cascade');
+            $table->foreign('added_by')->references('id')->on('users')->onDelete('set null');
         });
     }
     public function down(): void {

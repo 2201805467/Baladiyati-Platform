@@ -2,48 +2,108 @@
 
 namespace App\Models;
 
-// use Illuminate\Contracts\Auth\MustVerifyEmail;
-use Database\Factories\UserFactory;
-use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
+use Laravel\Sanctum\HasApiTokens; // مهمة جداً لتطبيق Flutter
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class User extends Authenticatable
 {
-    /** @use HasFactory<UserFactory> */
-    use HasFactory, Notifiable;
+    use HasApiTokens, Notifiable;
 
-    /**
-     * The attributes that are mass assignable.
-     *
-     * @var list<string>
-     */
     protected $fillable = [
-        'name',
-        'email',
-        'password',
+        'full_name', 'email', 'phone', 'password', 
+        'profile_image', 'is_active', 'role_id', 'dept_id'
     ];
 
-    /**
-     * The attributes that should be hidden for serialization.
-     *
-     * @var list<string>
-     */
-    protected $hidden = [
-        'password',
-        'remember_token',
-    ];
+    protected $hidden = ['password', 'remember_token'];
 
-    /**
-     * Get the attributes that should be cast.
-     *
-     * @return array<string, string>
-     */
-    protected function casts(): array
+    // المستخدم لديه دور محدد
+    public function role(): BelongsTo
     {
-        return [
-            'email_verified_at' => 'datetime',
-            'password' => 'hashed',
-        ];
+        return $this->belongsTo(Role::class);
+    }
+
+    // المستخدم (الموظف) ينتمي لقسم معين (أو null للمواطن/الأدمن)
+    public function department(): BelongsTo
+    {
+        return $this->belongsTo(Department::class, 'dept_id');
+    }
+
+    // المواطن يرفع العديد من البلاغات
+    public function reports(): HasMany
+    {
+        return $this->hasMany(Report::class, 'citizen_id');
+    }
+
+    // المواطن يحفظ العديد من مسودات البلاغات
+    public function drafts(): HasMany
+    {
+        return $this->hasMany(DraftReport::class, 'citizen_id');
+    }
+
+    // المواطن يقدم العديد من المقترحات
+    public function suggestions(): HasMany
+    {
+        return $this->hasMany(Suggestion::class, 'citizen_id');
+    }
+
+    // الموظف يراجع العديد من المقترحات
+    public function reviewedSuggestions(): HasMany
+    {
+        return $this->hasMany(Suggestion::class, 'reviewed_by');
+    }
+
+    public function suggestionVotes(): HasMany
+    {
+        return $this->hasMany(SuggestionVote::class, 'citizen_id');
+    }
+
+    public function ratings(): HasMany
+    {
+        return $this->hasMany(Rating::class, 'citizen_id');
+    }
+
+    public function uploadedReportImages(): HasMany
+    {
+        return $this->hasMany(ReportImage::class, 'uploaded_by');
+    }
+
+    public function reportLogs(): HasMany
+    {
+        return $this->hasMany(ReportLog::class, 'action_by');
+    }
+
+    public function reportComments(): HasMany
+    {
+        return $this->hasMany(ReportComment::class, 'user_id');
+    }
+
+    public function addedProjects(): HasMany
+    {
+        return $this->hasMany(CurrentProject::class, 'added_by');
+    }
+
+    public function addedFacilities(): HasMany
+    {
+        return $this->hasMany(PublicFacility::class, 'added_by');
+    }
+
+    public function addedEmergencyContacts(): HasMany
+    {
+        return $this->hasMany(EmergencyContact::class, 'added_by');
+    }
+
+    // المستخدم يستقبل العديد من الإشعارات
+    public function notifications(): HasMany
+    {
+        return $this->hasMany(Notification::class);
+    }
+    
+    // تتبع العمليات الأمنية للمستخدم
+    public function securityLogs(): HasMany
+    {
+        return $this->hasMany(SecurityLog::class);
     }
 }
