@@ -11,7 +11,7 @@ class Report extends Model
 {
     protected $fillable = [
         'report_number', 'citizen_id', 'category_id', 'dept_id', 'area_id',
-        'description', 'latitude', 'longitude', 'severity', 'status',
+        'title', 'description', 'latitude', 'longitude', 'severity', 'status',
         'ai_suggested_category', 'is_duplicate', 'parent_report_id', 'closed_at'
     ];
 

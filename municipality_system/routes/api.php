@@ -1,6 +1,20 @@
 <?php
 
 use App\Http\Controllers\Api\AuthController;
+use App\Http\Controllers\Api\Admin\AnalyticsController as AdminAnalyticsController;
+use App\Http\Controllers\Api\Admin\CategoryController as AdminCategoryController;
+use App\Http\Controllers\Api\Admin\DepartmentController as AdminDepartmentController;
+use App\Http\Controllers\Api\Admin\EmergencyContactController as AdminEmergencyContactController;
+use App\Http\Controllers\Api\Admin\ProjectController as AdminProjectController;
+use App\Http\Controllers\Api\Admin\PublicFacilityController as AdminPublicFacilityController;
+use App\Http\Controllers\Api\Admin\UserController as AdminUserController;
+use App\Http\Controllers\Api\Citizen\NotificationController as CitizenNotificationController;
+use App\Http\Controllers\Api\Citizen\PublicInfoController as CitizenPublicInfoController;
+use App\Http\Controllers\Api\Citizen\ReportController as CitizenReportController;
+use App\Http\Controllers\Api\Citizen\SuggestionController as CitizenSuggestionController;
+use App\Http\Controllers\Api\Department\ReportController as DepartmentReportController;
+use App\Http\Controllers\Api\Reception\ReportController as ReceptionReportController;
+use App\Http\Controllers\Api\Reception\SuggestionController as ReceptionSuggestionController;
 use Illuminate\Support\Facades\Route;
 
 $todo = fn (string $feature) => fn () => response()->json([
@@ -18,74 +32,81 @@ Route::middleware(['auth:sanctum', 'role:citizen'])
     ->prefix('citizen')
     ->name('citizen.')
     ->group(function () use ($todo) {
-        Route::get('/reports', $todo('Citizen reports list'))->name('reports.index');
-        Route::post('/reports', $todo('Citizen report creation'))->name('reports.store');
-        Route::get('/reports/{report}', $todo('Citizen report details'))->name('reports.show');
-        Route::post('/reports/{report}/comments', $todo('Citizen report comment creation'))->name('reports.comments.store');
-        Route::post('/reports/{report}/rating', $todo('Citizen report rating'))->name('reports.rating.store');
+        Route::get('/reports', [CitizenReportController::class, 'index'])->name('reports.index');
+        Route::post('/reports', [CitizenReportController::class, 'store'])->name('reports.store');
+        Route::get('/reports/{report}', [CitizenReportController::class, 'show'])->name('reports.show');
+        Route::post('/reports/{report}/comments', [CitizenReportController::class, 'storeComment'])->name('reports.comments.store');
+        Route::post('/reports/{report}/rating', [CitizenReportController::class, 'storeRating'])->name('reports.rating.store');
 
-        Route::get('/suggestions', $todo('Citizen suggestions list'))->name('suggestions.index');
-        Route::post('/suggestions', $todo('Citizen suggestion creation'))->name('suggestions.store');
-        Route::post('/suggestions/{suggestion}/vote', $todo('Citizen suggestion voting'))->name('suggestions.vote');
-        Route::delete('/suggestions/{suggestion}/vote', $todo('Citizen suggestion vote cancellation'))->name('suggestions.vote.destroy');
+        Route::get('/suggestions', [CitizenSuggestionController::class, 'index'])->name('suggestions.index');
+        Route::post('/suggestions', [CitizenSuggestionController::class, 'store'])->name('suggestions.store');
+        Route::post('/suggestions/{suggestion}/vote', [CitizenSuggestionController::class, 'vote'])->name('suggestions.vote');
+        Route::delete('/suggestions/{suggestion}/vote', [CitizenSuggestionController::class, 'destroyVote'])->name('suggestions.vote.destroy');
 
-        Route::get('/notifications', $todo('Citizen notifications'))->name('notifications.index');
-        Route::get('/projects', $todo('Citizen municipality projects'))->name('projects.index');
-        Route::get('/facilities', $todo('Citizen public facilities'))->name('facilities.index');
-        Route::get('/emergency-contacts', $todo('Citizen emergency contacts'))->name('emergency-contacts.index');
+        Route::get('/notifications', [CitizenNotificationController::class, 'index'])->name('notifications.index');
+        Route::patch('/notifications/{notification}/read', [CitizenNotificationController::class, 'markAsRead'])->name('notifications.read');
+        Route::patch('/notifications/read-all', [CitizenNotificationController::class, 'markAllAsRead'])->name('notifications.read-all');
+
+        Route::get('/projects', [CitizenPublicInfoController::class, 'projects'])->name('projects.index');
+        Route::get('/facilities', [CitizenPublicInfoController::class, 'facilities'])->name('facilities.index');
+        Route::get('/emergency-contacts', [CitizenPublicInfoController::class, 'emergencyContacts'])->name('emergency-contacts.index');
     });
 
 Route::middleware(['auth:sanctum', 'role:admin'])
     ->prefix('admin')
     ->name('admin.')
-    ->group(function () use ($todo) {
-        Route::get('/users', $todo('Admin users list'))->name('users.index');
-        Route::post('/users', $todo('Admin employee account creation'))->name('users.store');
-        Route::put('/users/{user}', $todo('Admin user update'))->name('users.update');
-        Route::patch('/users/{user}/deactivate', $todo('Admin user deactivation'))->name('users.deactivate');
+    ->group(function () {
+        Route::get('/users', [AdminUserController::class, 'index'])->name('users.index');
+        Route::post('/users', [AdminUserController::class, 'store'])->name('users.store');
+        Route::put('/users/{user}', [AdminUserController::class, 'update'])->name('users.update');
+        Route::patch('/users/{user}/deactivate', [AdminUserController::class, 'deactivate'])->name('users.deactivate');
 
-        Route::get('/departments', $todo('Admin departments list'))->name('departments.index');
-        Route::post('/departments', $todo('Admin department creation'))->name('departments.store');
-        Route::put('/departments/{department}', $todo('Admin department update'))->name('departments.update');
+        Route::get('/departments', [AdminDepartmentController::class, 'index'])->name('departments.index');
+        Route::post('/departments', [AdminDepartmentController::class, 'store'])->name('departments.store');
+        Route::put('/departments/{department}', [AdminDepartmentController::class, 'update'])->name('departments.update');
 
-        Route::get('/categories', $todo('Admin categories list'))->name('categories.index');
-        Route::post('/categories', $todo('Admin category creation'))->name('categories.store');
-        Route::put('/categories/{category}', $todo('Admin category update'))->name('categories.update');
+        Route::get('/categories', [AdminCategoryController::class, 'index'])->name('categories.index');
+        Route::post('/categories', [AdminCategoryController::class, 'store'])->name('categories.store');
+        Route::put('/categories/{category}', [AdminCategoryController::class, 'update'])->name('categories.update');
 
-        Route::get('/facilities', $todo('Admin public facilities list'))->name('facilities.index');
-        Route::post('/facilities', $todo('Admin public facility creation'))->name('facilities.store');
-        Route::put('/facilities/{facility}', $todo('Admin public facility update'))->name('facilities.update');
+        Route::get('/facilities', [AdminPublicFacilityController::class, 'index'])->name('facilities.index');
+        Route::post('/facilities', [AdminPublicFacilityController::class, 'store'])->name('facilities.store');
+        Route::put('/facilities/{facility}', [AdminPublicFacilityController::class, 'update'])->name('facilities.update');
 
-        Route::get('/projects', $todo('Admin municipality projects list'))->name('projects.index');
-        Route::post('/projects', $todo('Admin municipality project creation'))->name('projects.store');
-        Route::put('/projects/{project}', $todo('Admin municipality project update'))->name('projects.update');
+        Route::get('/emergency-contacts', [AdminEmergencyContactController::class, 'index'])->name('emergency-contacts.index');
+        Route::post('/emergency-contacts', [AdminEmergencyContactController::class, 'store'])->name('emergency-contacts.store');
+        Route::put('/emergency-contacts/{emergencyContact}', [AdminEmergencyContactController::class, 'update'])->name('emergency-contacts.update');
 
-        Route::get('/analytics/reports', $todo('Admin report analytics'))->name('analytics.reports');
-        Route::get('/analytics/departments', $todo('Admin department performance analytics'))->name('analytics.departments');
+        Route::get('/projects', [AdminProjectController::class, 'index'])->name('projects.index');
+        Route::post('/projects', [AdminProjectController::class, 'store'])->name('projects.store');
+        Route::put('/projects/{project}', [AdminProjectController::class, 'update'])->name('projects.update');
+
+        Route::get('/analytics/reports', [AdminAnalyticsController::class, 'reports'])->name('analytics.reports');
+        Route::get('/analytics/departments', [AdminAnalyticsController::class, 'departments'])->name('analytics.departments');
     });
 
 Route::middleware(['auth:sanctum', 'role:reception'])
     ->prefix('reception')
     ->name('reception.')
     ->group(function () use ($todo) {
-        Route::get('/reports', $todo('Reception incoming reports list'))->name('reports.index');
-        Route::get('/reports/{report}', $todo('Reception report details'))->name('reports.show');
-        Route::patch('/reports/{report}/classify', $todo('Reception report classification'))->name('reports.classify');
-        Route::patch('/reports/{report}/assign', $todo('Reception report assignment'))->name('reports.assign');
+        Route::get('/reports', [ReceptionReportController::class, 'index'])->name('reports.index');
+        Route::get('/reports/{report}', [ReceptionReportController::class, 'show'])->name('reports.show');
+        Route::patch('/reports/{report}/classify', [ReceptionReportController::class, 'classify'])->name('reports.classify');
+        Route::patch('/reports/{report}/assign', [ReceptionReportController::class, 'assign'])->name('reports.assign');
 
-        Route::get('/suggestions', $todo('Reception suggestions list'))->name('suggestions.index');
-        Route::patch('/suggestions/{suggestion}/accept', $todo('Reception suggestion acceptance'))->name('suggestions.accept');
-        Route::patch('/suggestions/{suggestion}/reject', $todo('Reception suggestion rejection'))->name('suggestions.reject');
+        Route::get('/suggestions', [ReceptionSuggestionController::class, 'index'])->name('suggestions.index');
+        Route::patch('/suggestions/{suggestion}/accept', [ReceptionSuggestionController::class, 'accept'])->name('suggestions.accept');
+        Route::patch('/suggestions/{suggestion}/reject', [ReceptionSuggestionController::class, 'reject'])->name('suggestions.reject');
     });
 
 Route::middleware(['auth:sanctum', 'role:department'])
     ->prefix('department')
     ->name('department.')
     ->group(function () use ($todo) {
-        Route::get('/reports', $todo('Department assigned reports list'))->name('reports.index');
-        Route::get('/reports/{report}', $todo('Department report details'))->name('reports.show');
-        Route::patch('/reports/{report}/status', $todo('Department report status update'))->name('reports.status.update');
-        Route::post('/reports/{report}/comments', $todo('Department report comment creation'))->name('reports.comments.store');
-        Route::post('/reports/{report}/attachments', $todo('Department report attachment upload'))->name('reports.attachments.store');
-        Route::patch('/reports/{report}/close', $todo('Department report closing'))->name('reports.close');
+        Route::get('/reports', [DepartmentReportController::class, 'index'])->name('reports.index');
+        Route::get('/reports/{report}', [DepartmentReportController::class, 'show'])->name('reports.show');
+        Route::patch('/reports/{report}/status', [DepartmentReportController::class, 'updateStatus'])->name('reports.status.update');
+        Route::post('/reports/{report}/comments', [DepartmentReportController::class, 'storeComment'])->name('reports.comments.store');
+        Route::post('/reports/{report}/attachments', [DepartmentReportController::class, 'storeAttachment'])->name('reports.attachments.store');
+        Route::patch('/reports/{report}/close', [DepartmentReportController::class, 'close'])->name('reports.close');
     });
