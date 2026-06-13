@@ -14,7 +14,7 @@ return new class extends Migration {
             $table->string('profile_image', 255)->nullable();
             $table->boolean('is_active')->default(true);
             $table->unsignedBigInteger('role_id');
-            $table->unsignedBigInteger('dept_id')->nullable();
+            $table->unsignedBigInteger('dept_id')->nullable()->unique();
             $table->timestamp('created_at')->useCurrent();
             $table->timestamp('updated_at')->nullable();
             $table->foreign('role_id')->references('id')->on('roles')->onDelete('restrict');
