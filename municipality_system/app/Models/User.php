@@ -14,10 +14,17 @@ class User extends Authenticatable
 
     protected $fillable = [
         'full_name', 'email', 'phone', 'password', 
-        'profile_image', 'is_active', 'role_id', 'dept_id'
+        'profile_image', 'phone_verified_at', 'otp_code', 'otp_purpose',
+        'otp_expires_at', 'is_active', 'role_id', 'dept_id'
     ];
 
     protected $hidden = ['password', 'remember_token'];
+
+    protected $casts = [
+        'is_active' => 'boolean',
+        'phone_verified_at' => 'datetime',
+        'otp_expires_at' => 'datetime',
+    ];
 
     // المستخدم لديه دور محدد
     public function role(): BelongsTo

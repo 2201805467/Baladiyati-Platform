@@ -59,4 +59,23 @@ class CategoryController extends Controller
             'category' => $category->fresh()->load('department'),
         ]);
     }
+
+    public function destroy(Request $request, Category $category): JsonResponse
+    {
+        $request->validate([
+            'confirm' => ['accepted'],
+        ]);
+
+        if ($category->reports()->exists()) {
+            return response()->json([
+                'message' => 'Category cannot be deleted while reports are linked to it.',
+            ], 422);
+        }
+
+        $category->delete();
+
+        return response()->json([
+            'message' => 'Category deleted successfully.',
+        ]);
+    }
 }

@@ -42,6 +42,7 @@ class DatabaseSeeder extends Seeder
             'manage_categories',
             'manage_public_facilities',
             'manage_projects',
+            'manage_permissions',
             'view_analytics',
             'review_reports',
             'assign_reports',

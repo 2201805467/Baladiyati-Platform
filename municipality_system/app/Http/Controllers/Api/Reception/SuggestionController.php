@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Api\Reception;
 
 use App\Http\Controllers\Controller;
+use App\Models\Notification;
 use App\Models\Suggestion;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -40,6 +41,13 @@ class SuggestionController extends Controller
             'reviewed_by' => $request->user()->id,
         ]);
 
+        $this->notifyCitizen(
+            $suggestion,
+            'Suggestion accepted',
+            'Your suggestion "'.$suggestion->title.'" was accepted.',
+            'suggestion_status'
+        );
+
         return response()->json([
             'message' => 'Suggestion accepted successfully.',
             'suggestion' => $suggestion->fresh()->load(['citizen', 'reviewer']),
@@ -58,9 +66,28 @@ class SuggestionController extends Controller
             'reviewed_by' => $request->user()->id,
         ]);
 
+        $this->notifyCitizen(
+            $suggestion,
+            'Suggestion rejected',
+            'Your suggestion "'.$suggestion->title.'" was rejected: '.$data['rejection_reason'],
+            'suggestion_status'
+        );
+
         return response()->json([
             'message' => 'Suggestion rejected successfully.',
             'suggestion' => $suggestion->fresh()->load(['citizen', 'reviewer']),
+        ]);
+    }
+
+    private function notifyCitizen(Suggestion $suggestion, string $title, string $body, string $type): void
+    {
+        Notification::create([
+            'user_id' => $suggestion->citizen_id,
+            'title' => $title,
+            'body' => $body,
+            'type' => $type,
+            'related_id' => $suggestion->id,
+            'related_type' => Suggestion::class,
         ]);
     }
 }

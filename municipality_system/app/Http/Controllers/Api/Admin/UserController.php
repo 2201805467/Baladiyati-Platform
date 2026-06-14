@@ -97,6 +97,25 @@ class UserController extends Controller
         ]);
     }
 
+    public function destroy(Request $request, User $user): JsonResponse
+    {
+        $data = $request->validate([
+            'confirm' => ['accepted'],
+        ]);
+
+        if ($request->user()->id === $user->id) {
+            return response()->json([
+                'message' => 'You cannot delete your own account.',
+            ], 422);
+        }
+
+        $user->delete();
+
+        return response()->json([
+            'message' => 'User deleted permanently.',
+        ]);
+    }
+
     private function validateDepartmentRole(int $roleId, ?int $deptId): void
     {
         $role = Role::find($roleId);

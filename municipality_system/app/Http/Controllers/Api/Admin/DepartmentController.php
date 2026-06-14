@@ -56,4 +56,35 @@ class DepartmentController extends Controller
             'department' => $department->fresh()->load('account'),
         ]);
     }
+
+    public function destroy(Request $request, Department $department): JsonResponse
+    {
+        $request->validate([
+            'confirm' => ['accepted'],
+        ]);
+
+        if ($department->users()->exists()) {
+            return response()->json([
+                'message' => 'Department cannot be deleted while users are linked to it.',
+            ], 422);
+        }
+
+        if ($department->categories()->exists()) {
+            return response()->json([
+                'message' => 'Department cannot be deleted while categories are linked to it.',
+            ], 422);
+        }
+
+        if ($department->reports()->exists()) {
+            return response()->json([
+                'message' => 'Department cannot be deleted while reports are linked to it.',
+            ], 422);
+        }
+
+        $department->delete();
+
+        return response()->json([
+            'message' => 'Department deleted successfully.',
+        ]);
+    }
 }

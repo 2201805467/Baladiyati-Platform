@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Api\Department;
 
 use App\Http\Controllers\Controller;
+use App\Models\Notification;
 use App\Models\Report;
 use App\Models\ReportComment;
 use App\Models\ReportImage;
@@ -22,7 +23,15 @@ class ReportController extends Controller
 
         $reports = Report::with(['citizen', 'category', 'area', 'images', 'rating'])
             ->where('dept_id', $deptId)
-            ->when($request->filled('status'), fn ($query) => $query->where('status', $request->string('status')))
+            ->when(
+                $request->filled('status'),
+                fn ($query) => $query->where('status', $request->string('status')),
+                fn ($query) => $query->whereIn('status', ['transferred', 'in_progress', 'pending'])
+            )
+            ->when($request->filled('area_id'), fn ($query) => $query->where('area_id', $request->integer('area_id')))
+            ->when($request->filled('severity'), fn ($query) => $query->where('severity', $request->string('severity')))
+            ->when($request->filled('date_from'), fn ($query) => $query->whereDate('created_at', '>=', $request->date('date_from')))
+            ->when($request->filled('date_to'), fn ($query) => $query->whereDate('created_at', '<=', $request->date('date_to')))
             ->when($request->filled('search'), function ($query) use ($request) {
                 $search = '%'.$request->string('search')->toString().'%';
 
@@ -32,7 +41,8 @@ class ReportController extends Controller
                         ->orWhere('description', 'like', $search);
                 });
             })
-            ->latest()
+            ->orderByRaw('sla_due_at is null')
+            ->orderBy('sla_due_at')
             ->paginate($request->integer('per_page', 15));
 
         return response()->json($reports);
@@ -61,8 +71,8 @@ class ReportController extends Controller
         $this->ensureDepartmentOwnsReport($request, $report);
 
         $data = $request->validate([
-            'status' => ['required', Rule::in(['assigned', 'in_progress', 'pending', 'resolved'])],
-            'note' => ['nullable', 'string', 'max:2000'],
+            'status' => ['required', Rule::in(['in_progress', 'pending'])],
+            'note' => ['required', 'string', 'max:2000'],
         ]);
 
         $oldStatus = $report->status;
@@ -80,6 +90,13 @@ class ReportController extends Controller
                 'new_status' => $data['status'],
                 'note' => $data['note'] ?? 'Report status updated by department.',
             ]);
+
+            $this->notifyCitizen(
+                $report,
+                'Report status updated',
+                'Your report '.$report->report_number.' status changed to '.$data['status'].'.',
+                'report_status'
+            );
         });
 
         return response()->json([
@@ -110,6 +127,13 @@ class ReportController extends Controller
             'new_status' => $report->status,
             'note' => 'Department added a comment.',
         ]);
+
+        $this->notifyCitizen(
+            $report,
+            'New reply on your report',
+            'A department officer replied to report '.$report->report_number.'.',
+            'report_comment'
+        );
 
         return response()->json([
             'message' => 'Comment added successfully.',
@@ -156,26 +180,25 @@ class ReportController extends Controller
         $this->ensureDepartmentOwnsReport($request, $report);
 
         $data = $request->validate([
-            'note' => ['nullable', 'string', 'max:2000'],
-            'completion_image' => ['nullable', 'image', 'max:5120'],
+            'completion_report' => ['required', 'string', 'max:5000'],
+            'completion_image' => ['required', 'image', 'max:5120'],
         ]);
 
         $oldStatus = $report->status;
 
         DB::transaction(function () use ($report, $request, $data, $oldStatus) {
-            if ($request->hasFile('completion_image')) {
-                $path = $request->file('completion_image')->store('reports/'.$report->id, 'public');
+            $path = $request->file('completion_image')->store('reports/'.$report->id, 'public');
 
-                ReportImage::create([
-                    'report_id' => $report->id,
-                    'image_url' => Storage::url($path),
-                    'image_type' => 'after',
-                    'uploaded_by' => $request->user()->id,
-                ]);
-            }
+            ReportImage::create([
+                'report_id' => $report->id,
+                'image_url' => Storage::url($path),
+                'image_type' => 'after',
+                'uploaded_by' => $request->user()->id,
+            ]);
 
             $report->update([
                 'status' => 'closed',
+                'completion_report' => $data['completion_report'],
                 'closed_at' => now(),
             ]);
 
@@ -185,8 +208,15 @@ class ReportController extends Controller
                 'action' => 'closed',
                 'old_status' => $oldStatus,
                 'new_status' => 'closed',
-                'note' => $data['note'] ?? 'Report closed by department.',
+                'note' => $data['completion_report'],
             ]);
+
+            $this->notifyCitizen(
+                $report,
+                'Report closed',
+                'Your report '.$report->report_number.' was closed and is ready for rating.',
+                'report_status'
+            );
         });
 
         return response()->json([
@@ -211,5 +241,17 @@ class ReportController extends Controller
         if ($report->dept_id !== $this->departmentId($request)) {
             throw new AuthorizationException('This report is not assigned to your department.');
         }
+    }
+
+    private function notifyCitizen(Report $report, string $title, string $body, string $type): void
+    {
+        Notification::create([
+            'user_id' => $report->citizen_id,
+            'title' => $title,
+            'body' => $body,
+            'type' => $type,
+            'related_id' => $report->id,
+            'related_type' => Report::class,
+        ]);
     }
 }

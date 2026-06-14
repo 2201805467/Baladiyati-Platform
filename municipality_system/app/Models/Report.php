@@ -9,10 +9,13 @@ use Illuminate\Database\Eloquent\Relations\HasOne;
 
 class Report extends Model
 {
+    private const SLA_WARNING_REMAINING_RATIO = 0.25;
+
     protected $fillable = [
         'report_number', 'citizen_id', 'category_id', 'dept_id', 'area_id',
         'title', 'description', 'latitude', 'longitude', 'severity', 'status',
-        'ai_suggested_category', 'is_duplicate', 'parent_report_id', 'closed_at'
+        'ai_suggested_category', 'is_duplicate', 'parent_report_id',
+        'rejection_reason', 'completion_report', 'closed_at', 'sla_due_at'
     ];
 
     protected $casts = [
@@ -20,7 +23,109 @@ class Report extends Model
         'latitude' => 'decimal:8',
         'longitude' => 'decimal:8',
         'closed_at' => 'datetime',
+        'sla_due_at' => 'datetime',
     ];
+
+    protected $appends = [
+        'sla_status',
+        'sla_color',
+        'sla_remaining_seconds',
+        'sla_overdue_seconds',
+        'sla_progress_percent',
+    ];
+
+    public function getSlaStatusAttribute(): ?string
+    {
+        if (! $this->sla_due_at) {
+            return null;
+        }
+
+        if ($this->status === 'closed') {
+            return 'completed';
+        }
+
+        if (now()->greaterThanOrEqualTo($this->sla_due_at)) {
+            return 'overdue';
+        }
+
+        $totalSeconds = $this->slaTotalSeconds();
+
+        if ($totalSeconds <= 0) {
+            return 'approaching';
+        }
+
+        return $this->slaRemainingSeconds() <= ($totalSeconds * self::SLA_WARNING_REMAINING_RATIO)
+            ? 'approaching'
+            : 'on_track';
+    }
+
+    public function getSlaColorAttribute(): ?string
+    {
+        return match ($this->sla_status) {
+            'completed' => 'gray',
+            'overdue' => 'red',
+            'approaching' => 'yellow',
+            'on_track' => 'green',
+            default => null,
+        };
+    }
+
+    public function getSlaRemainingSecondsAttribute(): ?int
+    {
+        if (! $this->sla_due_at || in_array($this->sla_status, ['completed', 'overdue'], true)) {
+            return null;
+        }
+
+        return $this->slaRemainingSeconds();
+    }
+
+    public function getSlaOverdueSecondsAttribute(): ?int
+    {
+        if (! $this->sla_due_at || $this->sla_status !== 'overdue') {
+            return null;
+        }
+
+        return now()->diffInSeconds($this->sla_due_at);
+    }
+
+    public function getSlaProgressPercentAttribute(): ?int
+    {
+        if (! $this->sla_due_at || ! $this->created_at) {
+            return null;
+        }
+
+        if ($this->sla_status === 'completed') {
+            return 100;
+        }
+
+        $totalSeconds = $this->slaTotalSeconds();
+
+        if ($totalSeconds <= 0) {
+            return 100;
+        }
+
+        $elapsedSeconds = max(0, $this->created_at->diffInSeconds(now(), false));
+
+        return min(100, (int) round(($elapsedSeconds / $totalSeconds) * 100));
+    }
+
+    private function slaTotalSeconds(): int
+    {
+        if (! $this->created_at || ! $this->sla_due_at) {
+            return 0;
+        }
+
+        return max(0, $this->created_at->diffInSeconds($this->sla_due_at, false));
+    }
+
+    private function slaRemainingSeconds(): int
+    {
+        if (! $this->sla_due_at) {
+            return 0;
+        }
+
+        return max(0, now()->diffInSeconds($this->sla_due_at, false));
+    }
 
     // البلاغ يرفعه مواطن (مستخدم)
     public function citizen(): BelongsTo
