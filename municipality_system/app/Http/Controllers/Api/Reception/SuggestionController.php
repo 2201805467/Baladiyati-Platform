@@ -7,6 +7,7 @@ use App\Models\Notification;
 use App\Models\Suggestion;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Validation\Rule;
 
 class SuggestionController extends Controller
 {
@@ -75,6 +76,41 @@ class SuggestionController extends Controller
 
         return response()->json([
             'message' => 'Suggestion rejected successfully.',
+            'suggestion' => $suggestion->fresh()->load(['citizen', 'reviewer']),
+        ]);
+    }
+
+    public function updateImplementation(Request $request, Suggestion $suggestion): JsonResponse
+    {
+        if ($suggestion->status !== 'accepted') {
+            return response()->json([
+                'message' => 'Only accepted suggestions can have implementation progress.',
+            ], 422);
+        }
+
+        $data = $request->validate([
+            'implementation_status' => ['required', Rule::in(['planned', 'in_progress', 'completed', 'paused', 'cancelled'])],
+            'implementation_progress_percent' => ['required', 'integer', 'min:0', 'max:100'],
+            'implementation_note' => ['nullable', 'string', 'max:2000'],
+        ]);
+
+        if ($data['implementation_status'] === 'completed' && $data['implementation_progress_percent'] < 100) {
+            return response()->json([
+                'message' => 'Completed suggestions must have 100% progress.',
+            ], 422);
+        }
+
+        $suggestion->update($data);
+
+        $this->notifyCitizen(
+            $suggestion,
+            'Suggestion implementation updated',
+            'Implementation progress for "'.$suggestion->title.'" is now '.$data['implementation_progress_percent'].'%.',
+            'suggestion_implementation'
+        );
+
+        return response()->json([
+            'message' => 'Suggestion implementation updated successfully.',
             'suggestion' => $suggestion->fresh()->load(['citizen', 'reviewer']),
         ]);
     }

@@ -8,7 +8,22 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class Suggestion extends Model
 {
-    protected $fillable = ['citizen_id', 'title', 'description', 'category', 'status', 'rejection_reason', 'reviewed_by'];
+    protected $fillable = [
+        'citizen_id',
+        'title',
+        'description',
+        'category',
+        'status',
+        'rejection_reason',
+        'reviewed_by',
+        'implementation_status',
+        'implementation_progress_percent',
+        'implementation_note',
+    ];
+
+    protected $casts = [
+        'implementation_progress_percent' => 'integer',
+    ];
 
     // مقدم الاقتراح
     public function citizen(): BelongsTo

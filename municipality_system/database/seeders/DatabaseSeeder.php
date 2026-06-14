@@ -137,6 +137,7 @@ class DatabaseSeeder extends Seeder
             [
                 'full_name' => 'System Administrator',
                 'phone' => '0910000001',
+                'employee_number' => 'ADM-0001',
                 'password' => Hash::make('password'),
                 'is_active' => true,
                 'role_id' => $adminRole->id,
@@ -149,6 +150,7 @@ class DatabaseSeeder extends Seeder
             [
                 'full_name' => 'Reception Account',
                 'phone' => '0910000002',
+                'employee_number' => 'REC-0001',
                 'password' => Hash::make('password'),
                 'is_active' => true,
                 'role_id' => $receptionRole->id,
@@ -161,6 +163,7 @@ class DatabaseSeeder extends Seeder
             [
                 'full_name' => 'Demo Citizen',
                 'phone' => '0910000003',
+                'employee_number' => null,
                 'password' => Hash::make('password'),
                 'is_active' => true,
                 'role_id' => $citizenRole->id,
@@ -175,6 +178,7 @@ class DatabaseSeeder extends Seeder
                     'full_name' => $department->dept_name.' Account',
                     'email' => 'department'.$department->id.'@baladiyati.test',
                     'phone' => '092000000'.($index + 1),
+                    'employee_number' => 'DEP-'.str_pad((string) $department->id, 4, '0', STR_PAD_LEFT),
                     'password' => Hash::make('password'),
                     'is_active' => true,
                     'role_id' => $departmentRole->id,

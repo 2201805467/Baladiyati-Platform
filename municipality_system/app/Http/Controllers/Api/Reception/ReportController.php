@@ -8,6 +8,7 @@ use App\Models\Department;
 use App\Models\Notification;
 use App\Models\Report;
 use App\Models\ReportLog;
+use App\Models\User;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -146,6 +147,13 @@ class ReportController extends Controller
                 'Your report '.$report->report_number.' was transferred to '.$department->dept_name.'.',
                 'report_status'
             );
+
+            $this->notifyDepartmentUsers(
+                $report,
+                'New report assigned',
+                'Report '.$report->report_number.' was transferred to your department.',
+                'department_report_assigned'
+            );
         });
 
         return response()->json([
@@ -200,5 +208,23 @@ class ReportController extends Controller
             'related_id' => $report->id,
             'related_type' => Report::class,
         ]);
+    }
+
+    private function notifyDepartmentUsers(Report $report, string $title, string $body, string $type): void
+    {
+        if (! $report->dept_id) {
+            return;
+        }
+
+        User::where('dept_id', $report->dept_id)->each(function (User $user) use ($report, $title, $body, $type) {
+            Notification::create([
+                'user_id' => $user->id,
+                'title' => $title,
+                'body' => $body,
+                'type' => $type,
+                'related_id' => $report->id,
+                'related_type' => Report::class,
+            ]);
+        });
     }
 }

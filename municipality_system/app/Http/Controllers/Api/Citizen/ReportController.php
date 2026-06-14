@@ -4,11 +4,13 @@ namespace App\Http\Controllers\Api\Citizen;
 
 use App\Http\Controllers\Controller;
 use App\Models\Category;
+use App\Models\Notification;
 use App\Models\Rating;
 use App\Models\Report;
 use App\Models\ReportComment;
 use App\Models\ReportImage;
 use App\Models\ReportLog;
+use App\Models\User;
 use App\Services\ReportImageClassifier;
 use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Http\JsonResponse;
@@ -195,6 +197,13 @@ class ReportController extends Controller
             'comment_text' => $data['comment_text'],
         ]);
 
+        $this->notifyDepartmentUsers(
+            $report,
+            'Citizen replied to report',
+            'The citizen replied to report '.$report->report_number.'.',
+            'citizen_report_comment'
+        );
+
         return response()->json([
             'message' => 'Comment added successfully.',
             'comment' => $comment->load('user'),
@@ -242,6 +251,24 @@ class ReportController extends Controller
         if ($report->citizen_id !== $request->user()->id) {
             throw new AuthorizationException('This report does not belong to the authenticated citizen.');
         }
+    }
+
+    private function notifyDepartmentUsers(Report $report, string $title, string $body, string $type): void
+    {
+        if (! $report->dept_id) {
+            return;
+        }
+
+        User::where('dept_id', $report->dept_id)->each(function (User $user) use ($report, $title, $body, $type) {
+            Notification::create([
+                'user_id' => $user->id,
+                'title' => $title,
+                'body' => $body,
+                'type' => $type,
+                'related_id' => $report->id,
+                'related_type' => Report::class,
+            ]);
+        });
     }
 
     private function findSimilarReports(int $categoryId, float $latitude, float $longitude): \Illuminate\Support\Collection

@@ -8,6 +8,7 @@ use App\Http\Controllers\Api\Admin\EmergencyContactController as AdminEmergencyC
 use App\Http\Controllers\Api\Admin\PermissionController as AdminPermissionController;
 use App\Http\Controllers\Api\Admin\ProjectController as AdminProjectController;
 use App\Http\Controllers\Api\Admin\PublicFacilityController as AdminPublicFacilityController;
+use App\Http\Controllers\Api\Admin\SecurityLogController as AdminSecurityLogController;
 use App\Http\Controllers\Api\Admin\UserController as AdminUserController;
 use App\Http\Controllers\Api\Citizen\NotificationController as CitizenNotificationController;
 use App\Http\Controllers\Api\Citizen\PublicInfoController as CitizenPublicInfoController;
@@ -34,6 +35,10 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::put('/auth/profile', [AuthController::class, 'updateProfile'])->name('auth.profile.update');
     Route::put('/auth/change-password', [AuthController::class, 'changePassword'])->name('auth.password.change');
     Route::post('/auth/logout', [AuthController::class, 'logout'])->name('auth.logout');
+
+    Route::get('/notifications', [CitizenNotificationController::class, 'index'])->name('notifications.index');
+    Route::patch('/notifications/read-all', [CitizenNotificationController::class, 'markAllAsRead'])->name('notifications.read-all');
+    Route::patch('/notifications/{notification}/read', [CitizenNotificationController::class, 'markAsRead'])->name('notifications.read');
 });
 
 Route::middleware(['auth:sanctum', 'role:citizen'])
@@ -77,6 +82,7 @@ Route::middleware(['auth:sanctum', 'role:admin'])
         Route::get('/roles', [AdminPermissionController::class, 'roles'])->middleware('permission:manage_permissions')->name('roles.index');
         Route::get('/permissions', [AdminPermissionController::class, 'permissions'])->middleware('permission:manage_permissions')->name('permissions.index');
         Route::put('/roles/{role}/permissions', [AdminPermissionController::class, 'updateRolePermissions'])->middleware('permission:manage_permissions')->name('roles.permissions.update');
+        Route::get('/security-logs', [AdminSecurityLogController::class, 'index'])->middleware('permission:manage_permissions')->name('security-logs.index');
 
         Route::get('/departments', [AdminDepartmentController::class, 'index'])->middleware('permission:manage_departments')->name('departments.index');
         Route::post('/departments', [AdminDepartmentController::class, 'store'])->middleware('permission:manage_departments')->name('departments.store');
@@ -102,6 +108,7 @@ Route::middleware(['auth:sanctum', 'role:admin'])
 
         Route::get('/analytics/reports', [AdminAnalyticsController::class, 'reports'])->middleware('permission:view_analytics')->name('analytics.reports');
         Route::get('/analytics/departments', [AdminAnalyticsController::class, 'departments'])->middleware('permission:view_analytics')->name('analytics.departments');
+        Route::get('/analytics/departments/{department}', [AdminAnalyticsController::class, 'departmentPerformance'])->middleware('permission:view_analytics')->name('analytics.departments.show');
     });
 
 Route::middleware(['auth:sanctum', 'role:reception'])
@@ -117,6 +124,7 @@ Route::middleware(['auth:sanctum', 'role:reception'])
         Route::get('/suggestions', [ReceptionSuggestionController::class, 'index'])->middleware('permission:review_suggestions')->name('suggestions.index');
         Route::patch('/suggestions/{suggestion}/accept', [ReceptionSuggestionController::class, 'accept'])->middleware('permission:review_suggestions')->name('suggestions.accept');
         Route::patch('/suggestions/{suggestion}/reject', [ReceptionSuggestionController::class, 'reject'])->middleware('permission:review_suggestions')->name('suggestions.reject');
+        Route::patch('/suggestions/{suggestion}/implementation', [ReceptionSuggestionController::class, 'updateImplementation'])->middleware('permission:review_suggestions')->name('suggestions.implementation.update');
     });
 
 Route::middleware(['auth:sanctum', 'role:department'])
