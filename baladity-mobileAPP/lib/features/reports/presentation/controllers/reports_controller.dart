@@ -17,28 +17,32 @@ final reportsRepositoryProvider = Provider<ReportsRepository>(
   (ref) => ReportsRepositoryImpl(ref.read(reportsRemoteDataSourceProvider)),
 );
 
-final getReportsUseCaseProvider =
-    Provider((ref) => GetReportsUseCase(ref.read(reportsRepositoryProvider)));
+final getReportsUseCaseProvider = Provider(
+  (ref) => GetReportsUseCase(ref.read(reportsRepositoryProvider)),
+);
 
-final createReportUseCaseProvider =
-    Provider((ref) => CreateReportUseCase(ref.read(reportsRepositoryProvider)));
+final createReportUseCaseProvider = Provider(
+  (ref) => CreateReportUseCase(ref.read(reportsRepositoryProvider)),
+);
 
 // ─── Reports Controller ───────────────────────────────────────────────────────
 
 final reportsControllerProvider =
     StateNotifierProvider<ReportsController, ReportsState>(
-  (ref) => ReportsController(
-    ref.read(getReportsUseCaseProvider),
-    ref.read(createReportUseCaseProvider),
-  ),
-);
+      (ref) => ReportsController(
+        ref.read(getReportsUseCaseProvider),
+        ref.read(createReportUseCaseProvider),
+        ref.read(reportsRepositoryProvider),
+      ),
+    );
 
 class ReportsController extends StateNotifier<ReportsState> {
-  ReportsController(this._getReports, this._createReport)
-      : super(const ReportsState());
+  ReportsController(this._getReports, this._createReport, this._repository)
+    : super(const ReportsState());
 
   final GetReportsUseCase _getReports;
   final CreateReportUseCase _createReport;
+  final ReportsRepository _repository;
 
   Future<void> fetchReports({bool refresh = false}) async {
     if (state.isLoading) return;
@@ -56,6 +60,16 @@ class ReportsController extends StateNotifier<ReportsState> {
         hasMore: results.isNotEmpty,
         currentPage: page + 1,
       );
+    } catch (e) {
+      state = state.copyWith(isLoading: false, errorMessage: e.toString());
+    }
+  }
+
+  Future<void> fetchCategories() async {
+    state = state.copyWith(isLoading: true, clearError: true);
+    try {
+      final categories = await _repository.getCategories();
+      state = state.copyWith(isLoading: false, categories: categories);
     } catch (e) {
       state = state.copyWith(isLoading: false, errorMessage: e.toString());
     }

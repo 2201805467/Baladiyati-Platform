@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
+import '../../../../core/router/app_routes.dart';
 import '../controllers/auth_controller.dart';
 import '../controllers/auth_state.dart';
 
@@ -32,7 +34,9 @@ class _RegistrationPageState extends ConsumerState<RegistrationPage> {
 
   Future<void> _register() async {
     if (!_formKey.currentState!.validate()) return;
-    await ref.read(authControllerProvider.notifier).register(
+    await ref
+        .read(authControllerProvider.notifier)
+        .register(
           name: _fullNameController.text.trim(),
           email: _emailController.text.trim(),
           password: _passwordController.text,
@@ -55,6 +59,10 @@ class _RegistrationPageState extends ConsumerState<RegistrationPage> {
             backgroundColor: Colors.red[700],
           ),
         );
+      }
+
+      if (next.status == AuthStatus.otpPending && next.otpIdentifier != null) {
+        context.push(AppRoutes.otpVerification, extra: next.otpIdentifier);
       }
     });
 
@@ -81,17 +89,20 @@ class _RegistrationPageState extends ConsumerState<RegistrationPage> {
         textDirection: TextDirection.rtl,
         child: SafeArea(
           child: SingleChildScrollView(
-            padding:
-                const EdgeInsets.symmetric(horizontal: 24.0, vertical: 20.0),
+            padding: const EdgeInsets.symmetric(
+              horizontal: 24.0,
+              vertical: 20.0,
+            ),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
                 const Text(
                   'انضم إلينا اليوم!',
                   style: TextStyle(
-                      fontSize: 24,
-                      fontWeight: FontWeight.bold,
-                      color: Colors.black87),
+                    fontSize: 24,
+                    fontWeight: FontWeight.bold,
+                    color: Colors.black87,
+                  ),
                   textAlign: TextAlign.center,
                 ),
                 const SizedBox(height: 10),
@@ -113,10 +124,9 @@ class _RegistrationPageState extends ConsumerState<RegistrationPage> {
                           hintText: 'أحمد محمد',
                           prefixIcon: Icons.person_outline,
                         ),
-                        validator: (value) =>
-                            (value == null || value.isEmpty)
-                                ? 'الرجاء إدخال الاسم الكامل'
-                                : null,
+                        validator: (value) => (value == null || value.isEmpty)
+                            ? 'الرجاء إدخال الاسم الكامل'
+                            : null,
                       ),
                       const SizedBox(height: 16),
                       TextFormField(
@@ -155,11 +165,14 @@ class _RegistrationPageState extends ConsumerState<RegistrationPage> {
                           labelText: 'كلمة المرور',
                           prefixIcon: Icons.lock_outline,
                           suffixIcon: IconButton(
-                            icon: Icon(_isPasswordVisible
-                                ? Icons.visibility
-                                : Icons.visibility_off),
-                            onPressed: () => setState(() =>
-                                _isPasswordVisible = !_isPasswordVisible),
+                            icon: Icon(
+                              _isPasswordVisible
+                                  ? Icons.visibility
+                                  : Icons.visibility_off,
+                            ),
+                            onPressed: () => setState(
+                              () => _isPasswordVisible = !_isPasswordVisible,
+                            ),
                           ),
                         ),
                         validator: (value) {
@@ -180,12 +193,15 @@ class _RegistrationPageState extends ConsumerState<RegistrationPage> {
                           labelText: 'تأكيد كلمة المرور',
                           prefixIcon: Icons.lock_outline,
                           suffixIcon: IconButton(
-                            icon: Icon(_isConfirmPasswordVisible
-                                ? Icons.visibility
-                                : Icons.visibility_off),
-                            onPressed: () => setState(() =>
-                                _isConfirmPasswordVisible =
-                                    !_isConfirmPasswordVisible),
+                            icon: Icon(
+                              _isConfirmPasswordVisible
+                                  ? Icons.visibility
+                                  : Icons.visibility_off,
+                            ),
+                            onPressed: () => setState(
+                              () => _isConfirmPasswordVisible =
+                                  !_isConfirmPasswordVisible,
+                            ),
                           ),
                         ),
                         validator: (value) {
@@ -219,7 +235,8 @@ class _RegistrationPageState extends ConsumerState<RegistrationPage> {
                       foregroundColor: Colors.white,
                       padding: const EdgeInsets.symmetric(vertical: 18),
                       shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(8)),
+                        borderRadius: BorderRadius.circular(8),
+                      ),
                       elevation: 0,
                     ),
                     child: isLoading
@@ -227,12 +244,16 @@ class _RegistrationPageState extends ConsumerState<RegistrationPage> {
                             height: 20,
                             width: 20,
                             child: CircularProgressIndicator(
-                                color: Colors.white, strokeWidth: 2),
+                              color: Colors.white,
+                              strokeWidth: 2,
+                            ),
                           )
                         : const Text(
                             'تسجيل',
                             style: TextStyle(
-                                fontSize: 16, fontWeight: FontWeight.bold),
+                              fontSize: 16,
+                              fontWeight: FontWeight.bold,
+                            ),
                           ),
                   ),
                 ),
@@ -240,16 +261,20 @@ class _RegistrationPageState extends ConsumerState<RegistrationPage> {
                 Row(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
-                    const Text('هل لديك حساب بالفعل؟',
-                        style: TextStyle(color: Colors.black54)),
+                    const Text(
+                      'هل لديك حساب بالفعل؟',
+                      style: TextStyle(color: Colors.black54),
+                    ),
                     TextButton(
-                      onPressed:
-                          isLoading ? null : () => Navigator.pop(context),
+                      onPressed: isLoading
+                          ? null
+                          : () => Navigator.pop(context),
                       child: const Text(
                         'تسجيل الدخول',
                         style: TextStyle(
-                            color: primaryGreen,
-                            fontWeight: FontWeight.bold),
+                          color: primaryGreen,
+                          fontWeight: FontWeight.bold,
+                        ),
                       ),
                     ),
                   ],
@@ -276,20 +301,25 @@ class _RegistrationPageState extends ConsumerState<RegistrationPage> {
       filled: true,
       fillColor: const Color(0xFFEEEEEE),
       border: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(8),
-          borderSide: BorderSide.none),
+        borderRadius: BorderRadius.circular(8),
+        borderSide: BorderSide.none,
+      ),
       enabledBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(8),
-          borderSide: BorderSide.none),
+        borderRadius: BorderRadius.circular(8),
+        borderSide: BorderSide.none,
+      ),
       focusedBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(8),
-          borderSide: const BorderSide(color: Color(0xFF2E7D32), width: 2)),
+        borderRadius: BorderRadius.circular(8),
+        borderSide: const BorderSide(color: Color(0xFF2E7D32), width: 2),
+      ),
       errorBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(8),
-          borderSide: const BorderSide(color: Colors.red, width: 2)),
+        borderRadius: BorderRadius.circular(8),
+        borderSide: const BorderSide(color: Colors.red, width: 2),
+      ),
       focusedErrorBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(8),
-          borderSide: const BorderSide(color: Colors.red, width: 2)),
+        borderRadius: BorderRadius.circular(8),
+        borderSide: const BorderSide(color: Colors.red, width: 2),
+      ),
     );
   }
 }

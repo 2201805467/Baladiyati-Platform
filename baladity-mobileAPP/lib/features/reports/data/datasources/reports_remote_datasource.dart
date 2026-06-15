@@ -1,10 +1,12 @@
 import 'package:dio/dio.dart';
 import '../../../../core/error/exceptions.dart';
 import '../../../../core/network/api_constants.dart';
+import '../models/report_category_model.dart';
 import '../models/report_model.dart';
 
 abstract class ReportsRemoteDataSource {
   Future<List<ReportModel>> getReports({int page = 1});
+  Future<List<ReportCategoryModel>> getCategories();
   Future<ReportModel> createReport({
     required String category,
     required String description,
@@ -29,6 +31,19 @@ class ReportsRemoteDataSourceImpl implements ReportsRemoteDataSource {
       final list = res.data['data'] ?? res.data;
       return (list as List)
           .map((e) => ReportModel.fromJson(e as Map<String, dynamic>))
+          .toList();
+    } on DioException catch (e) {
+      throw _extract(e);
+    }
+  }
+
+  @override
+  Future<List<ReportCategoryModel>> getCategories() async {
+    try {
+      final res = await _dio.get(ApiConstants.reportCategories);
+      final list = res.data['categories'] ?? res.data['data'] ?? res.data;
+      return (list as List)
+          .map((e) => ReportCategoryModel.fromJson(e as Map<String, dynamic>))
           .toList();
     } on DioException catch (e) {
       throw _extract(e);

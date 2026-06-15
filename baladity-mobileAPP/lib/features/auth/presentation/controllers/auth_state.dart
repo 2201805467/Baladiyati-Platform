@@ -1,13 +1,27 @@
 import '../../domain/entities/user_entity.dart';
 
-enum AuthStatus { initial, loading, authenticated, unauthenticated, error }
+enum AuthStatus {
+  initial,
+  loading,
+  authenticated,
+  unauthenticated,
+  otpPending,
+  otpVerified,
+  error,
+}
 
 class AuthState {
   final AuthStatus status;
   final UserEntity? user;
   final String? errorMessage;
+  final String? otpIdentifier;
 
-  const AuthState({required this.status, this.user, this.errorMessage});
+  const AuthState({
+    required this.status,
+    this.user,
+    this.errorMessage,
+    this.otpIdentifier,
+  });
 
   static AuthState initial() => const AuthState(status: AuthStatus.initial);
   static AuthState loading() => const AuthState(status: AuthStatus.loading);
@@ -15,6 +29,10 @@ class AuthState {
       const AuthState(status: AuthStatus.unauthenticated);
   static AuthState authenticated(UserEntity user) =>
       AuthState(status: AuthStatus.authenticated, user: user);
+  static AuthState otpPending(String identifier) =>
+      AuthState(status: AuthStatus.otpPending, otpIdentifier: identifier);
+  static AuthState otpVerified() =>
+      const AuthState(status: AuthStatus.otpVerified);
   static AuthState withError(String message) =>
       AuthState(status: AuthStatus.error, errorMessage: message);
 

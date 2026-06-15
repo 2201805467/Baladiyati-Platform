@@ -33,8 +33,10 @@ class AuthRepositoryImpl implements AuthRepository {
       password: password,
       phone: phone,
     );
-    await _tokenStorage.saveToken(response.token);
-    await _tokenStorage.saveUserId(response.user.id.toString());
+    if (response.token.isNotEmpty) {
+      await _tokenStorage.saveToken(response.token);
+      await _tokenStorage.saveUserId(response.user.id.toString());
+    }
     return (token: response.token, user: response.user as UserEntity);
   }
 
@@ -49,4 +51,21 @@ class AuthRepositoryImpl implements AuthRepository {
 
   @override
   Future<UserEntity> getProfile() => _dataSource.getProfile();
+
+  @override
+  Future<void> verifyOtp({
+    required String identifier,
+    required String otpCode,
+    String purpose = 'registration',
+  }) => _dataSource.verifyOtp(
+    identifier: identifier,
+    otpCode: otpCode,
+    purpose: purpose,
+  );
+
+  @override
+  Future<void> resendOtp({
+    required String identifier,
+    String purpose = 'registration',
+  }) => _dataSource.resendOtp(identifier: identifier, purpose: purpose);
 }

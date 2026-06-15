@@ -197,6 +197,27 @@ class ReportWorkflowTest extends TestCase
             ->assertJsonCount(1, 'similar_reports');
     }
 
+    public function test_citizen_can_fetch_active_report_categories(): void
+    {
+        $this->seed(DatabaseSeeder::class);
+
+        $citizen = User::where('email', 'citizen@baladiyati.test')->firstOrFail();
+
+        Sanctum::actingAs($citizen);
+
+        $this->getJson('/api/citizen/categories')
+            ->assertOk()
+            ->assertJsonStructure([
+                'categories' => [
+                    '*' => [
+                        'id',
+                        'category_name',
+                        'department',
+                    ],
+                ],
+            ]);
+    }
+
     public function test_citizen_can_join_similar_report(): void
     {
         $this->seed(DatabaseSeeder::class);

@@ -24,15 +24,13 @@ class _AddReportPageState extends ConsumerState<AddReportPage> {
   String? _locationAddress;
   XFile? _imageFile;
   final ImagePicker _picker = ImagePicker();
-
-  final List<String> _categories = [
-    'نظافة عامة',
-    'إنارة شوارع',
-    'صرف صحي',
-    'طرق وأرصفة',
-    'مرافق عامة',
-    'أخرى',
-  ];
+  @override
+  void initState() {
+    super.initState();
+    Future.microtask(
+      () => ref.read(reportsControllerProvider.notifier).fetchCategories(),
+    );
+  }
 
   @override
   void dispose() {
@@ -217,6 +215,9 @@ class _AddReportPageState extends ConsumerState<AddReportPage> {
     final isSubmitting = ref.watch(
       reportsControllerProvider.select((s) => s.isSubmitting),
     );
+    final categories = ref.watch(
+      reportsControllerProvider.select((s) => s.categories),
+    );
 
     return Scaffold(
       appBar: AppBar(title: const Text('إضافة بلاغ جديد'), centerTitle: true),
@@ -245,8 +246,17 @@ class _AddReportPageState extends ConsumerState<AddReportPage> {
                   ),
                   hint: const Text('اختر التصنيف'),
                   value: _selectedCategory,
-                  items: _categories
-                      .map((c) => DropdownMenuItem(value: c, child: Text(c)))
+                  items: categories
+                      .map(
+                        (c) => DropdownMenuItem(
+                          value: c.id.toString(),
+                          child: Text(
+                            c.departmentName == null
+                                ? c.name
+                                : '${c.name} - ${c.departmentName}',
+                          ),
+                        ),
+                      )
                       .toList(),
                   onChanged: isSubmitting
                       ? null

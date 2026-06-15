@@ -46,6 +46,7 @@ Route::middleware(['auth:sanctum', 'role:citizen'])
     ->name('citizen.')
     ->group(function () use ($todo) {
         Route::get('/reports', [CitizenReportController::class, 'index'])->middleware('permission:submit_reports')->name('reports.index');
+        Route::get('/categories', [CitizenReportController::class, 'categories'])->middleware('permission:submit_reports')->name('categories.index');
         Route::post('/reports/similar', [CitizenReportController::class, 'similar'])->middleware('permission:submit_reports')->name('reports.similar');
         Route::post('/reports/classify-image', [CitizenReportController::class, 'classifyImage'])->middleware('permission:submit_reports')->name('reports.classify-image');
         Route::post('/reports', [CitizenReportController::class, 'store'])->middleware('permission:submit_reports')->name('reports.store');

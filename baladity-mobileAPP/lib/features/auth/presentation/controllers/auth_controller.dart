@@ -30,24 +30,27 @@ final authRepositoryProvider = Provider<AuthRepository>(
   ),
 );
 
-final loginUseCaseProvider =
-    Provider((ref) => LoginUseCase(ref.read(authRepositoryProvider)));
+final loginUseCaseProvider = Provider(
+  (ref) => LoginUseCase(ref.read(authRepositoryProvider)),
+);
 
-final registerUseCaseProvider =
-    Provider((ref) => RegisterUseCase(ref.read(authRepositoryProvider)));
+final registerUseCaseProvider = Provider(
+  (ref) => RegisterUseCase(ref.read(authRepositoryProvider)),
+);
 
-final logoutUseCaseProvider =
-    Provider((ref) => LogoutUseCase(ref.read(authRepositoryProvider)));
+final logoutUseCaseProvider = Provider(
+  (ref) => LogoutUseCase(ref.read(authRepositoryProvider)),
+);
 
 // ─── Auth Controller ──────────────────────────────────────────────────────────
 
-final authControllerProvider =
-    StateNotifierProvider<AuthController, AuthState>(
+final authControllerProvider = StateNotifierProvider<AuthController, AuthState>(
   (ref) => AuthController(
     ref.read(loginUseCaseProvider),
     ref.read(registerUseCaseProvider),
     ref.read(logoutUseCaseProvider),
     ref.read(tokenStorageProvider),
+    ref.read(authRepositoryProvider),
   ),
 );
 
@@ -57,6 +60,7 @@ class AuthController extends StateNotifier<AuthState> {
     this._registerUseCase,
     this._logoutUseCase,
     this._tokenStorage,
+    this._repository,
   ) : super(AuthState.initial()) {
     _init();
     forceLogoutStream.listen((_) => logout());
@@ -66,6 +70,7 @@ class AuthController extends StateNotifier<AuthState> {
   final RegisterUseCase _registerUseCase;
   final LogoutUseCase _logoutUseCase;
   final TokenStorage _tokenStorage;
+  final AuthRepository _repository;
 
   /// Checks for a stored token on startup so GoRouter redirect fires correctly.
   Future<void> _init() async {
@@ -99,11 +104,46 @@ class AuthController extends StateNotifier<AuthState> {
         password: password,
         phone: phone,
       );
-      state = AuthState.authenticated(result.user);
+      state = result.token.isNotEmpty
+          ? AuthState.authenticated(result.user)
+          : AuthState.otpPending(phone?.isNotEmpty == true ? phone! : email);
     } catch (e) {
       state = AuthState.withError(e.toString());
     }
   }
+
+  Future<void> verifyOtp({
+    required String identifier,
+    required String otpCode,
+  }) async {
+    state = AuthState.loading();
+    try {
+      await refVerifyOtp(identifier: identifier, otpCode: otpCode);
+      state = AuthState.otpVerified();
+    } catch (e) {
+      state = AuthState.withError(e.toString());
+    }
+  }
+
+  Future<void> resendOtp({required String identifier}) async {
+    try {
+      await refResendOtp(identifier: identifier);
+    } catch (e) {
+      state = AuthState.withError(e.toString());
+    }
+  }
+
+  Future<void> refVerifyOtp({
+    required String identifier,
+    required String otpCode,
+  }) => _repository.verifyOtp(
+    identifier: identifier,
+    otpCode: otpCode,
+    purpose: 'registration',
+  );
+
+  Future<void> refResendOtp({required String identifier}) =>
+      _repository.resendOtp(identifier: identifier, purpose: 'registration');
 
   Future<void> bypassLogin() async {
     await _tokenStorage.saveToken('bypass-test-token');

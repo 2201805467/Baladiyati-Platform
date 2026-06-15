@@ -27,6 +27,7 @@ abstract class ApiConstants {
 
   // ─── Reports ─────────────────────────────────────────────────────────────────
   static const String reports = '/citizen/reports';
+  static const String reportCategories = '/citizen/categories';
   static const String reportSimilar = '/citizen/reports/similar';
   static const String reportClassifyImage = '/citizen/reports/classify-image';
 

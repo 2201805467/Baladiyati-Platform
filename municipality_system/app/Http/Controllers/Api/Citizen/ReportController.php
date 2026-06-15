@@ -33,6 +33,16 @@ class ReportController extends Controller
         return response()->json($reports);
     }
 
+    public function categories(): JsonResponse
+    {
+        return response()->json([
+            'categories' => Category::with('department:id,dept_name')
+                ->where('is_active', true)
+                ->orderBy('category_name')
+                ->get(),
+        ]);
+    }
+
     public function similar(Request $request): JsonResponse
     {
         $data = $request->validate([

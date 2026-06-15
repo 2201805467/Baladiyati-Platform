@@ -16,4 +16,12 @@ abstract class AuthRepository {
   Future<void> logout();
 
   Future<UserEntity> getProfile();
+
+  Future<void> verifyOtp({
+    required String identifier,
+    required String otpCode,
+    String purpose,
+  });
+
+  Future<void> resendOtp({required String identifier, String purpose});
 }

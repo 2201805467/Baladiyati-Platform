@@ -1,4 +1,5 @@
 import '../../domain/entities/report_entity.dart';
+import '../../domain/entities/report_category_entity.dart';
 import '../../domain/repositories/reports_repository.dart';
 import '../datasources/reports_remote_datasource.dart';
 
@@ -11,6 +12,10 @@ class ReportsRepositoryImpl implements ReportsRepository {
       _dataSource.getReports(page: page);
 
   @override
+  Future<List<ReportCategoryEntity>> getCategories() =>
+      _dataSource.getCategories();
+
+  @override
   Future<ReportEntity> createReport({
     required String category,
     required String description,
@@ -18,13 +23,12 @@ class ReportsRepositoryImpl implements ReportsRepository {
     double? longitude,
     String? locationAddress,
     String? imagePath,
-  }) =>
-      _dataSource.createReport(
-        category: category,
-        description: description,
-        latitude: latitude,
-        longitude: longitude,
-        locationAddress: locationAddress,
-        imagePath: imagePath,
-      );
+  }) => _dataSource.createReport(
+    category: category,
+    description: description,
+    latitude: latitude,
+    longitude: longitude,
+    locationAddress: locationAddress,
+    imagePath: imagePath,
+  );
 }

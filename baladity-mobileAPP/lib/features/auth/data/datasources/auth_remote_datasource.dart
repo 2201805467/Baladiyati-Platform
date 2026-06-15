@@ -20,6 +20,17 @@ abstract class AuthRemoteDataSource {
   Future<void> logout();
 
   Future<UserModel> getProfile();
+
+  Future<void> verifyOtp({
+    required String identifier,
+    required String otpCode,
+    String purpose = 'registration',
+  });
+
+  Future<void> resendOtp({
+    required String identifier,
+    String purpose = 'registration',
+  });
 }
 
 class AuthRemoteDataSourceImpl implements AuthRemoteDataSource {
@@ -38,6 +49,50 @@ class AuthRemoteDataSourceImpl implements AuthRemoteDataSource {
       );
       final data = res.data['data'] ?? res.data;
       return AuthResponseModel.fromJson(data as Map<String, dynamic>);
+    } on DioException catch (e) {
+      throw _extractException(e);
+    }
+  }
+
+  @override
+  Future<void> verifyOtp({
+    required String identifier,
+    required String otpCode,
+    String purpose = 'registration',
+  }) async {
+    try {
+      await _dio.post(
+        ApiConstants.verifyOtp,
+        data: {
+          if (identifier.contains('@'))
+            'email': identifier
+          else
+            'phone': identifier,
+          'otp_code': otpCode,
+          'purpose': purpose,
+        },
+      );
+    } on DioException catch (e) {
+      throw _extractException(e);
+    }
+  }
+
+  @override
+  Future<void> resendOtp({
+    required String identifier,
+    String purpose = 'registration',
+  }) async {
+    try {
+      await _dio.post(
+        ApiConstants.resendOtp,
+        data: {
+          if (identifier.contains('@'))
+            'email': identifier
+          else
+            'phone': identifier,
+          'purpose': purpose,
+        },
+      );
     } on DioException catch (e) {
       throw _extractException(e);
     }
