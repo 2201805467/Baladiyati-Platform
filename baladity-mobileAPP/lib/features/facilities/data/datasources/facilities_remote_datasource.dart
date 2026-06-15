@@ -22,13 +22,9 @@ class FacilitiesRemoteDataSourceImpl implements FacilitiesRemoteDataSource {
   }) async {
     final res = await _dio.get(
       ApiConstants.facilities,
-      queryParameters: {
-        'type': ?type,
-        'municipality_id': ?municipalityId,
-        'page': page,
-      },
+      queryParameters: {'facility_type': ?type, 'page': page},
     );
-    final List data = res.data['data'] as List;
+    final List data = (res.data['data'] ?? res.data) as List;
     return data
         .map((e) => FacilityModel.fromJson(e as Map<String, dynamic>))
         .toList();

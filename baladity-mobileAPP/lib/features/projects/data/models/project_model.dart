@@ -14,11 +14,13 @@ class ProjectModel extends ProjectEntity {
   factory ProjectModel.fromJson(Map<String, dynamic> json) {
     return ProjectModel(
       id: json['id'] != null ? (json['id'] as num).toInt() : null,
-      municipalityId: (json['municipality_id'] as num).toInt(),
-      name: json['name'] as String,
+      municipalityId: (json['municipality_id'] as num?)?.toInt() ?? 0,
+      name: json['name']?.toString() ?? '',
       description: (json['description'] as String?) ?? '',
       status: (json['status'] as String?) ?? 'قيد التنفيذ',
-      startDate: DateTime.parse(json['start_date'] as String),
+      startDate: json['start_date'] != null
+          ? DateTime.parse(json['start_date'] as String)
+          : DateTime.now(),
       endDate: json['end_date'] != null
           ? DateTime.parse(json['end_date'] as String)
           : null,

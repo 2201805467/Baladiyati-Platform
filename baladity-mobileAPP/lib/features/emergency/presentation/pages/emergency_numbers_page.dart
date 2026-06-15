@@ -250,12 +250,9 @@ class _EmergencyNumbersViewState extends State<EmergencyNumbersView> {
                   borderSide: BorderSide.none,
                 ),
               ),
-              initialValue: _selected,
+              value: _selected,
               items: _emergencyData
-                  .map((m) => DropdownMenuItem(
-                        value: m,
-                        child: Text(m.name),
-                      ))
+                  .map((m) => DropdownMenuItem(value: m, child: Text(m.name)))
                   .toList(),
               onChanged: (v) {
                 if (v != null) setState(() => _selected = v);
@@ -267,16 +264,18 @@ class _EmergencyNumbersViewState extends State<EmergencyNumbersView> {
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 16),
             child: Container(
-              padding:
-                  const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
               decoration: BoxDecoration(
                 color: Colors.red[700],
                 borderRadius: BorderRadius.circular(10),
               ),
               child: Row(
                 children: [
-                  const Icon(Icons.emergency_rounded,
-                      color: Colors.white, size: 20),
+                  const Icon(
+                    Icons.emergency_rounded,
+                    color: Colors.white,
+                    size: 20,
+                  ),
                   const SizedBox(width: 8),
                   Expanded(
                     child: Text(
@@ -297,8 +296,7 @@ class _EmergencyNumbersViewState extends State<EmergencyNumbersView> {
           // ── Contact list ─────────────────────────────────────────────────
           Expanded(
             child: ListView.separated(
-              padding:
-                  const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
               itemCount: _selected.contacts.length,
               separatorBuilder: (_, _) => const SizedBox(height: 10),
               itemBuilder: (context, index) {
@@ -366,8 +364,11 @@ class _ContactCard extends StatelessWidget {
                   const SizedBox(height: 3),
                   Row(
                     children: [
-                      const Icon(Icons.phone_outlined,
-                          size: 14, color: Colors.grey),
+                      const Icon(
+                        Icons.phone_outlined,
+                        size: 14,
+                        color: Colors.grey,
+                      ),
                       const SizedBox(width: 4),
                       Text(
                         contact.number,
@@ -388,15 +389,17 @@ class _ContactCard extends StatelessWidget {
             ElevatedButton.icon(
               onPressed: onCall,
               icon: const Icon(Icons.phone, size: 16),
-              label: const Text('اتصال الآن',
-                  style: TextStyle(fontSize: 12)),
+              label: const Text('اتصال الآن', style: TextStyle(fontSize: 12)),
               style: ElevatedButton.styleFrom(
                 backgroundColor: Colors.red[700],
                 foregroundColor: Colors.white,
                 padding: const EdgeInsets.symmetric(
-                    horizontal: 10, vertical: 8),
+                  horizontal: 10,
+                  vertical: 8,
+                ),
                 shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(8)),
+                  borderRadius: BorderRadius.circular(8),
+                ),
                 elevation: 0,
               ),
             ),

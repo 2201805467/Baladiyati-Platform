@@ -13,26 +13,37 @@ class ProposalModel extends ProposalEntity {
   });
 
   factory ProposalModel.fromJson(Map<String, dynamic> json) {
+    final citizen = json['citizen'];
+    final userVotes = json['votes'] is List ? json['votes'] as List : const [];
+    final createdAt = DateTime.tryParse(json['created_at']?.toString() ?? '');
+
     return ProposalModel(
       id: json['id'].toString(),
-      title: json['title'] as String,
-      category: json['category'] as String,
-      author: (json['author'] as String?) ?? 'مجهول',
-      description: json['description'] as String,
-      votes: (json['votes'] as num?)?.toInt() ?? 0,
-      isVoted: (json['is_voted'] as bool?) ?? false,
-      expiryDate: DateTime.parse(json['expiry_date'] as String),
+      title: json['title']?.toString() ?? '',
+      category: json['category']?.toString() ?? '',
+      author: citizen is Map
+          ? citizen['full_name']?.toString() ?? 'Unknown'
+          : json['author']?.toString() ?? 'Unknown',
+      description: json['description']?.toString() ?? '',
+      votes:
+          (json['support_votes_count'] as num?)?.toInt() ??
+          (json['votes'] as num?)?.toInt() ??
+          0,
+      isVoted: (json['is_voted'] as bool?) ?? userVotes.isNotEmpty,
+      expiryDate: json['expiry_date'] != null
+          ? DateTime.parse(json['expiry_date'].toString())
+          : createdAt ?? DateTime.now(),
     );
   }
 
   Map<String, dynamic> toJson() => {
-        'id': id,
-        'title': title,
-        'category': category,
-        'author': author,
-        'description': description,
-        'votes': votes,
-        'is_voted': isVoted,
-        'expiry_date': expiryDate.toIso8601String(),
-      };
+    'id': id,
+    'title': title,
+    'category': category,
+    'author': author,
+    'description': description,
+    'votes': votes,
+    'is_voted': isVoted,
+    'expiry_date': expiryDate.toIso8601String(),
+  };
 }

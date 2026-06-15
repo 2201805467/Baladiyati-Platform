@@ -19,29 +19,35 @@ abstract class ApiConstants {
   static const String login = '/auth/login';
   static const String register = '/auth/register';
   static const String logout = '/auth/logout';
-  static const String profile = '/auth/user';
+  static const String profile = '/auth/me';
   static const String forgotPassword = '/auth/forgot-password';
   static const String verifyOtp = '/auth/verify-otp';
+  static const String resendOtp = '/auth/resend-otp';
   static const String resetPassword = '/auth/reset-password';
 
   // ─── Reports ─────────────────────────────────────────────────────────────────
-  static const String reports = '/reports';
+  static const String reports = '/citizen/reports';
+  static const String reportSimilar = '/citizen/reports/similar';
+  static const String reportClassifyImage = '/citizen/reports/classify-image';
 
   // ─── Facilities ──────────────────────────────────────────────────────────────
-  static const String facilities = '/facilities';
+  static const String facilities = '/citizen/facilities';
   static const String municipalities = '/municipalities';
 
   // ─── Projects ────────────────────────────────────────────────────────────────
-  static const String projects = '/projects';
+  static const String projects = '/citizen/projects';
+  static const String emergencyContacts = '/citizen/emergency-contacts';
 
   // ─── Profile ─────────────────────────────────────────────────────────────────
-  static const String userProfile = '/user/profile';
-  static const String updateName = '/user/update-name';
-  static const String changePassword = '/user/change-password';
-  static const String updateProfileImage = '/user/update-profile-image';
+  static const String userProfile = '/auth/me';
+  static const String updateProfile = '/auth/profile';
+  static const String updateName = '/auth/profile';
+  static const String changePassword = '/auth/change-password';
+  static const String updateProfileImage = '/auth/profile';
 
   // ─── Proposals ───────────────────────────────────────────────────────────────
-  static const String proposals = '/proposals';
-  static const String proposalVote = '/proposals/{id}/vote';
-  static const String suggestService = '/proposals/suggest';
+  static const String proposals = '/citizen/suggestions';
+  static const String proposalVote = '/citizen/suggestions/{id}/vote';
+  static const String suggestService = '/citizen/suggestions';
+  static const String notifications = '/notifications';
 }

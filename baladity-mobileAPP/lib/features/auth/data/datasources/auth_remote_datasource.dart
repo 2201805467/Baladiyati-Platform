@@ -5,7 +5,10 @@ import '../models/auth_response_model.dart';
 import '../models/user_model.dart';
 
 abstract class AuthRemoteDataSource {
-  Future<AuthResponseModel> login({required String email, required String password});
+  Future<AuthResponseModel> login({
+    required String email,
+    required String password,
+  });
 
   Future<AuthResponseModel> register({
     required String name,
@@ -31,7 +34,7 @@ class AuthRemoteDataSourceImpl implements AuthRemoteDataSource {
     try {
       final res = await _dio.post(
         ApiConstants.login,
-        data: {'email': email, 'password': password},
+        data: {'login': email, 'password': password, 'device_name': 'flutter'},
       );
       final data = res.data['data'] ?? res.data;
       return AuthResponseModel.fromJson(data as Map<String, dynamic>);
@@ -51,7 +54,7 @@ class AuthRemoteDataSourceImpl implements AuthRemoteDataSource {
       final res = await _dio.post(
         ApiConstants.register,
         data: {
-          'name': name,
+          'full_name': name,
           'email': email,
           'password': password,
           'password_confirmation': password,
@@ -78,13 +81,14 @@ class AuthRemoteDataSourceImpl implements AuthRemoteDataSource {
   Future<UserModel> getProfile() async {
     try {
       final res = await _dio.get(ApiConstants.profile);
-      final data = res.data['data'] ?? res.data;
+      final data = res.data['user'] ?? res.data['data'] ?? res.data;
       return UserModel.fromJson(data as Map<String, dynamic>);
     } on DioException catch (e) {
       throw _extractException(e);
     }
   }
 
-  Exception _extractException(DioException e) =>
-      e.error is Exception ? e.error as Exception : const ServerException('حدث خطأ غير متوقع');
+  Exception _extractException(DioException e) => e.error is Exception
+      ? e.error as Exception
+      : const ServerException('حدث خطأ غير متوقع');
 }

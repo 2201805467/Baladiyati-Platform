@@ -18,16 +18,23 @@ class FacilityModel extends FacilityEntity {
   factory FacilityModel.fromJson(Map<String, dynamic> json) {
     return FacilityModel(
       id: (json['id'] as num).toInt(),
-      municipalityId: (json['municipality_id'] as num).toInt(),
-      facilityType: json['facility_type'] as String,
-      name: json['name'] as String,
-      description: (json['description'] as String?) ?? '',
+      municipalityId: (json['municipality_id'] as num?)?.toInt() ?? 0,
+      facilityType: json['facility_type']?.toString() ?? '',
+      name: json['name']?.toString() ?? '',
+      description:
+          json['services']?.toString() ??
+          (json['description'] as String?) ??
+          '',
       latitude: (json['latitude'] as num).toDouble(),
       longitude: (json['longitude'] as num).toDouble(),
       address: (json['address'] as String?) ?? '',
-      openingHours: (json['opening_hours'] as String?) ?? '',
+      openingHours:
+          json['working_hours']?.toString() ??
+          (json['opening_hours'] as String?) ??
+          '',
       phone: (json['phone'] as String?) ?? '',
-      isOpen: (json['is_open'] as bool?) ?? true,
+      isOpen:
+          (json['is_active'] as bool?) ?? (json['is_open'] as bool?) ?? true,
     );
   }
 }

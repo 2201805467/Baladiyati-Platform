@@ -12,8 +12,7 @@ class MunicipalProjectsPage extends ConsumerStatefulWidget {
       _MunicipalProjectsPageState();
 }
 
-class _MunicipalProjectsPageState
-    extends ConsumerState<MunicipalProjectsPage> {
+class _MunicipalProjectsPageState extends ConsumerState<MunicipalProjectsPage> {
   String? _selectedMunicipalityName;
   int? _selectedMunicipalityId;
 
@@ -33,7 +32,9 @@ class _MunicipalProjectsPageState
   }
 
   void _load({bool refresh = false}) {
-    ref.read(projectsControllerProvider.notifier).fetchProjects(
+    ref
+        .read(projectsControllerProvider.notifier)
+        .fetchProjects(
           municipalityId: _selectedMunicipalityId,
           refresh: refresh,
         );
@@ -73,19 +74,24 @@ class _MunicipalProjectsPageState
                   borderSide: BorderSide.none,
                 ),
               ),
-              initialValue: _selectedMunicipalityName,
+              value: _selectedMunicipalityName,
               items: _municipalities
-                  .map((m) => DropdownMenuItem<String>(
-                        value: m['name'] as String,
-                        child: Text(m['name'] as String),
-                      ))
+                  .map(
+                    (m) => DropdownMenuItem<String>(
+                      value: m['name'] as String,
+                      child: Text(m['name'] as String),
+                    ),
+                  )
                   .toList(),
               onChanged: (newValue) {
                 if (newValue == null) return;
                 setState(() {
                   _selectedMunicipalityName = newValue;
-                  _selectedMunicipalityId = _municipalities
-                      .firstWhere((m) => m['name'] == newValue)['id'] as int?;
+                  _selectedMunicipalityId =
+                      _municipalities.firstWhere(
+                            (m) => m['name'] == newValue,
+                          )['id']
+                          as int?;
                 });
                 _load(refresh: true);
               },
@@ -95,55 +101,55 @@ class _MunicipalProjectsPageState
             child: projectsState.isLoading && projectsState.projects.isEmpty
                 ? const Center(child: CircularProgressIndicator())
                 : projectsState.projects.isEmpty
-                    ? Center(
-                        child: Column(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            Icon(Icons.construction_outlined,
-                                size: 64, color: Colors.grey[400]),
-                            const SizedBox(height: 16),
-                            Text(
-                              'لا توجد مشاريع لـ "$_selectedMunicipalityName"',
-                              style: TextStyle(
-                                fontSize: 18,
-                                color: isDark
-                                    ? Colors.white54
-                                    : Colors.black54,
-                              ),
+                ? Center(
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Icon(
+                          Icons.construction_outlined,
+                          size: 64,
+                          color: Colors.grey[400],
+                        ),
+                        const SizedBox(height: 16),
+                        Text(
+                          'لا توجد مشاريع لـ "$_selectedMunicipalityName"',
+                          style: TextStyle(
+                            fontSize: 18,
+                            color: isDark ? Colors.white54 : Colors.black54,
+                          ),
+                        ),
+                      ],
+                    ),
+                  )
+                : RefreshIndicator(
+                    onRefresh: () async => _load(refresh: true),
+                    child: ListView.builder(
+                      padding: const EdgeInsets.symmetric(horizontal: 16),
+                      itemCount:
+                          projectsState.projects.length +
+                          (projectsState.hasMore ? 1 : 0),
+                      itemBuilder: (context, index) {
+                        if (index == projectsState.projects.length) {
+                          return Padding(
+                            padding: const EdgeInsets.symmetric(vertical: 16),
+                            child: Center(
+                              child: projectsState.isLoading
+                                  ? const CircularProgressIndicator()
+                                  : TextButton(
+                                      onPressed: _load,
+                                      child: const Text('تحميل المزيد'),
+                                    ),
                             ),
-                          ],
-                        ),
-                      )
-                    : RefreshIndicator(
-                        onRefresh: () async => _load(refresh: true),
-                        child: ListView.builder(
-                          padding:
-                              const EdgeInsets.symmetric(horizontal: 16),
-                          itemCount: projectsState.projects.length +
-                              (projectsState.hasMore ? 1 : 0),
-                          itemBuilder: (context, index) {
-                            if (index == projectsState.projects.length) {
-                              return Padding(
-                                padding:
-                                    const EdgeInsets.symmetric(vertical: 16),
-                                child: Center(
-                                  child: projectsState.isLoading
-                                      ? const CircularProgressIndicator()
-                                      : TextButton(
-                                          onPressed: _load,
-                                          child: const Text('تحميل المزيد'),
-                                        ),
-                                ),
-                              );
-                            }
-                            return _buildProjectCard(
-                              projectsState.projects[index],
-                              primaryGreen,
-                              isDark,
-                            );
-                          },
-                        ),
-                      ),
+                          );
+                        }
+                        return _buildProjectCard(
+                          projectsState.projects[index],
+                          primaryGreen,
+                          isDark,
+                        );
+                      },
+                    ),
+                  ),
           ),
         ],
       ),
@@ -151,7 +157,10 @@ class _MunicipalProjectsPageState
   }
 
   Widget _buildProjectCard(
-      ProjectEntity project, Color primaryColor, bool isDark) {
+    ProjectEntity project,
+    Color primaryColor,
+    bool isDark,
+  ) {
     final Color statusColor;
     switch (project.status) {
       case 'قيد التنفيذ':
@@ -189,8 +198,10 @@ class _MunicipalProjectsPageState
                   ),
                 ),
                 Container(
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 8,
+                    vertical: 4,
+                  ),
                   decoration: BoxDecoration(
                     color: statusColor.withValues(alpha: 0.1),
                     borderRadius: BorderRadius.circular(8),

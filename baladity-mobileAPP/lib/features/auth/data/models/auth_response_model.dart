@@ -1,7 +1,5 @@
 import 'user_model.dart';
 
-/// Maps the Laravel login/register response:
-/// { "status": true, "message": "...", "data": { "token": "...", "user": {...} } }
 class AuthResponseModel {
   final String token;
   final UserModel user;
@@ -9,9 +7,16 @@ class AuthResponseModel {
   const AuthResponseModel({required this.token, required this.user});
 
   factory AuthResponseModel.fromJson(Map<String, dynamic> json) {
+    final userJson =
+        (json['user'] ?? json['data']?['user']) as Map<String, dynamic>;
+
     return AuthResponseModel(
-      token: json['token']?.toString() ?? '',
-      user: UserModel.fromJson(json['user'] as Map<String, dynamic>),
+      token:
+          json['access_token']?.toString() ??
+          json['token']?.toString() ??
+          json['data']?['token']?.toString() ??
+          '',
+      user: UserModel.fromJson(userJson),
     );
   }
 }

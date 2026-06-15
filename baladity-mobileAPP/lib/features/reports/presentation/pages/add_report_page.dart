@@ -81,9 +81,9 @@ class _AddReportPageState extends ConsumerState<AddReportPage> {
     final serviceEnabled = await Geolocator.isLocationServiceEnabled();
     if (!serviceEnabled) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('خدمة الموقع غير مفعلة.')),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(const SnackBar(content: Text('خدمة الموقع غير مفعلة.')));
       }
       return;
     }
@@ -106,7 +106,8 @@ class _AddReportPageState extends ConsumerState<AddReportPage> {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
             content: Text(
-                'تم رفض أذونات الموقع بشكل دائم، يرجى تفعيلها من الإعدادات.'),
+              'تم رفض أذونات الموقع بشكل دائم، يرجى تفعيلها من الإعدادات.',
+            ),
           ),
         );
       }
@@ -114,9 +115,9 @@ class _AddReportPageState extends ConsumerState<AddReportPage> {
     }
 
     if (mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('جاري تحديد موقعك...')),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('جاري تحديد موقعك...')));
     }
 
     try {
@@ -126,7 +127,8 @@ class _AddReportPageState extends ConsumerState<AddReportPage> {
       );
       if (!mounted) return;
       setState(
-          () => _pickedLocation = LatLng(position.latitude, position.longitude));
+        () => _pickedLocation = LatLng(position.latitude, position.longitude),
+      );
       _getAddressFromLatLng(_pickedLocation!);
     } catch (e) {
       if (!mounted) return;
@@ -139,7 +141,9 @@ class _AddReportPageState extends ConsumerState<AddReportPage> {
   Future<void> _getAddressFromLatLng(LatLng latLng) async {
     try {
       final placemarks = await placemarkFromCoordinates(
-          latLng.latitude, latLng.longitude);
+        latLng.latitude,
+        latLng.longitude,
+      );
       final place = placemarks[0];
       if (mounted) {
         setState(() {
@@ -149,8 +153,10 @@ class _AddReportPageState extends ConsumerState<AddReportPage> {
       }
     } catch (e) {
       if (mounted) {
-        setState(() => _locationAddress =
-            'الموقع: ${latLng.latitude}, ${latLng.longitude}');
+        setState(
+          () => _locationAddress =
+              'الموقع: ${latLng.latitude}, ${latLng.longitude}',
+        );
       }
     }
   }
@@ -172,21 +178,22 @@ class _AddReportPageState extends ConsumerState<AddReportPage> {
 
   Future<void> _submit() async {
     if (!_formKey.currentState!.validate()) return;
-    final success =
-        await ref.read(reportsControllerProvider.notifier).submitReport(
-              category: _selectedCategory!,
-              description: _descriptionController.text.trim(),
-              latitude: _pickedLocation?.latitude,
-              longitude: _pickedLocation?.longitude,
-              locationAddress: _locationAddress,
-              imagePath: _imageFile?.path,
-            );
+    final success = await ref
+        .read(reportsControllerProvider.notifier)
+        .submitReport(
+          category: _selectedCategory!,
+          description: _descriptionController.text.trim(),
+          latitude: _pickedLocation?.latitude,
+          longitude: _pickedLocation?.longitude,
+          locationAddress: _locationAddress,
+          imagePath: _imageFile?.path,
+        );
     if (!mounted) return;
     if (success) {
       Navigator.pop(context);
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('تم إرسال البلاغ بنجاح ✓')),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('تم إرسال البلاغ بنجاح ✓')));
     }
   }
 
@@ -222,9 +229,10 @@ class _AddReportPageState extends ConsumerState<AddReportPage> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const Text('تصنيف المشكلة',
-                    style: TextStyle(
-                        fontWeight: FontWeight.bold, fontSize: 16)),
+                const Text(
+                  'تصنيف المشكلة',
+                  style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+                ),
                 const SizedBox(height: 10),
                 DropdownButtonFormField<String>(
                   decoration: InputDecoration(
@@ -236,22 +244,21 @@ class _AddReportPageState extends ConsumerState<AddReportPage> {
                     ),
                   ),
                   hint: const Text('اختر التصنيف'),
-                  initialValue: _selectedCategory,
+                  value: _selectedCategory,
                   items: _categories
-                      .map((c) =>
-                          DropdownMenuItem(value: c, child: Text(c)))
+                      .map((c) => DropdownMenuItem(value: c, child: Text(c)))
                       .toList(),
                   onChanged: isSubmitting
                       ? null
-                      : (value) =>
-                          setState(() => _selectedCategory = value),
+                      : (value) => setState(() => _selectedCategory = value),
                   validator: (value) =>
                       value == null ? 'يرجى اختيار التصنيف' : null,
                 ),
                 const SizedBox(height: 24),
-                const Text('وصف المشكلة',
-                    style: TextStyle(
-                        fontWeight: FontWeight.bold, fontSize: 16)),
+                const Text(
+                  'وصف المشكلة',
+                  style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+                ),
                 const SizedBox(height: 10),
                 TextFormField(
                   controller: _descriptionController,
@@ -266,15 +273,15 @@ class _AddReportPageState extends ConsumerState<AddReportPage> {
                       borderSide: BorderSide.none,
                     ),
                   ),
-                  validator: (value) =>
-                      (value == null || value.isEmpty)
-                          ? 'يرجى كتابة الوصف'
-                          : null,
+                  validator: (value) => (value == null || value.isEmpty)
+                      ? 'يرجى كتابة الوصف'
+                      : null,
                 ),
                 const SizedBox(height: 24),
-                const Text('إرفاق صورة',
-                    style: TextStyle(
-                        fontWeight: FontWeight.bold, fontSize: 16)),
+                const Text(
+                  'إرفاق صورة',
+                  style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+                ),
                 const SizedBox(height: 10),
                 _ImageUploadPlaceholder(
                   primaryColor: primaryGreen,
@@ -282,18 +289,17 @@ class _AddReportPageState extends ConsumerState<AddReportPage> {
                   onTap: isSubmitting ? () {} : _showPickerOptions,
                 ),
                 const SizedBox(height: 24),
-                const Text('تحديد الموقع',
-                    style: TextStyle(
-                        fontWeight: FontWeight.bold, fontSize: 16)),
+                const Text(
+                  'تحديد الموقع',
+                  style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+                ),
                 const SizedBox(height: 10),
                 _LocationPickerPlaceholder(
                   primaryColor: primaryGreen,
                   pickedLocation: _pickedLocation,
                   locationAddress: _locationAddress,
-                  onAutoLocate:
-                      isSubmitting ? () {} : _getCurrentLocation,
-                  onManualLocate:
-                      isSubmitting ? () {} : _openLocationPickerMap,
+                  onAutoLocate: isSubmitting ? () {} : _getCurrentLocation,
+                  onManualLocate: isSubmitting ? () {} : _openLocationPickerMap,
                 ),
                 const SizedBox(height: 40),
                 SizedBox(
@@ -314,13 +320,16 @@ class _AddReportPageState extends ConsumerState<AddReportPage> {
                             width: 24,
                             height: 24,
                             child: CircularProgressIndicator(
-                                color: Colors.white, strokeWidth: 2),
+                              color: Colors.white,
+                              strokeWidth: 2,
+                            ),
                           )
                         : const Text(
                             'إرسال البلاغ',
                             style: TextStyle(
-                                fontSize: 16,
-                                fontWeight: FontWeight.bold),
+                              fontSize: 16,
+                              fontWeight: FontWeight.bold,
+                            ),
                           ),
                   ),
                 ),
@@ -369,11 +378,16 @@ class _ImageUploadPlaceholder extends StatelessWidget {
               : Column(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
-                    Icon(Icons.add_a_photo_outlined,
-                        color: primaryColor, size: 40),
+                    Icon(
+                      Icons.add_a_photo_outlined,
+                      color: primaryColor,
+                      size: 40,
+                    ),
                     const SizedBox(height: 8),
-                    const Text('اضغط لإضافة صورة',
-                        style: TextStyle(color: Colors.grey)),
+                    const Text(
+                      'اضغط لإضافة صورة',
+                      style: TextStyle(color: Colors.grey),
+                    ),
                   ],
                 ),
         ),
@@ -432,14 +446,17 @@ class _LocationPickerPlaceholder extends StatelessWidget {
                     style: TextButton.styleFrom(
                       minimumSize: Size.zero,
                       padding: const EdgeInsets.symmetric(
-                          horizontal: 12, vertical: 8),
+                        horizontal: 12,
+                        vertical: 8,
+                      ),
                       tapTargetSize: MaterialTapTargetSize.shrinkWrap,
                     ),
                     child: Text(
                       'تغيير',
                       style: TextStyle(
-                          color: primaryColor,
-                          fontWeight: FontWeight.bold),
+                        color: primaryColor,
+                        fontWeight: FontWeight.bold,
+                      ),
                     ),
                   ),
                 ),

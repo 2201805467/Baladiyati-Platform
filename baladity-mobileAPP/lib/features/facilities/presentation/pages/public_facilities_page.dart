@@ -42,7 +42,9 @@ class _PublicFacilitiesPageState extends ConsumerState<PublicFacilitiesPage> {
   }
 
   void _load({bool refresh = false}) {
-    ref.read(facilitiesControllerProvider.notifier).fetchFacilities(
+    ref
+        .read(facilitiesControllerProvider.notifier)
+        .fetchFacilities(
           type: _selectedFacilityType,
           municipalityId: _selectedMunicipalityId,
           refresh: refresh,
@@ -92,19 +94,23 @@ class _PublicFacilitiesPageState extends ConsumerState<PublicFacilitiesPage> {
                         borderSide: BorderSide.none,
                       ),
                     ),
-                    initialValue: _selectedMunicipalityName,
+                    value: _selectedMunicipalityName,
                     items: _municipalities
-                        .map((m) => DropdownMenuItem<String>(
-                              value: m['name'] as String,
-                              child: Text(m['name'] as String),
-                            ))
+                        .map(
+                          (m) => DropdownMenuItem<String>(
+                            value: m['name'] as String,
+                            child: Text(m['name'] as String),
+                          ),
+                        )
                         .toList(),
                     onChanged: (newValue) {
                       setState(() {
                         _selectedMunicipalityName = newValue;
-                        _selectedMunicipalityId = _municipalities
-                            .firstWhere(
-                                (m) => m['name'] == newValue)['id'] as int?;
+                        _selectedMunicipalityId =
+                            _municipalities.firstWhere(
+                                  (m) => m['name'] == newValue,
+                                )['id']
+                                as int?;
                       });
                       _load(refresh: true);
                     },
@@ -122,12 +128,14 @@ class _PublicFacilitiesPageState extends ConsumerState<PublicFacilitiesPage> {
                         borderSide: BorderSide.none,
                       ),
                     ),
-                    initialValue: _selectedFacilityType,
+                    value: _selectedFacilityType,
                     items: _facilityTypes
-                        .map((t) => DropdownMenuItem<String>(
-                              value: t,
-                              child: Text(t),
-                            ))
+                        .map(
+                          (t) => DropdownMenuItem<String>(
+                            value: t,
+                            child: Text(t),
+                          ),
+                        )
                         .toList(),
                     onChanged: (newValue) {
                       if (newValue == null) return;
@@ -140,55 +148,61 @@ class _PublicFacilitiesPageState extends ConsumerState<PublicFacilitiesPage> {
             ),
           ),
           Expanded(
-            child: facilitiesState.isLoading && facilitiesState.facilities.isEmpty
+            child:
+                facilitiesState.isLoading && facilitiesState.facilities.isEmpty
                 ? const Center(child: CircularProgressIndicator())
                 : facilitiesState.facilities.isEmpty
-                    ? Center(
-                        child: Column(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            Icon(Icons.not_interested_outlined,
-                                size: 64, color: Colors.grey[400]),
-                            const SizedBox(height: 16),
-                            Text(
-                              _selectedFacilityType == 'الكل'
-                                  ? 'لا توجد مرافق لـ "$_selectedMunicipalityName"'
-                                  : 'لا توجد مرافق من نوع "$_selectedFacilityType" في "$_selectedMunicipalityName"',
-                              style: const TextStyle(
-                                  fontSize: 18, color: Colors.black54),
+                ? Center(
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Icon(
+                          Icons.not_interested_outlined,
+                          size: 64,
+                          color: Colors.grey[400],
+                        ),
+                        const SizedBox(height: 16),
+                        Text(
+                          _selectedFacilityType == 'الكل'
+                              ? 'لا توجد مرافق لـ "$_selectedMunicipalityName"'
+                              : 'لا توجد مرافق من نوع "$_selectedFacilityType" في "$_selectedMunicipalityName"',
+                          style: const TextStyle(
+                            fontSize: 18,
+                            color: Colors.black54,
+                          ),
+                        ),
+                      ],
+                    ),
+                  )
+                : RefreshIndicator(
+                    onRefresh: () async => _load(refresh: true),
+                    child: ListView.builder(
+                      padding: const EdgeInsets.symmetric(horizontal: 16),
+                      itemCount:
+                          facilitiesState.facilities.length +
+                          (facilitiesState.hasMore ? 1 : 0),
+                      itemBuilder: (context, index) {
+                        if (index == facilitiesState.facilities.length) {
+                          return Padding(
+                            padding: const EdgeInsets.symmetric(vertical: 16),
+                            child: Center(
+                              child: facilitiesState.isLoading
+                                  ? const CircularProgressIndicator()
+                                  : TextButton(
+                                      onPressed: _load,
+                                      child: const Text('تحميل المزيد'),
+                                    ),
                             ),
-                          ],
-                        ),
-                      )
-                    : RefreshIndicator(
-                        onRefresh: () async => _load(refresh: true),
-                        child: ListView.builder(
-                          padding: const EdgeInsets.symmetric(horizontal: 16),
-                          itemCount: facilitiesState.facilities.length +
-                              (facilitiesState.hasMore ? 1 : 0),
-                          itemBuilder: (context, index) {
-                            if (index == facilitiesState.facilities.length) {
-                              return Padding(
-                                padding:
-                                    const EdgeInsets.symmetric(vertical: 16),
-                                child: Center(
-                                  child: facilitiesState.isLoading
-                                      ? const CircularProgressIndicator()
-                                      : TextButton(
-                                          onPressed: _load,
-                                          child: const Text('تحميل المزيد'),
-                                        ),
-                                ),
-                              );
-                            }
-                            return _buildFacilityCard(
-                              facilitiesState.facilities[index],
-                              primaryGreen,
-                              isDark,
-                            );
-                          },
-                        ),
-                      ),
+                          );
+                        }
+                        return _buildFacilityCard(
+                          facilitiesState.facilities[index],
+                          primaryGreen,
+                          isDark,
+                        );
+                      },
+                    ),
+                  ),
           ),
         ],
       ),
@@ -196,7 +210,10 @@ class _PublicFacilitiesPageState extends ConsumerState<PublicFacilitiesPage> {
   }
 
   Widget _buildFacilityCard(
-      FacilityEntity facility, Color primaryColor, bool isDark) {
+    FacilityEntity facility,
+    Color primaryColor,
+    bool isDark,
+  ) {
     return Card(
       margin: const EdgeInsets.only(bottom: 12),
       elevation: 1,
@@ -218,8 +235,10 @@ class _PublicFacilitiesPageState extends ConsumerState<PublicFacilitiesPage> {
                   ),
                 ),
                 Container(
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 8,
+                    vertical: 4,
+                  ),
                   decoration: BoxDecoration(
                     color: facility.isOpen
                         ? Colors.green[100]
@@ -240,20 +259,24 @@ class _PublicFacilitiesPageState extends ConsumerState<PublicFacilitiesPage> {
               ],
             ),
             const SizedBox(height: 8),
-            Text(facility.name,
-                style: const TextStyle(
-                    fontSize: 16, fontWeight: FontWeight.bold)),
+            Text(
+              facility.name,
+              style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+            ),
             const SizedBox(height: 4),
-            Text(facility.description,
-                style:
-                    const TextStyle(fontSize: 13, color: Colors.grey),
-                maxLines: 2,
-                overflow: TextOverflow.ellipsis),
+            Text(
+              facility.description,
+              style: const TextStyle(fontSize: 13, color: Colors.grey),
+              maxLines: 2,
+              overflow: TextOverflow.ellipsis,
+            ),
             const Divider(height: 20),
             _buildDetailRow(
-                Icons.location_on_outlined, facility.address, isDark),
-            _buildDetailRow(
-                Icons.access_time, facility.openingHours, isDark),
+              Icons.location_on_outlined,
+              facility.address,
+              isDark,
+            ),
+            _buildDetailRow(Icons.access_time, facility.openingHours, isDark),
             _buildDetailRow(Icons.phone, facility.phone, isDark),
             const SizedBox(height: 12),
             SizedBox(
@@ -262,14 +285,16 @@ class _PublicFacilitiesPageState extends ConsumerState<PublicFacilitiesPage> {
                 onPressed: () =>
                     _openInGoogleMaps(facility.latitude, facility.longitude),
                 icon: const Icon(Icons.map_outlined, size: 18),
-                label: const Text('عرض على خرائط Google',
-                    style: TextStyle(fontWeight: FontWeight.bold)),
+                label: const Text(
+                  'عرض على خرائط Google',
+                  style: TextStyle(fontWeight: FontWeight.bold),
+                ),
                 style: OutlinedButton.styleFrom(
                   foregroundColor: primaryColor,
-                  side: BorderSide(
-                      color: primaryColor.withValues(alpha: 0.5)),
+                  side: BorderSide(color: primaryColor.withValues(alpha: 0.5)),
                   shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(8)),
+                    borderRadius: BorderRadius.circular(8),
+                  ),
                   padding: const EdgeInsets.symmetric(vertical: 12),
                 ),
               ),

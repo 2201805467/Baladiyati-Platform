@@ -20,7 +20,7 @@ class ProfileRemoteDataSourceImpl implements ProfileRemoteDataSource {
   @override
   Future<UserModel> getProfile() async {
     final res = await _dio.get(ApiConstants.userProfile);
-    final data = res.data['data'] ?? res.data;
+    final data = res.data['user'] ?? res.data['data'] ?? res.data;
     return UserModel.fromJson(data as Map<String, dynamic>);
   }
 
@@ -28,9 +28,9 @@ class ProfileRemoteDataSourceImpl implements ProfileRemoteDataSource {
   Future<UserModel> updateUsername({required String name}) async {
     final res = await _dio.put(
       ApiConstants.updateName,
-      data: {'name': name},
+      data: {'full_name': name},
     );
-    final data = res.data['data'] ?? res.data;
+    final data = res.data['user'] ?? res.data['data'] ?? res.data;
     return UserModel.fromJson(data as Map<String, dynamic>);
   }
 
@@ -53,7 +53,7 @@ class ProfileRemoteDataSourceImpl implements ProfileRemoteDataSource {
   @override
   Future<UserModel> updateProfileImage({required String imagePath}) async {
     final formData = FormData.fromMap({
-      'avatar': await MultipartFile.fromFile(
+      'profile_image': await MultipartFile.fromFile(
         imagePath,
         filename: imagePath.split('/').last,
       ),
@@ -62,7 +62,7 @@ class ProfileRemoteDataSourceImpl implements ProfileRemoteDataSource {
       ApiConstants.updateProfileImage,
       data: formData,
     );
-    final data = res.data['data'] ?? res.data;
+    final data = res.data['user'] ?? res.data['data'] ?? res.data;
     return UserModel.fromJson(data as Map<String, dynamic>);
   }
 }

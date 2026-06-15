@@ -23,22 +23,24 @@ class ProposalsRemoteDataSourceImpl implements ProposalsRemoteDataSource {
       ApiConstants.proposals,
       queryParameters: {'page': page},
     );
-    final List data = res.data['data'] as List;
-    return data.map((e) => ProposalModel.fromJson(e as Map<String, dynamic>)).toList();
+    final List data = (res.data['data'] ?? res.data) as List;
+    return data
+        .map((e) => ProposalModel.fromJson(e as Map<String, dynamic>))
+        .toList();
   }
 
   @override
   Future<ProposalModel> vote(String proposalId) async {
     final endpoint = ApiConstants.proposalVote.replaceFirst('{id}', proposalId);
-    final res = await _dio.post(endpoint);
-    return ProposalModel.fromJson(res.data['data'] as Map<String, dynamic>);
+    await _dio.post(endpoint, data: {'vote_type': 'support'});
+    return _placeholder(proposalId);
   }
 
   @override
   Future<ProposalModel> unvote(String proposalId) async {
     final endpoint = ApiConstants.proposalVote.replaceFirst('{id}', proposalId);
-    final res = await _dio.delete(endpoint);
-    return ProposalModel.fromJson(res.data['data'] as Map<String, dynamic>);
+    await _dio.delete(endpoint);
+    return _placeholder(proposalId);
   }
 
   @override
@@ -49,11 +51,16 @@ class ProposalsRemoteDataSourceImpl implements ProposalsRemoteDataSource {
   }) async {
     await _dio.post(
       ApiConstants.suggestService,
-      data: {
-        'title': title,
-        'category': category,
-        'description': description,
-      },
+      data: {'title': title, 'category': category, 'description': description},
     );
   }
+
+  ProposalModel _placeholder(String proposalId) => ProposalModel(
+    id: proposalId,
+    title: '',
+    category: '',
+    author: '',
+    description: '',
+    expiryDate: DateTime.now(),
+  );
 }

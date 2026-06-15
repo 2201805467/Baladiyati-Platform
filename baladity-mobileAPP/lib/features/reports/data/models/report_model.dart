@@ -14,14 +14,24 @@ class ReportModel extends ReportEntity {
   });
 
   factory ReportModel.fromJson(Map<String, dynamic> json) {
+    final categoryJson = json['category'];
+    final imagesJson = json['images'];
+    final firstImage =
+        imagesJson is List && imagesJson.isNotEmpty && imagesJson.first is Map
+        ? (imagesJson.first as Map)['image_url']?.toString()
+        : null;
+
     return ReportModel(
       id: json['id'] as int?,
-      category: json['category']?.toString() ?? '',
-      description: json['description']?.toString() ?? '',
+      category: categoryJson is Map
+          ? categoryJson['category_name']?.toString() ?? ''
+          : json['category']?.toString() ?? '',
+      description:
+          json['description']?.toString() ?? json['title']?.toString() ?? '',
       latitude: (json['latitude'] as num?)?.toDouble(),
       longitude: (json['longitude'] as num?)?.toDouble(),
       locationAddress: json['location_address']?.toString(),
-      imageUrl: json['image_url']?.toString(),
+      imageUrl: json['image_url']?.toString() ?? firstImage,
       status: json['status']?.toString() ?? 'قيد الانتظار',
       createdAt: json['created_at'] != null
           ? DateTime.tryParse(json['created_at'].toString())
@@ -30,13 +40,13 @@ class ReportModel extends ReportEntity {
   }
 
   Map<String, dynamic> toJson() => {
-        if (id != null) 'id': id,
-        'category': category,
-        'description': description,
-        if (latitude != null) 'latitude': latitude,
-        if (longitude != null) 'longitude': longitude,
-        if (locationAddress != null) 'location_address': locationAddress,
-        if (imageUrl != null) 'image_url': imageUrl,
-        'status': status,
-      };
+    if (id != null) 'id': id,
+    'category': category,
+    'description': description,
+    if (latitude != null) 'latitude': latitude,
+    if (longitude != null) 'longitude': longitude,
+    if (locationAddress != null) 'location_address': locationAddress,
+    if (imageUrl != null) 'image_url': imageUrl,
+    'status': status,
+  };
 }

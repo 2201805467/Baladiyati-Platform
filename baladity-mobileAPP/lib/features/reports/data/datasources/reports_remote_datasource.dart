@@ -45,24 +45,26 @@ class ReportsRemoteDataSourceImpl implements ReportsRemoteDataSource {
     String? imagePath,
   }) async {
     try {
+      final categoryId = int.tryParse(category) ?? 1;
       final formData = FormData.fromMap({
-        'category': category,
+        'title': description.isNotEmpty ? description : category,
         'description': description,
+        'category_id': categoryId,
         'latitude': ?latitude?.toString(),
         'longitude': ?longitude?.toString(),
-        'location_address': ?locationAddress,
         if (imagePath case final String p?)
-          'image': await MultipartFile.fromFile(p, filename: 'report.jpg'),
+          'images[]': await MultipartFile.fromFile(p, filename: 'report.jpg'),
       });
 
       final res = await _dio.post(ApiConstants.reports, data: formData);
-      final data = res.data['data'] ?? res.data;
+      final data = res.data['report'] ?? res.data['data'] ?? res.data;
       return ReportModel.fromJson(data as Map<String, dynamic>);
     } on DioException catch (e) {
       throw _extract(e);
     }
   }
 
-  Exception _extract(DioException e) =>
-      e.error is Exception ? e.error as Exception : const ServerException('حدث خطأ غير متوقع');
+  Exception _extract(DioException e) => e.error is Exception
+      ? e.error as Exception
+      : const ServerException('حدث خطأ غير متوقع');
 }

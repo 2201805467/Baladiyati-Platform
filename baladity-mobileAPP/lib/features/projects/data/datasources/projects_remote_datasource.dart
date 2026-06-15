@@ -17,12 +17,9 @@ class ProjectsRemoteDataSourceImpl implements ProjectsRemoteDataSource {
   }) async {
     final res = await _dio.get(
       ApiConstants.projects,
-      queryParameters: {
-        'municipality_id': ?municipalityId,
-        'page': page,
-      },
+      queryParameters: {'page': page},
     );
-    final List data = res.data['data'] as List;
+    final List data = (res.data['data'] ?? res.data) as List;
     return data
         .map((e) => ProjectModel.fromJson(e as Map<String, dynamic>))
         .toList();

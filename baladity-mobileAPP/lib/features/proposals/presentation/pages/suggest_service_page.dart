@@ -45,9 +45,9 @@ class _SuggestServicePageState extends ConsumerState<SuggestServicePage> {
     if (!mounted) return;
     if (success) {
       Navigator.pop(context);
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('تم إرسال المقترح بنجاح ✓')),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('تم إرسال المقترح بنجاح ✓')));
     }
   }
 
@@ -87,9 +87,10 @@ class _SuggestServicePageState extends ConsumerState<SuggestServicePage> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const Text('عنوان المقترح',
-                    style: TextStyle(
-                        fontWeight: FontWeight.bold, fontSize: 16)),
+                const Text(
+                  'عنوان المقترح',
+                  style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+                ),
                 const SizedBox(height: 10),
                 TextFormField(
                   controller: _titleController,
@@ -102,9 +103,10 @@ class _SuggestServicePageState extends ConsumerState<SuggestServicePage> {
                       (v == null || v.isEmpty) ? 'يرجى إدخال العنوان' : null,
                 ),
                 const SizedBox(height: 24),
-                const Text('تصنيف المقترح',
-                    style: TextStyle(
-                        fontWeight: FontWeight.bold, fontSize: 16)),
+                const Text(
+                  'تصنيف المقترح',
+                  style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+                ),
                 const SizedBox(height: 10),
                 DropdownButtonFormField<String>(
                   decoration: InputDecoration(
@@ -116,21 +118,20 @@ class _SuggestServicePageState extends ConsumerState<SuggestServicePage> {
                     ),
                   ),
                   hint: const Text('اختر التصنيف'),
-                  initialValue: _selectedCategory,
+                  value: _selectedCategory,
                   items: _categories
-                      .map((c) =>
-                          DropdownMenuItem(value: c, child: Text(c)))
+                      .map((c) => DropdownMenuItem(value: c, child: Text(c)))
                       .toList(),
                   onChanged: isSubmitting
                       ? null
                       : (v) => setState(() => _selectedCategory = v),
-                  validator: (v) =>
-                      v == null ? 'يرجى اختيار التصنيف' : null,
+                  validator: (v) => v == null ? 'يرجى اختيار التصنيف' : null,
                 ),
                 const SizedBox(height: 24),
-                const Text('وصف المقترح',
-                    style: TextStyle(
-                        fontWeight: FontWeight.bold, fontSize: 16)),
+                const Text(
+                  'وصف المقترح',
+                  style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+                ),
                 const SizedBox(height: 10),
                 TextFormField(
                   controller: _descriptionController,
@@ -154,7 +155,8 @@ class _SuggestServicePageState extends ConsumerState<SuggestServicePage> {
                       foregroundColor: Colors.white,
                       padding: const EdgeInsets.symmetric(vertical: 18),
                       shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(12)),
+                        borderRadius: BorderRadius.circular(12),
+                      ),
                       elevation: 0,
                     ),
                     child: isSubmitting
@@ -162,13 +164,16 @@ class _SuggestServicePageState extends ConsumerState<SuggestServicePage> {
                             width: 24,
                             height: 24,
                             child: CircularProgressIndicator(
-                                color: Colors.white, strokeWidth: 2),
+                              color: Colors.white,
+                              strokeWidth: 2,
+                            ),
                           )
                         : const Text(
                             'إرسال المقترح',
                             style: TextStyle(
-                                fontSize: 16,
-                                fontWeight: FontWeight.bold),
+                              fontSize: 16,
+                              fontWeight: FontWeight.bold,
+                            ),
                           ),
                   ),
                 ),
@@ -180,8 +185,10 @@ class _SuggestServicePageState extends ConsumerState<SuggestServicePage> {
     );
   }
 
-  InputDecoration _inputDecoration(
-      {required String hintText, required bool isDark}) {
+  InputDecoration _inputDecoration({
+    required String hintText,
+    required bool isDark,
+  }) {
     return InputDecoration(
       hintText: hintText,
       filled: true,
