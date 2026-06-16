@@ -19,14 +19,18 @@ final getFacilitiesUseCaseProvider = Provider<GetFacilitiesUseCase>(
 );
 
 final facilitiesControllerProvider =
-    StateNotifierProvider<FacilitiesController, FacilitiesState>(
-  (ref) => FacilitiesController(ref.read(getFacilitiesUseCaseProvider)),
+    NotifierProvider<FacilitiesController, FacilitiesState>(
+  () => FacilitiesController(),
 );
 
-class FacilitiesController extends StateNotifier<FacilitiesState> {
-  final GetFacilitiesUseCase _getFacilities;
+class FacilitiesController extends Notifier<FacilitiesState> {
+  late GetFacilitiesUseCase _getFacilities;
 
-  FacilitiesController(this._getFacilities) : super(const FacilitiesState());
+  @override
+  FacilitiesState build() {
+    _getFacilities = ref.read(getFacilitiesUseCaseProvider);
+    return const FacilitiesState();
+  }
 
   Future<void> fetchFacilities({
     String? type,

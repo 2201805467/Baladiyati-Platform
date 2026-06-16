@@ -28,21 +28,22 @@ final createReportUseCaseProvider = Provider(
 // ─── Reports Controller ───────────────────────────────────────────────────────
 
 final reportsControllerProvider =
-    StateNotifierProvider<ReportsController, ReportsState>(
-      (ref) => ReportsController(
-        ref.read(getReportsUseCaseProvider),
-        ref.read(createReportUseCaseProvider),
-        ref.read(reportsRepositoryProvider),
-      ),
+    NotifierProvider<ReportsController, ReportsState>(
+      () => ReportsController(),
     );
 
-class ReportsController extends StateNotifier<ReportsState> {
-  ReportsController(this._getReports, this._createReport, this._repository)
-    : super(const ReportsState());
+class ReportsController extends Notifier<ReportsState> {
+  late GetReportsUseCase _getReports;
+  late CreateReportUseCase _createReport;
+  late ReportsRepository _repository;
 
-  final GetReportsUseCase _getReports;
-  final CreateReportUseCase _createReport;
-  final ReportsRepository _repository;
+  @override
+  ReportsState build() {
+    _getReports = ref.read(getReportsUseCaseProvider);
+    _createReport = ref.read(createReportUseCaseProvider);
+    _repository = ref.read(reportsRepositoryProvider);
+    return const ReportsState();
+  }
 
   Future<void> fetchReports({bool refresh = false}) async {
     if (state.isLoading) return;

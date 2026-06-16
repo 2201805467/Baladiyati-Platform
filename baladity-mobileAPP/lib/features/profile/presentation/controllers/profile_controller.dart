@@ -38,31 +38,28 @@ final updateProfileImageUseCaseProvider = Provider(
 // ─── Controller Provider ──────────────────────────────────────────────────────
 
 final profileControllerProvider =
-    StateNotifierProvider<ProfileController, ProfileState>(
-  (ref) => ProfileController(
-    ref.read(getProfileUseCaseProvider),
-    ref.read(updateUsernameUseCaseProvider),
-    ref.read(changePasswordUseCaseProvider),
-    ref.read(updateProfileImageUseCaseProvider),
-    initialUser: ref.read(authControllerProvider).user,
-  ),
+    NotifierProvider<ProfileController, ProfileState>(
+  () => ProfileController(),
 );
 
 // ─── Controller ───────────────────────────────────────────────────────────────
 
-class ProfileController extends StateNotifier<ProfileState> {
-  final GetProfileUseCase _getProfile;
-  final UpdateUsernameUseCase _updateUsername;
-  final ChangePasswordUseCase _changePassword;
-  final UpdateProfileImageUseCase _updateProfileImage;
+class ProfileController extends Notifier<ProfileState> {
+  late GetProfileUseCase _getProfile;
+  late UpdateUsernameUseCase _updateUsername;
+  late ChangePasswordUseCase _changePassword;
+  late UpdateProfileImageUseCase _updateProfileImage;
 
-  ProfileController(
-    this._getProfile,
-    this._updateUsername,
-    this._changePassword,
-    this._updateProfileImage, {
-    initialUser,
-  }) : super(ProfileState(user: initialUser));
+  @override
+  ProfileState build() {
+    _getProfile = ref.read(getProfileUseCaseProvider);
+    _updateUsername = ref.read(updateUsernameUseCaseProvider);
+    _changePassword = ref.read(changePasswordUseCaseProvider);
+    _updateProfileImage = ref.read(updateProfileImageUseCaseProvider);
+    
+    final initialUser = ref.read(authControllerProvider).user;
+    return ProfileState(user: initialUser);
+  }
 
   // ─── Fetch Profile ────────────────────────────────────────────────────────
 

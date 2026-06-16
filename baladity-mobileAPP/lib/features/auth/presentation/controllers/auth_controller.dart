@@ -44,33 +44,31 @@ final logoutUseCaseProvider = Provider(
 
 // ─── Auth Controller ──────────────────────────────────────────────────────────
 
-final authControllerProvider = StateNotifierProvider<AuthController, AuthState>(
-  (ref) => AuthController(
-    ref.read(loginUseCaseProvider),
-    ref.read(registerUseCaseProvider),
-    ref.read(logoutUseCaseProvider),
-    ref.read(tokenStorageProvider),
-    ref.read(authRepositoryProvider),
-  ),
+final authControllerProvider = NotifierProvider<AuthController, AuthState>(
+  () => AuthController(),
 );
 
-class AuthController extends StateNotifier<AuthState> {
-  AuthController(
-    this._loginUseCase,
-    this._registerUseCase,
-    this._logoutUseCase,
-    this._tokenStorage,
-    this._repository,
-  ) : super(AuthState.initial()) {
-    _init();
-    forceLogoutStream.listen((_) => logout());
-  }
+class AuthController extends Notifier<AuthState> {
+  late LoginUseCase _loginUseCase;
+  late RegisterUseCase _registerUseCase;
+  late LogoutUseCase _logoutUseCase;
+  late TokenStorage _tokenStorage;
+  late AuthRepository _repository;
 
-  final LoginUseCase _loginUseCase;
-  final RegisterUseCase _registerUseCase;
-  final LogoutUseCase _logoutUseCase;
-  final TokenStorage _tokenStorage;
-  final AuthRepository _repository;
+  @override
+  AuthState build() {
+    _loginUseCase = ref.read(loginUseCaseProvider);
+    _registerUseCase = ref.read(registerUseCaseProvider);
+    _logoutUseCase = ref.read(logoutUseCaseProvider);
+    _tokenStorage = ref.read(tokenStorageProvider);
+    _repository = ref.read(authRepositoryProvider);
+    
+    _init();
+    ref.read(tokenStorageProvider);
+    forceLogoutStream.listen((_) => logout());
+    
+    return AuthState.initial();
+  }
 
   /// Checks for a stored token on startup so GoRouter redirect fires correctly.
   Future<void> _init() async {

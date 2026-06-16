@@ -35,24 +35,22 @@ final suggestProposalUseCaseProvider = Provider(
 // ─── Proposals Controller ─────────────────────────────────────────────────────
 
 final proposalsControllerProvider =
-    StateNotifierProvider<ProposalsController, ProposalsState>(
-  (ref) => ProposalsController(
-    ref.read(getProposalsUseCaseProvider),
-    ref.read(voteProposalUseCaseProvider),
-    ref.read(suggestProposalUseCaseProvider),
-  ),
+    NotifierProvider<ProposalsController, ProposalsState>(
+  () => ProposalsController(),
 );
 
-class ProposalsController extends StateNotifier<ProposalsState> {
-  ProposalsController(
-    this._getProposals,
-    this._voteProposal,
-    this._suggestProposal,
-  ) : super(const ProposalsState());
+class ProposalsController extends Notifier<ProposalsState> {
+  late GetProposalsUseCase _getProposals;
+  late VoteProposalUseCase _voteProposal;
+  late SuggestProposalUseCase _suggestProposal;
 
-  final GetProposalsUseCase _getProposals;
-  final VoteProposalUseCase _voteProposal;
-  final SuggestProposalUseCase _suggestProposal;
+  @override
+  ProposalsState build() {
+    _getProposals = ref.read(getProposalsUseCaseProvider);
+    _voteProposal = ref.read(voteProposalUseCaseProvider);
+    _suggestProposal = ref.read(suggestProposalUseCaseProvider);
+    return const ProposalsState();
+  }
 
   Future<void> fetchProposals({bool refresh = false}) async {
     if (state.isLoading) return;

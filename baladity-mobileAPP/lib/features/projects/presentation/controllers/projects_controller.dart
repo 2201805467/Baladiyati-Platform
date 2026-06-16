@@ -19,14 +19,18 @@ final getProjectsUseCaseProvider = Provider<GetProjectsUseCase>(
 );
 
 final projectsControllerProvider =
-    StateNotifierProvider<ProjectsController, ProjectsState>(
-  (ref) => ProjectsController(ref.read(getProjectsUseCaseProvider)),
+    NotifierProvider<ProjectsController, ProjectsState>(
+  () => ProjectsController(),
 );
 
-class ProjectsController extends StateNotifier<ProjectsState> {
-  final GetProjectsUseCase _getProjects;
+class ProjectsController extends Notifier<ProjectsState> {
+  late GetProjectsUseCase _getProjects;
 
-  ProjectsController(this._getProjects) : super(const ProjectsState());
+  @override
+  ProjectsState build() {
+    _getProjects = ref.read(getProjectsUseCaseProvider);
+    return const ProjectsState();
+  }
 
   Future<void> fetchProjects({
     int? municipalityId,
