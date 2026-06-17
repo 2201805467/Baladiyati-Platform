@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 import 'package:image_picker/image_picker.dart';
+import '../../../../core/router/app_routes.dart';
 import '../../../auth/presentation/controllers/auth_controller.dart';
 import '../controllers/profile_controller.dart';
 import '../controllers/profile_state.dart';
@@ -76,8 +78,10 @@ class _ProfilePageState extends ConsumerState<ProfilePage> {
               ),
               const SizedBox(height: 16),
               ListTile(
-                leading: const Icon(Icons.photo_library_outlined,
-                    color: _primaryGreen),
+                leading: const Icon(
+                  Icons.photo_library_outlined,
+                  color: _primaryGreen,
+                ),
                 title: const Text('اختيار من المعرض'),
                 onTap: () {
                   Navigator.pop(context);
@@ -85,8 +89,10 @@ class _ProfilePageState extends ConsumerState<ProfilePage> {
                 },
               ),
               ListTile(
-                leading: const Icon(Icons.camera_alt_outlined,
-                    color: _primaryGreen),
+                leading: const Icon(
+                  Icons.camera_alt_outlined,
+                  color: _primaryGreen,
+                ),
                 title: const Text('التقاط صورة'),
                 onTap: () {
                   Navigator.pop(context);
@@ -130,16 +136,20 @@ class _ProfilePageState extends ConsumerState<ProfilePage> {
 
     ref.listen<ProfileState>(profileControllerProvider, (_, next) {
       if (next.errorMessage != null) {
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-          content: Text(next.errorMessage!),
-          backgroundColor: Colors.red[700],
-        ));
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(next.errorMessage!),
+            backgroundColor: Colors.red[700],
+          ),
+        );
       }
       if (next.successMessage != null) {
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-          content: Text(next.successMessage!),
-          backgroundColor: Colors.green[700],
-        ));
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(next.successMessage!),
+            backgroundColor: Colors.green[700],
+          ),
+        );
       }
     });
 
@@ -157,8 +167,20 @@ class _ProfilePageState extends ConsumerState<ProfilePage> {
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('الملف الشخصي',
-            style: TextStyle(fontWeight: FontWeight.bold)),
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back_ios_new),
+          onPressed: () {
+            if (context.canPop()) {
+              context.pop();
+            } else {
+              context.go(AppRoutes.home);
+            }
+          },
+        ),
+        title: const Text(
+          'الملف الشخصي',
+          style: TextStyle(fontWeight: FontWeight.bold),
+        ),
         centerTitle: true,
         elevation: 0,
       ),
@@ -194,11 +216,15 @@ class _ProfilePageState extends ConsumerState<ProfilePage> {
                                         width: 16,
                                         height: 16,
                                         child: CircularProgressIndicator(
-                                            color: Colors.white,
-                                            strokeWidth: 2),
+                                          color: Colors.white,
+                                          strokeWidth: 2,
+                                        ),
                                       )
-                                    : const Icon(Icons.camera_alt,
-                                        color: Colors.white, size: 18),
+                                    : const Icon(
+                                        Icons.camera_alt,
+                                        color: Colors.white,
+                                        size: 18,
+                                      ),
                               ),
                             ),
                           ),
@@ -211,9 +237,9 @@ class _ProfilePageState extends ConsumerState<ProfilePage> {
                         child: Text(
                           user.email,
                           style: TextStyle(
-                              fontSize: 13,
-                              color:
-                                  isDark ? Colors.grey[400] : Colors.grey[600]),
+                            fontSize: 13,
+                            color: isDark ? Colors.grey[400] : Colors.grey[600],
+                          ),
                         ),
                       ),
                     ],
@@ -248,28 +274,32 @@ class _ProfilePageState extends ConsumerState<ProfilePage> {
                             SizedBox(
                               width: double.infinity,
                               child: ElevatedButton(
-                                onPressed:
-                                    state.isBusy ? null : _saveName,
+                                onPressed: state.isBusy ? null : _saveName,
                                 style: ElevatedButton.styleFrom(
                                   backgroundColor: _primaryGreen,
                                   foregroundColor: Colors.white,
                                   padding: const EdgeInsets.symmetric(
-                                      vertical: 14),
+                                    vertical: 14,
+                                  ),
                                   shape: RoundedRectangleBorder(
-                                      borderRadius:
-                                          BorderRadius.circular(8)),
+                                    borderRadius: BorderRadius.circular(8),
+                                  ),
                                 ),
                                 child: state.isSavingName
                                     ? const SizedBox(
                                         height: 18,
                                         width: 18,
                                         child: CircularProgressIndicator(
-                                            color: Colors.white,
-                                            strokeWidth: 2),
+                                          color: Colors.white,
+                                          strokeWidth: 2,
+                                        ),
                                       )
-                                    : const Text('حفظ الاسم',
+                                    : const Text(
+                                        'حفظ الاسم',
                                         style: TextStyle(
-                                            fontWeight: FontWeight.bold)),
+                                          fontWeight: FontWeight.bold,
+                                        ),
+                                      ),
                               ),
                             ),
                           ],
@@ -291,9 +321,10 @@ class _ProfilePageState extends ConsumerState<ProfilePage> {
                               label: 'كلمة المرور الحالية',
                               isVisible: _showCurrentPassword,
                               isDark: isDark,
-                              onToggle: () => setState(() =>
-                                  _showCurrentPassword =
-                                      !_showCurrentPassword),
+                              onToggle: () => setState(
+                                () => _showCurrentPassword =
+                                    !_showCurrentPassword,
+                              ),
                               validator: (v) {
                                 if (v == null || v.isEmpty) {
                                   return 'الرجاء إدخال كلمة المرور الحالية';
@@ -307,8 +338,9 @@ class _ProfilePageState extends ConsumerState<ProfilePage> {
                               label: 'كلمة المرور الجديدة',
                               isVisible: _showNewPassword,
                               isDark: isDark,
-                              onToggle: () => setState(() =>
-                                  _showNewPassword = !_showNewPassword),
+                              onToggle: () => setState(
+                                () => _showNewPassword = !_showNewPassword,
+                              ),
                               validator: (v) {
                                 if (v == null || v.isEmpty) {
                                   return 'الرجاء إدخال كلمة المرور الجديدة';
@@ -325,9 +357,10 @@ class _ProfilePageState extends ConsumerState<ProfilePage> {
                               label: 'تأكيد كلمة المرور',
                               isVisible: _showConfirmPassword,
                               isDark: isDark,
-                              onToggle: () => setState(() =>
-                                  _showConfirmPassword =
-                                      !_showConfirmPassword),
+                              onToggle: () => setState(
+                                () => _showConfirmPassword =
+                                    !_showConfirmPassword,
+                              ),
                               validator: (v) {
                                 if (v != _newPasswordController.text) {
                                   return 'كلمتا المرور غير متطابقتين';
@@ -339,28 +372,32 @@ class _ProfilePageState extends ConsumerState<ProfilePage> {
                             SizedBox(
                               width: double.infinity,
                               child: ElevatedButton(
-                                onPressed:
-                                    state.isBusy ? null : _savePassword,
+                                onPressed: state.isBusy ? null : _savePassword,
                                 style: ElevatedButton.styleFrom(
                                   backgroundColor: _primaryGreen,
                                   foregroundColor: Colors.white,
                                   padding: const EdgeInsets.symmetric(
-                                      vertical: 14),
+                                    vertical: 14,
+                                  ),
                                   shape: RoundedRectangleBorder(
-                                      borderRadius:
-                                          BorderRadius.circular(8)),
+                                    borderRadius: BorderRadius.circular(8),
+                                  ),
                                 ),
                                 child: state.isSavingPassword
                                     ? const SizedBox(
                                         height: 18,
                                         width: 18,
                                         child: CircularProgressIndicator(
-                                            color: Colors.white,
-                                            strokeWidth: 2),
+                                          color: Colors.white,
+                                          strokeWidth: 2,
+                                        ),
                                       )
-                                    : const Text('تغيير كلمة المرور',
+                                    : const Text(
+                                        'تغيير كلمة المرور',
                                         style: TextStyle(
-                                            fontWeight: FontWeight.bold)),
+                                          fontWeight: FontWeight.bold,
+                                        ),
+                                      ),
                               ),
                             ),
                           ],
@@ -374,17 +411,19 @@ class _ProfilePageState extends ConsumerState<ProfilePage> {
                       onPressed: state.isBusy
                           ? null
                           : () => ref
-                              .read(authControllerProvider.notifier)
-                              .logout(),
+                                .read(authControllerProvider.notifier)
+                                .logout(),
                       icon: const Icon(Icons.logout, color: Colors.red),
-                      label: const Text('تسجيل الخروج',
-                          style: TextStyle(color: Colors.red)),
+                      label: const Text(
+                        'تسجيل الخروج',
+                        style: TextStyle(color: Colors.red),
+                      ),
                       style: OutlinedButton.styleFrom(
-                        padding:
-                            const EdgeInsets.symmetric(vertical: 14),
+                        padding: const EdgeInsets.symmetric(vertical: 14),
                         side: const BorderSide(color: Colors.red),
                         shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(8)),
+                          borderRadius: BorderRadius.circular(8),
+                        ),
                       ),
                     ),
                     const SizedBox(height: 24),
@@ -407,17 +446,14 @@ class _ProfilePageState extends ConsumerState<ProfilePage> {
         border: Border.all(color: _primaryGreen, width: 2),
         color: Colors.grey[200],
         image: hasNetwork
-            ? DecorationImage(
-                image: NetworkImage(avatarUrl),
-                fit: BoxFit.cover,
-              )
+            ? DecorationImage(image: NetworkImage(avatarUrl), fit: BoxFit.cover)
             : null,
       ),
       child: isUploading
           ? const Center(child: CircularProgressIndicator())
           : hasNetwork
-              ? null
-              : const Icon(Icons.person, size: 48, color: Colors.grey),
+          ? null
+          : const Icon(Icons.person, size: 48, color: Colors.grey),
     );
   }
 
@@ -484,7 +520,9 @@ class _SectionCard extends StatelessWidget {
                 Text(
                   title,
                   style: const TextStyle(
-                      fontSize: 15, fontWeight: FontWeight.bold),
+                    fontSize: 15,
+                    fontWeight: FontWeight.bold,
+                  ),
                 ),
               ],
             ),
@@ -539,8 +577,7 @@ class _PasswordField extends StatelessWidget {
         ),
         focusedBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(8),
-          borderSide:
-              const BorderSide(color: Color(0xFF2E7D32), width: 2),
+          borderSide: const BorderSide(color: Color(0xFF2E7D32), width: 2),
         ),
         errorBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(8),

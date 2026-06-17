@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import '../../../../core/network/api_constants.dart';
 import '../../../../core/router/app_routes.dart';
 import '../../../../theme_manager.dart';
+import '../../../auth/presentation/controllers/auth_controller.dart';
 import '../../../emergency/presentation/pages/emergency_numbers_page.dart';
 import '../../../profile/presentation/controllers/profile_controller.dart';
 import '../../../reports/domain/entities/report_entity.dart';
@@ -22,13 +24,183 @@ class HomePage extends ConsumerStatefulWidget {
 }
 
 class _HomePageState extends ConsumerState<HomePage> {
+  static const _primaryGreen = Color(0xFF2E7D32);
+
+  List<_CitizenNotification> _notifications = const [];
+  bool _isLoadingNotifications = false;
+  String? _notificationsError;
+
   @override
   void initState() {
     super.initState();
     Future.microtask(() {
       ref.read(profileControllerProvider.notifier).fetchProfile();
       ref.read(reportsControllerProvider.notifier).fetchReports(refresh: true);
+      _fetchNotifications();
     });
+  }
+
+  Future<void> _fetchNotifications() async {
+    if (_isLoadingNotifications) return;
+    setState(() {
+      _isLoadingNotifications = true;
+      _notificationsError = null;
+    });
+
+    try {
+      final dio = ref.read(dioProvider);
+      final res = await dio.get(ApiConstants.notifications);
+      final raw = res.data['data'] ?? res.data;
+      final list = raw is List ? raw : const [];
+      final notifications = list
+          .whereType<Map>()
+          .map((e) => _CitizenNotification.fromJson(e))
+          .toList();
+
+      if (!mounted) return;
+      setState(() {
+        _notifications = notifications;
+        _isLoadingNotifications = false;
+      });
+    } catch (e) {
+      if (!mounted) return;
+      setState(() {
+        _isLoadingNotifications = false;
+        _notificationsError = e.toString();
+      });
+    }
+  }
+
+  Future<void> _markAllNotificationsAsRead() async {
+    try {
+      final dio = ref.read(dioProvider);
+      await dio.patch('${ApiConstants.notifications}/read-all');
+      if (!mounted) return;
+      setState(() {
+        _notifications = _notifications
+            .map((n) => n.copyWith(isRead: true))
+            .toList(growable: false);
+      });
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(e.toString()), backgroundColor: Colors.red[700]),
+      );
+    }
+  }
+
+  Future<void> _showNotificationsSheet() async {
+    await _fetchNotifications();
+    if (!mounted) return;
+
+    showModalBottomSheet(
+      context: context,
+      showDragHandle: true,
+      isScrollControlled: true,
+      builder: (_) => Directionality(
+        textDirection: TextDirection.rtl,
+        child: SafeArea(
+          child: SizedBox(
+            height: MediaQuery.of(context).size.height * 0.65,
+            child: Column(
+              children: [
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
+                  child: Row(
+                    children: [
+                      const Expanded(
+                        child: Text(
+                          'الإشعارات',
+                          style: TextStyle(
+                            fontSize: 18,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                      ),
+                      TextButton(
+                        onPressed: _notifications.any((n) => !n.isRead)
+                            ? _markAllNotificationsAsRead
+                            : null,
+                        child: const Text('تحديد الكل كمقروء'),
+                      ),
+                    ],
+                  ),
+                ),
+                if (_isLoadingNotifications)
+                  const Expanded(
+                    child: Center(child: CircularProgressIndicator()),
+                  )
+                else if (_notificationsError != null)
+                  Expanded(
+                    child: Center(
+                      child: Padding(
+                        padding: const EdgeInsets.all(24),
+                        child: Text(
+                          _notificationsError!,
+                          textAlign: TextAlign.center,
+                          style: const TextStyle(color: Colors.red),
+                        ),
+                      ),
+                    ),
+                  )
+                else if (_notifications.isEmpty)
+                  const Expanded(
+                    child: Center(child: Text('لا توجد إشعارات حالياً')),
+                  )
+                else
+                  Expanded(
+                    child: ListView.separated(
+                      padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+                      itemCount: _notifications.length,
+                      separatorBuilder: (_, _) => const Divider(height: 1),
+                      itemBuilder: (context, index) {
+                        final notification = _notifications[index];
+                        return ListTile(
+                          contentPadding: EdgeInsets.zero,
+                          leading: Icon(
+                            notification.isRead
+                                ? Icons.notifications_none
+                                : Icons.notifications_active,
+                            color: notification.isRead
+                                ? Colors.grey
+                                : _primaryGreen,
+                          ),
+                          title: Text(
+                            notification.title,
+                            style: TextStyle(
+                              fontWeight: notification.isRead
+                                  ? FontWeight.w500
+                                  : FontWeight.bold,
+                            ),
+                          ),
+                          subtitle: Text(notification.body),
+                          trailing: notification.createdAt == null
+                              ? null
+                              : Text(
+                                  _relativeTime(notification.createdAt!),
+                                  style: const TextStyle(
+                                    fontSize: 11,
+                                    color: Colors.grey,
+                                  ),
+                                ),
+                        );
+                      },
+                    ),
+                  ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  String _relativeTime(DateTime createdAt) {
+    final diff = DateTime.now().difference(createdAt);
+    if (diff.inMinutes < 1) return 'الآن';
+    if (diff.inHours < 1) return 'منذ ${diff.inMinutes} دقيقة';
+    if (diff.inDays < 1) return 'منذ ${diff.inHours} ساعة';
+    return 'منذ ${diff.inDays} يوم';
   }
 
   @override
@@ -38,6 +210,9 @@ class _HomePageState extends ConsumerState<HomePage> {
     const primaryGreen = Color(0xFF2E7D32);
     final user = ref.watch(profileControllerProvider).user;
     final reports = ref.watch(reportsControllerProvider).reports;
+    final unreadNotifications = _notifications
+        .where((notification) => !notification.isRead)
+        .length;
     final displayName = user?.name.trim().isNotEmpty == true
         ? user!.name.trim()
         : 'مستخدم';
@@ -65,11 +240,13 @@ class _HomePageState extends ConsumerState<HomePage> {
               ),
               const SizedBox(width: 8),
               IconButton(
-                icon: const Badge(
-                  label: Text('2'),
-                  child: Icon(Icons.notifications_none_rounded),
-                ),
-                onPressed: () {},
+                icon: unreadNotifications > 0
+                    ? Badge(
+                        label: Text('$unreadNotifications'),
+                        child: const Icon(Icons.notifications_none_rounded),
+                      )
+                    : const Icon(Icons.notifications_none_rounded),
+                onPressed: _showNotificationsSheet,
               ),
               const SizedBox(width: 8),
               GestureDetector(
@@ -531,6 +708,48 @@ class _NotificationPreview extends StatelessWidget {
           ),
         ],
       ),
+    );
+  }
+}
+
+class _CitizenNotification {
+  final int id;
+  final String title;
+  final String body;
+  final String type;
+  final bool isRead;
+  final DateTime? createdAt;
+
+  const _CitizenNotification({
+    required this.id,
+    required this.title,
+    required this.body,
+    required this.type,
+    required this.isRead,
+    this.createdAt,
+  });
+
+  factory _CitizenNotification.fromJson(Map<dynamic, dynamic> json) {
+    return _CitizenNotification(
+      id: (json['id'] as num?)?.toInt() ?? 0,
+      title: json['title']?.toString() ?? '',
+      body: json['body']?.toString() ?? '',
+      type: json['type']?.toString() ?? '',
+      isRead: json['is_read'] == true || json['is_read'] == 1,
+      createdAt: json['created_at'] == null
+          ? null
+          : DateTime.tryParse(json['created_at'].toString()),
+    );
+  }
+
+  _CitizenNotification copyWith({bool? isRead}) {
+    return _CitizenNotification(
+      id: id,
+      title: title,
+      body: body,
+      type: type,
+      isRead: isRead ?? this.isRead,
+      createdAt: createdAt,
     );
   }
 }
