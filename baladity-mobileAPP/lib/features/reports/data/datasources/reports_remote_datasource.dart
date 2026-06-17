@@ -2,11 +2,15 @@ import 'package:dio/dio.dart';
 import '../../../../core/error/exceptions.dart';
 import '../../../../core/network/api_constants.dart';
 import '../models/report_category_model.dart';
+import '../models/report_image_classification_model.dart';
 import '../models/report_model.dart';
 
 abstract class ReportsRemoteDataSource {
   Future<List<ReportModel>> getReports({int page = 1});
   Future<List<ReportCategoryModel>> getCategories();
+  Future<ReportImageClassificationModel> classifyImage({
+    required String imagePath,
+  });
   Future<ReportModel> createReport({
     required String category,
     required String description,
@@ -45,6 +49,29 @@ class ReportsRemoteDataSourceImpl implements ReportsRemoteDataSource {
       return (list as List)
           .map((e) => ReportCategoryModel.fromJson(e as Map<String, dynamic>))
           .toList();
+    } on DioException catch (e) {
+      throw _extract(e);
+    }
+  }
+
+  @override
+  Future<ReportImageClassificationModel> classifyImage({
+    required String imagePath,
+  }) async {
+    try {
+      final formData = FormData.fromMap({
+        'image': await MultipartFile.fromFile(
+          imagePath,
+          filename: 'report.jpg',
+        ),
+      });
+      final res = await _dio.post(
+        ApiConstants.reportClassifyImage,
+        data: formData,
+      );
+      return ReportImageClassificationModel.fromJson(
+        res.data as Map<String, dynamic>,
+      );
     } on DioException catch (e) {
       throw _extract(e);
     }

@@ -57,9 +57,7 @@ class _LocationSelectionPageState extends State<LocationSelectionPage> {
         children: [
           GoogleMap(
             initialCameraPosition: CameraPosition(
-              target:
-                  _selectedLocation ??
-                  const LatLng(32.8872, 13.5828),
+              target: _selectedLocation ?? const LatLng(32.8872, 13.5828),
               zoom: 12,
             ),
             onTap: _onTap,
@@ -70,20 +68,26 @@ class _LocationSelectionPageState extends State<LocationSelectionPage> {
           if (_selectedLocation == null)
             Positioned.fill(
               child: Center(
-                child: Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    const Icon(
-                      Icons.touch_app,
-                      size: 60,
-                      color: Colors.black54,
+                child: Card(
+                  color: Theme.of(context).colorScheme.surface,
+                  child: Padding(
+                    padding: const EdgeInsets.all(16),
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(
+                          Icons.touch_app,
+                          size: 48,
+                          color: Theme.of(context).colorScheme.primary,
+                        ),
+                        const SizedBox(height: 10),
+                        Text(
+                          'اضغط على الخريطة لتحديد الموقع',
+                          style: Theme.of(context).textTheme.titleMedium,
+                        ),
+                      ],
                     ),
-                    const SizedBox(height: 10),
-                    Text(
-                      'اضغط على الخريطة لتحديد الموقع',
-                      style: Theme.of(context).textTheme.titleMedium,
-                    ),
-                  ],
+                  ),
                 ),
               ),
             ),

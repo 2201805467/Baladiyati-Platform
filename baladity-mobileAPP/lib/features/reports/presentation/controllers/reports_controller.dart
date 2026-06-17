@@ -3,6 +3,7 @@ import '../../../../features/auth/presentation/controllers/auth_controller.dart'
 import '../../data/datasources/reports_remote_datasource.dart';
 import '../../data/repositories_impl/reports_repository_impl.dart';
 import '../../domain/repositories/reports_repository.dart';
+import '../../domain/entities/report_image_classification_entity.dart';
 import '../../domain/usecases/create_report_usecase.dart';
 import '../../domain/usecases/get_reports_usecase.dart';
 import 'reports_state.dart';
@@ -73,6 +74,32 @@ class ReportsController extends Notifier<ReportsState> {
       state = state.copyWith(isLoading: false, categories: categories);
     } catch (e) {
       state = state.copyWith(isLoading: false, errorMessage: e.toString());
+    }
+  }
+
+  Future<ReportImageClassificationEntity?> classifyImage({
+    required String imagePath,
+  }) async {
+    state = state.copyWith(
+      isClassifyingImage: true,
+      clearError: true,
+      clearImageClassification: true,
+    );
+    try {
+      final classification = await _repository.classifyImage(
+        imagePath: imagePath,
+      );
+      state = state.copyWith(
+        isClassifyingImage: false,
+        imageClassification: classification,
+      );
+      return classification;
+    } catch (e) {
+      state = state.copyWith(
+        isClassifyingImage: false,
+        errorMessage: e.toString(),
+      );
+      return null;
     }
   }
 

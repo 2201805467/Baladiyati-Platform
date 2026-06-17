@@ -52,15 +52,16 @@ class _CitizenProposalsPageState extends ConsumerState<CitizenProposalsPage> {
     }
 
     if (state.proposals.isEmpty) {
+      final emptyTextColor = Theme.of(context).textTheme.bodyMedium?.color;
       return Center(
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
             Icon(Icons.lightbulb_outline, size: 80, color: Colors.grey[400]),
             const SizedBox(height: 16),
-            const Text(
+            Text(
               'لا توجد مقترحات حالياً',
-              style: TextStyle(fontSize: 18, color: Colors.black54),
+              style: TextStyle(fontSize: 18, color: emptyTextColor),
             ),
             const SizedBox(height: 16),
             ElevatedButton.icon(
@@ -203,7 +204,10 @@ class _CitizenProposalsPageState extends ConsumerState<CitizenProposalsPage> {
                 ),
                 Text(
                   isMine ? 'أنت' : proposal.author,
-                  style: const TextStyle(color: Colors.grey, fontSize: 12),
+                  style: TextStyle(
+                    color: Theme.of(context).textTheme.bodySmall?.color,
+                    fontSize: 12,
+                  ),
                 ),
               ],
             ),

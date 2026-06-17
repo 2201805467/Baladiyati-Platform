@@ -16,7 +16,9 @@ class _ReportsPageState extends ConsumerState<ReportsPage> {
   void initState() {
     super.initState();
     Future.microtask(
-      () => ref.read(reportsControllerProvider.notifier).fetchReports(refresh: true),
+      () => ref
+          .read(reportsControllerProvider.notifier)
+          .fetchReports(refresh: true),
     );
   }
 
@@ -55,16 +57,20 @@ class _ReportsPageState extends ConsumerState<ReportsPage> {
     }
 
     if (state.reports.isEmpty) {
+      final mutedColor = Theme.of(context).textTheme.bodyMedium?.color;
       return Center(
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Icon(Icons.assignment_late_outlined,
-                size: 80, color: Colors.grey[400]),
+            Icon(
+              Icons.assignment_late_outlined,
+              size: 80,
+              color: Colors.grey[400],
+            ),
             const SizedBox(height: 16),
-            const Text(
+            Text(
               'لا توجد بلاغات مسجلة بعد',
-              style: TextStyle(fontSize: 18, color: Colors.black54),
+              style: TextStyle(fontSize: 18, color: mutedColor),
             ),
             const SizedBox(height: 16),
             ElevatedButton.icon(
@@ -125,6 +131,7 @@ class _ReportCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final color = _statusColor(report.status);
+    final mutedColor = Theme.of(context).textTheme.bodySmall?.color;
 
     return Card(
       elevation: 2,
@@ -139,8 +146,10 @@ class _ReportCard extends StatelessWidget {
               children: [
                 Text(
                   report.id != null ? '#${report.id}' : 'بلاغ جديد',
-                  style: const TextStyle(
-                      fontWeight: FontWeight.bold, color: Colors.grey),
+                  style: TextStyle(
+                    fontWeight: FontWeight.bold,
+                    color: mutedColor,
+                  ),
                 ),
                 _StatusBadge(label: report.status, color: color),
               ],
@@ -150,27 +159,33 @@ class _ReportCard extends StatelessWidget {
               report.description,
               maxLines: 2,
               overflow: TextOverflow.ellipsis,
-              style: const TextStyle(
-                  fontSize: 15, fontWeight: FontWeight.bold),
+              style: const TextStyle(fontSize: 15, fontWeight: FontWeight.bold),
             ),
             const SizedBox(height: 8),
             Row(
               children: [
-                const Icon(Icons.category_outlined,
-                    size: 16, color: Colors.grey),
+                const Icon(
+                  Icons.category_outlined,
+                  size: 16,
+                  color: Colors.grey,
+                ),
                 const SizedBox(width: 4),
-                Text(report.category,
-                    style: const TextStyle(color: Colors.grey, fontSize: 13)),
+                Text(
+                  report.category,
+                  style: TextStyle(color: mutedColor, fontSize: 13),
+                ),
                 if (report.locationAddress != null) ...[
                   const SizedBox(width: 16),
-                  const Icon(Icons.location_on_outlined,
-                      size: 16, color: Colors.grey),
+                  const Icon(
+                    Icons.location_on_outlined,
+                    size: 16,
+                    color: Colors.grey,
+                  ),
                   const SizedBox(width: 4),
                   Expanded(
                     child: Text(
                       report.locationAddress!,
-                      style:
-                          const TextStyle(color: Colors.grey, fontSize: 13),
+                      style: TextStyle(color: mutedColor, fontSize: 13),
                       overflow: TextOverflow.ellipsis,
                     ),
                   ),
@@ -181,8 +196,7 @@ class _ReportCard extends StatelessWidget {
               const Divider(height: 24),
               Text(
                 'بتاريخ: ${report.createdAt!.toLocal().toString().split(' ')[0]}',
-                style:
-                    const TextStyle(fontSize: 12, color: Colors.black54),
+                style: TextStyle(fontSize: 12, color: mutedColor),
               ),
             ],
           ],
@@ -209,7 +223,10 @@ class _StatusBadge extends StatelessWidget {
       child: Text(
         label,
         style: TextStyle(
-            color: color, fontSize: 11, fontWeight: FontWeight.bold),
+          color: color,
+          fontSize: 11,
+          fontWeight: FontWeight.bold,
+        ),
       ),
     );
   }

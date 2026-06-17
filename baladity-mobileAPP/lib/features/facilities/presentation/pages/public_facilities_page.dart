@@ -166,9 +166,11 @@ class _PublicFacilitiesPageState extends ConsumerState<PublicFacilitiesPage> {
                           _selectedFacilityType == 'الكل'
                               ? 'لا توجد مرافق لـ "$_selectedMunicipalityName"'
                               : 'لا توجد مرافق من نوع "$_selectedFacilityType" في "$_selectedMunicipalityName"',
-                          style: const TextStyle(
+                          style: TextStyle(
                             fontSize: 18,
-                            color: Colors.black54,
+                            color: Theme.of(
+                              context,
+                            ).textTheme.bodyMedium?.color,
                           ),
                         ),
                       ],

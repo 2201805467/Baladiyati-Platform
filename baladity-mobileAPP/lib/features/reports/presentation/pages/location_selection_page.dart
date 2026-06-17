@@ -18,17 +18,21 @@ class _LocationSelectionPageState extends State<LocationSelectionPage> {
     super.initState();
     _selectedLocation = widget.initialLocation;
     if (_selectedLocation != null) {
-      _markers.add(Marker(
-        markerId: const MarkerId('selected_location'),
-        position: _selectedLocation!,
-      ));
+      _markers.add(
+        Marker(
+          markerId: const MarkerId('selected_location'),
+          position: _selectedLocation!,
+        ),
+      );
     }
   }
 
   void _onTap(LatLng latLng) {
     setState(() {
       _selectedLocation = latLng;
-      _markers = {Marker(markerId: const MarkerId('selected_location'), position: latLng)};
+      _markers = {
+        Marker(markerId: const MarkerId('selected_location'), position: latLng),
+      };
     });
   }
 
@@ -62,14 +66,26 @@ class _LocationSelectionPageState extends State<LocationSelectionPage> {
           if (_selectedLocation == null)
             Positioned.fill(
               child: Center(
-                child: Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    const Icon(Icons.touch_app, size: 60, color: Colors.black54),
-                    const SizedBox(height: 10),
-                    Text('اضغط على الخريطة لتحديد الموقع',
-                        style: Theme.of(context).textTheme.titleMedium),
-                  ],
+                child: Card(
+                  color: Theme.of(context).colorScheme.surface,
+                  child: Padding(
+                    padding: const EdgeInsets.all(16),
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(
+                          Icons.touch_app,
+                          size: 48,
+                          color: Theme.of(context).colorScheme.primary,
+                        ),
+                        const SizedBox(height: 10),
+                        Text(
+                          'اضغط على الخريطة لتحديد الموقع',
+                          style: Theme.of(context).textTheme.titleMedium,
+                        ),
+                      ],
+                    ),
+                  ),
                 ),
               ),
             ),
@@ -85,10 +101,14 @@ class _LocationSelectionPageState extends State<LocationSelectionPage> {
                 backgroundColor: primaryGreen,
                 foregroundColor: Colors.white,
                 padding: const EdgeInsets.symmetric(vertical: 16),
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
               ),
-              child: const Text('تأكيد الموقع',
-                  style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+              child: const Text(
+                'تأكيد الموقع',
+                style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+              ),
             ),
           ),
         ],

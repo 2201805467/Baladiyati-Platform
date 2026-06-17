@@ -318,7 +318,7 @@ class _HomeTabContent extends StatelessWidget {
           ),
           const Text(
             'كيف يمكننا مساعدتك في مدينتك اليوم؟',
-            style: TextStyle(fontSize: 14, color: Colors.black54),
+            style: TextStyle(fontSize: 14),
           ),
           const SizedBox(height: 16),
           if (reports.isNotEmpty) ...[

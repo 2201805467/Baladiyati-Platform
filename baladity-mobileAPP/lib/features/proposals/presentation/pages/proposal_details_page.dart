@@ -12,6 +12,7 @@ class ProposalDetailsPage extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     const primaryGreen = Color(0xFF2E7D32);
     final isDark = Theme.of(context).brightness == Brightness.dark;
+    final mutedColor = Theme.of(context).textTheme.bodySmall?.color;
     final currentUser = ref.watch(profileControllerProvider).user;
     final currentUserId = currentUser?.id;
     final currentUserName = currentUser?.name.trim() ?? '';
@@ -76,7 +77,7 @@ class ProposalDetailsPage extends ConsumerWidget {
                   const SizedBox(width: 8),
                   Text(
                     'صاحب المقترح: ${isMine ? 'أنت' : latest.author}',
-                    style: const TextStyle(color: Colors.grey),
+                    style: TextStyle(color: mutedColor),
                   ),
                 ],
               ),
@@ -88,10 +89,10 @@ class ProposalDetailsPage extends ConsumerWidget {
               const SizedBox(height: 16),
               Text(
                 latest.description,
-                style: const TextStyle(
+                style: TextStyle(
                   fontSize: 16,
                   height: 1.8,
-                  color: Colors.black87,
+                  color: Theme.of(context).textTheme.bodyLarge?.color,
                 ),
               ),
               const SizedBox(height: 40),
@@ -141,10 +142,10 @@ class ProposalDetailsPage extends ConsumerWidget {
                     ),
                     style: ElevatedButton.styleFrom(
                       backgroundColor: latest.isVoted
-                          ? Colors.grey[300]
+                          ? (isDark ? Colors.grey[800] : Colors.grey[300])
                           : primaryGreen,
                       foregroundColor: latest.isVoted
-                          ? Colors.black87
+                          ? (isDark ? Colors.white : Colors.black87)
                           : Colors.white,
                       padding: const EdgeInsets.symmetric(vertical: 14),
                       shape: RoundedRectangleBorder(
@@ -163,7 +164,7 @@ class ProposalDetailsPage extends ConsumerWidget {
   Widget _buildStatItem(String label, String value, Color color) {
     return Column(
       children: [
-        Text(label, style: const TextStyle(color: Colors.grey, fontSize: 12)),
+        Text(label, style: const TextStyle(fontSize: 12)),
         const SizedBox(height: 8),
         Text(
           value,

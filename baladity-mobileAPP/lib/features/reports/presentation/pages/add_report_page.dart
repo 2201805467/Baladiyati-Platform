@@ -6,6 +6,7 @@ import 'package:geolocator/geolocator.dart';
 import 'package:geocoding/geocoding.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
 import '../../../facilities/presentation/pages/location_selection_page.dart';
+import '../../domain/entities/report_image_classification_entity.dart';
 import '../controllers/reports_controller.dart';
 import '../controllers/reports_state.dart';
 
@@ -41,7 +42,36 @@ class _AddReportPageState extends ConsumerState<AddReportPage> {
   Future<void> _pickImage(ImageSource source) async {
     try {
       final XFile? pickedFile = await _picker.pickImage(source: source);
-      if (pickedFile != null) setState(() => _imageFile = pickedFile);
+      if (pickedFile == null) return;
+
+      setState(() => _imageFile = pickedFile);
+      final classification = await ref
+          .read(reportsControllerProvider.notifier)
+          .classifyImage(imagePath: pickedFile.path);
+
+      if (!mounted || classification == null) return;
+
+      if (classification.hasConfidentCategory) {
+        setState(
+          () => _selectedCategory = classification.categoryId.toString(),
+        );
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              'تم اقتراح التصنيف: ${classification.categoryName} '
+              '(${classification.confidence}%)',
+            ),
+          ),
+        );
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text(
+              'لم يتم التعرف بثقة على التصنيف، يرجى اختياره يدوياً.',
+            ),
+          ),
+        );
+      }
     } catch (e) {
       debugPrint('Error picking image: $e');
     }
@@ -215,6 +245,12 @@ class _AddReportPageState extends ConsumerState<AddReportPage> {
     final isSubmitting = ref.watch(
       reportsControllerProvider.select((s) => s.isSubmitting),
     );
+    final isClassifyingImage = ref.watch(
+      reportsControllerProvider.select((s) => s.isClassifyingImage),
+    );
+    final imageClassification = ref.watch(
+      reportsControllerProvider.select((s) => s.imageClassification),
+    );
     final categories = ref.watch(
       reportsControllerProvider.select((s) => s.categories),
     );
@@ -296,8 +332,15 @@ class _AddReportPageState extends ConsumerState<AddReportPage> {
                 _ImageUploadPlaceholder(
                   primaryColor: primaryGreen,
                   imageFile: _imageFile,
-                  onTap: isSubmitting ? () {} : _showPickerOptions,
+                  isClassifying: isClassifyingImage,
+                  onTap: isSubmitting || isClassifyingImage
+                      ? () {}
+                      : _showPickerOptions,
                 ),
+                if (imageClassification != null) ...[
+                  const SizedBox(height: 10),
+                  _ClassificationHint(classification: imageClassification),
+                ],
                 const SizedBox(height: 24),
                 const Text(
                   'تحديد الموقع',
@@ -357,11 +400,13 @@ class _AddReportPageState extends ConsumerState<AddReportPage> {
 class _ImageUploadPlaceholder extends StatelessWidget {
   final Color primaryColor;
   final XFile? imageFile;
+  final bool isClassifying;
   final VoidCallback onTap;
 
   const _ImageUploadPlaceholder({
     required this.primaryColor,
     required this.imageFile,
+    required this.isClassifying,
     required this.onTap,
   });
 
@@ -384,7 +429,32 @@ class _ImageUploadPlaceholder extends StatelessWidget {
             ),
           ),
           child: imageFile != null
-              ? Image.file(File(imageFile!.path), fit: BoxFit.cover)
+              ? Stack(
+                  fit: StackFit.expand,
+                  children: [
+                    Image.file(File(imageFile!.path), fit: BoxFit.cover),
+                    if (isClassifying)
+                      ColoredBox(
+                        color: Colors.black.withValues(alpha: 0.45),
+                        child: const Center(
+                          child: Column(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              CircularProgressIndicator(color: Colors.white),
+                              SizedBox(height: 12),
+                              Text(
+                                'جاري تحليل الصورة...',
+                                style: TextStyle(
+                                  color: Colors.white,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                  ],
+                )
               : Column(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
@@ -401,6 +471,48 @@ class _ImageUploadPlaceholder extends StatelessWidget {
                   ],
                 ),
         ),
+      ),
+    );
+  }
+}
+
+class _ClassificationHint extends StatelessWidget {
+  final ReportImageClassificationEntity classification;
+
+  const _ClassificationHint({required this.classification});
+
+  @override
+  Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final isConfident = classification.hasConfidentCategory;
+    final color = isConfident ? Colors.green : Colors.orange;
+    final title = isConfident ? 'اقتراح التصنيف' : 'التصنيف يحتاج مراجعة يدوية';
+    final category = classification.categoryName ?? 'غير واضح';
+
+    return Container(
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: color.withValues(alpha: isDark ? 0.18 : 0.1),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: color.withValues(alpha: 0.45)),
+      ),
+      child: Row(
+        children: [
+          Icon(
+            isConfident ? Icons.auto_awesome : Icons.info_outline,
+            color: color,
+          ),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Text(
+              '$title: $category (${classification.confidence}%)',
+              style: TextStyle(
+                color: Theme.of(context).textTheme.bodyMedium?.color,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          ),
+        ],
       ),
     );
   }

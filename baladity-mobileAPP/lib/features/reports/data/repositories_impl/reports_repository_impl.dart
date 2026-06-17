@@ -1,5 +1,6 @@
 import '../../domain/entities/report_entity.dart';
 import '../../domain/entities/report_category_entity.dart';
+import '../../domain/entities/report_image_classification_entity.dart';
 import '../../domain/repositories/reports_repository.dart';
 import '../datasources/reports_remote_datasource.dart';
 
@@ -14,6 +15,11 @@ class ReportsRepositoryImpl implements ReportsRepository {
   @override
   Future<List<ReportCategoryEntity>> getCategories() =>
       _dataSource.getCategories();
+
+  @override
+  Future<ReportImageClassificationEntity> classifyImage({
+    required String imagePath,
+  }) => _dataSource.classifyImage(imagePath: imagePath);
 
   @override
   Future<ReportEntity> createReport({
