@@ -1,19 +1,18 @@
 // ============================================================
-// DEVELOPMENT MODE — AUTHENTICATION BYPASS ACTIVE
-// The login button skips all validation and API calls.
-// To restore real authentication:
-//   1. Remove `_kDevMode` constant (or set it to false).
-//   2. Remove `bypassLogin()` from AuthController.
-//   3. Restore `_login()` as the button's onPressed handler.
+// ============================================================
+// Production mode — using backend authentication.
+// The login button now calls real API login and saves the returned token.
 // ============================================================
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
+import '../../../../core/router/app_routes.dart';
 import '../controllers/auth_controller.dart';
 import '../controllers/auth_state.dart';
 
-// DEVELOPMENT MODE FLAG — set to false when connecting the Laravel API
-const bool _kDevMode = true;
+// DEVELOPMENT MODE FLAG — false when connecting the Laravel API
+const bool _kDevMode = false;
 
 class LoginPage extends ConsumerStatefulWidget {
   const LoginPage({super.key});
@@ -38,7 +37,9 @@ class _LoginPageState extends ConsumerState<LoginPage> {
   // Real login — used when _kDevMode is false
   Future<void> _login() async {
     if (!_formKey.currentState!.validate()) return;
-    await ref.read(authControllerProvider.notifier).login(
+    await ref
+        .read(authControllerProvider.notifier)
+        .login(
           email: _emailController.text.trim(),
           password: _passwordController.text,
         );
@@ -80,16 +81,20 @@ class _LoginPageState extends ConsumerState<LoginPage> {
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
                 const SizedBox(height: 60),
-                const Icon(Icons.location_city_rounded,
-                    size: 80, color: primaryGreen),
+                const Icon(
+                  Icons.location_city_rounded,
+                  size: 80,
+                  color: primaryGreen,
+                ),
                 const SizedBox(height: 24),
                 const Text(
                   'منصة بلديتي',
                   textAlign: TextAlign.center,
                   style: TextStyle(
-                      fontSize: 28,
-                      fontWeight: FontWeight.bold,
-                      color: Colors.black87),
+                    fontSize: 28,
+                    fontWeight: FontWeight.bold,
+                    color: Colors.black87,
+                  ),
                 ),
                 const SizedBox(height: 8),
                 const Text(
@@ -102,7 +107,9 @@ class _LoginPageState extends ConsumerState<LoginPage> {
                   const SizedBox(height: 16),
                   Container(
                     padding: const EdgeInsets.symmetric(
-                        horizontal: 12, vertical: 8),
+                      horizontal: 12,
+                      vertical: 8,
+                    ),
                     decoration: BoxDecoration(
                       color: Colors.amber.shade100,
                       borderRadius: BorderRadius.circular(8),
@@ -110,13 +117,15 @@ class _LoginPageState extends ConsumerState<LoginPage> {
                     ),
                     child: const Row(
                       children: [
-                        Icon(Icons.developer_mode,
-                            size: 16, color: Colors.orange),
+                        Icon(
+                          Icons.developer_mode,
+                          size: 16,
+                          color: Colors.orange,
+                        ),
                         SizedBox(width: 8),
                         Text(
                           'وضع التطوير — لا يلزم إدخال بيانات',
-                          style: TextStyle(
-                              fontSize: 12, color: Colors.orange),
+                          style: TextStyle(fontSize: 12, color: Colors.orange),
                         ),
                       ],
                     ),
@@ -140,8 +149,9 @@ class _LoginPageState extends ConsumerState<LoginPage> {
                                 if (value == null || value.isEmpty) {
                                   return 'الرجاء إدخال البريد الإلكتروني';
                                 }
-                                if (!RegExp(r'^[^@]+@[^@]+\.[^@]+')
-                                    .hasMatch(value)) {
+                                if (!RegExp(
+                                  r'^[^@]+@[^@]+\.[^@]+',
+                                ).hasMatch(value)) {
                                   return 'بريد إلكتروني غير صالح';
                                 }
                                 return null;
@@ -155,11 +165,14 @@ class _LoginPageState extends ConsumerState<LoginPage> {
                           labelText: 'كلمة المرور',
                           prefixIcon: Icons.lock_outline,
                           suffixIcon: IconButton(
-                            icon: Icon(_isPasswordVisible
-                                ? Icons.visibility
-                                : Icons.visibility_off),
-                            onPressed: () => setState(() =>
-                                _isPasswordVisible = !_isPasswordVisible),
+                            icon: Icon(
+                              _isPasswordVisible
+                                  ? Icons.visibility
+                                  : Icons.visibility_off,
+                            ),
+                            onPressed: () => setState(
+                              () => _isPasswordVisible = !_isPasswordVisible,
+                            ),
                           ),
                         ),
                         validator: _kDevMode
@@ -183,10 +196,11 @@ class _LoginPageState extends ConsumerState<LoginPage> {
                   child: TextButton(
                     onPressed: isLoading
                         ? null
-                        : () =>
-                            Navigator.pushNamed(context, '/forgot-password'),
-                    child: const Text('نسيت كلمة المرور؟',
-                        style: TextStyle(color: primaryGreen)),
+                        : () => context.push(AppRoutes.forgotPassword),
+                    child: const Text(
+                      'نسيت كلمة المرور؟',
+                      style: TextStyle(color: primaryGreen),
+                    ),
                   ),
                 ),
                 const SizedBox(height: 8),
@@ -211,7 +225,8 @@ class _LoginPageState extends ConsumerState<LoginPage> {
                       foregroundColor: Colors.white,
                       padding: const EdgeInsets.symmetric(vertical: 18),
                       shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(8)),
+                        borderRadius: BorderRadius.circular(8),
+                      ),
                       elevation: 0,
                     ),
                     child: isLoading
@@ -219,12 +234,16 @@ class _LoginPageState extends ConsumerState<LoginPage> {
                             height: 20,
                             width: 20,
                             child: CircularProgressIndicator(
-                                color: Colors.white, strokeWidth: 2),
+                              color: Colors.white,
+                              strokeWidth: 2,
+                            ),
                           )
                         : const Text(
                             'تسجيل الدخول',
                             style: TextStyle(
-                                fontSize: 16, fontWeight: FontWeight.bold),
+                              fontSize: 16,
+                              fontWeight: FontWeight.bold,
+                            ),
                           ),
                   ),
                 ),
@@ -232,18 +251,20 @@ class _LoginPageState extends ConsumerState<LoginPage> {
                 Row(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
-                    const Text('ليس لديك حساب؟',
-                        style: TextStyle(color: Colors.black54)),
+                    const Text(
+                      'ليس لديك حساب؟',
+                      style: TextStyle(color: Colors.black54),
+                    ),
                     TextButton(
                       onPressed: isLoading
                           ? null
-                          : () =>
-                              Navigator.pushNamed(context, '/register'),
+                          : () => context.push(AppRoutes.register),
                       child: const Text(
                         'إنشاء حساب',
                         style: TextStyle(
-                            color: primaryGreen,
-                            fontWeight: FontWeight.bold),
+                          color: primaryGreen,
+                          fontWeight: FontWeight.bold,
+                        ),
                       ),
                     ),
                   ],
@@ -278,8 +299,7 @@ class _LoginPageState extends ConsumerState<LoginPage> {
       ),
       focusedBorder: OutlineInputBorder(
         borderRadius: BorderRadius.circular(8),
-        borderSide:
-            const BorderSide(color: Color(0xFF2E7D32), width: 2),
+        borderSide: const BorderSide(color: Color(0xFF2E7D32), width: 2),
       ),
       errorBorder: OutlineInputBorder(
         borderRadius: BorderRadius.circular(8),

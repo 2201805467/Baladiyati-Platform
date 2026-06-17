@@ -40,9 +40,7 @@ class _RegistrationPageState extends ConsumerState<RegistrationPage> {
           name: _fullNameController.text.trim(),
           email: _emailController.text.trim(),
           password: _passwordController.text,
-          phone: _phoneController.text.trim().isEmpty
-              ? null
-              : _phoneController.text.trim(),
+          phone: _phoneController.text.trim(),
         );
   }
 
@@ -152,10 +150,20 @@ class _RegistrationPageState extends ConsumerState<RegistrationPage> {
                         controller: _phoneController,
                         keyboardType: TextInputType.phone,
                         decoration: _inputDecoration(
-                          labelText: 'رقم الهاتف (اختياري)',
+                          labelText: 'رقم الهاتف',
                           hintText: '09XXXXXXXX',
                           prefixIcon: Icons.phone_android_rounded,
                         ),
+                        validator: (value) {
+                          final phone = value?.trim() ?? '';
+                          if (phone.isEmpty) {
+                            return 'الرجاء إدخال رقم الهاتف';
+                          }
+                          if (!RegExp(r'^[0-9]{10}$').hasMatch(phone)) {
+                            return 'الرجاء إدخال رقم هاتف صحيح';
+                          }
+                          return null;
+                        },
                       ),
                       const SizedBox(height: 16),
                       TextFormField(

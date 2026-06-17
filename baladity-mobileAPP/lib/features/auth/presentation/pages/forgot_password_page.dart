@@ -10,11 +10,11 @@ class ForgotPasswordPage extends StatefulWidget {
 
 class _ForgotPasswordPageState extends State<ForgotPasswordPage> {
   final _formKey = GlobalKey<FormState>();
-  final _phoneController = TextEditingController();
+  final _emailController = TextEditingController();
 
   @override
   void dispose() {
-    _phoneController.dispose();
+    _emailController.dispose();
     super.dispose();
   }
 
@@ -42,7 +42,11 @@ class _ForgotPasswordPageState extends State<ForgotPasswordPage> {
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
                 const SizedBox(height: 20),
-                const Icon(Icons.lock_reset_rounded, size: 80, color: primaryGreen),
+                const Icon(
+                  Icons.lock_reset_rounded,
+                  size: 80,
+                  color: primaryGreen,
+                ),
                 const SizedBox(height: 32),
                 const Text(
                   'استرداد كلمة المرور',
@@ -63,12 +67,12 @@ class _ForgotPasswordPageState extends State<ForgotPasswordPage> {
                 Form(
                   key: _formKey,
                   child: TextFormField(
-                    controller: _phoneController,
-                    keyboardType: TextInputType.phone,
+                    controller: _emailController,
+                    keyboardType: TextInputType.emailAddress,
                     decoration: InputDecoration(
-                      labelText: 'رقم الهاتف',
-                      hintText: '09XXXXXXXX',
-                      prefixIcon: const Icon(Icons.phone_android_rounded),
+                      labelText: 'البريد الإلكتروني',
+                      hintText: 'example@domain.com',
+                      prefixIcon: const Icon(Icons.email_outlined),
                       filled: true,
                       fillColor: const Color(0xFFEEEEEE),
                       border: OutlineInputBorder(
@@ -77,11 +81,12 @@ class _ForgotPasswordPageState extends State<ForgotPasswordPage> {
                       ),
                     ),
                     validator: (value) {
-                      if (value == null || value.isEmpty) {
-                        return 'الرجاء إدخال رقم الهاتف';
+                      final email = value?.trim() ?? '';
+                      if (email.isEmpty) {
+                        return 'الرجاء إدخال البريد الإلكتروني';
                       }
-                      if (!RegExp(r'^[0-9]{10}$').hasMatch(value)) {
-                        return 'الرجاء إدخال رقم هاتف صحيح';
+                      if (!RegExp(r'^[^@]+@[^@]+\.[^@]+').hasMatch(email)) {
+                        return 'الرجاء إدخال بريد إلكتروني صالح';
                       }
                       return null;
                     },
@@ -105,7 +110,7 @@ class _ForgotPasswordPageState extends State<ForgotPasswordPage> {
                           context,
                           MaterialPageRoute(
                             builder: (context) => OtpVerificationPage(
-                              phoneNumber: _phoneController.text,
+                              email: _emailController.text.trim(),
                             ),
                           ),
                         );
@@ -121,7 +126,10 @@ class _ForgotPasswordPageState extends State<ForgotPasswordPage> {
                     ),
                     child: const Text(
                       'إرسال الرمز',
-                      style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                      style: TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.bold,
+                      ),
                     ),
                   ),
                 ),

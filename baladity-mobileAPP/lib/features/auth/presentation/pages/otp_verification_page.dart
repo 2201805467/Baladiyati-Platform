@@ -6,8 +6,8 @@ import '../controllers/auth_controller.dart';
 import '../controllers/auth_state.dart';
 
 class OtpVerificationPage extends ConsumerStatefulWidget {
-  final String phoneNumber;
-  const OtpVerificationPage({super.key, required this.phoneNumber});
+  final String email;
+  const OtpVerificationPage({super.key, required this.email});
 
   @override
   ConsumerState<OtpVerificationPage> createState() =>
@@ -38,13 +38,13 @@ class _OtpVerificationPageState extends ConsumerState<OtpVerificationPage> {
 
     await ref
         .read(authControllerProvider.notifier)
-        .verifyOtp(identifier: widget.phoneNumber, otpCode: otp);
+        .verifyOtp(identifier: widget.email, otpCode: otp);
   }
 
   Future<void> _resend() async {
     await ref
         .read(authControllerProvider.notifier)
-        .resendOtp(identifier: widget.phoneNumber);
+        .resendOtp(identifier: widget.email);
     if (!mounted) return;
     ScaffoldMessenger.of(
       context,
@@ -114,14 +114,17 @@ class _OtpVerificationPageState extends ConsumerState<OtpVerificationPage> {
                 ),
                 const SizedBox(height: 12),
                 Text(
-                  'أدخل الرمز المكون من 6 أرقام المرسل إلى ${widget.phoneNumber}',
+                  'أدخل الرمز المكون من 6 أرقام المرسل إلى ${widget.email}',
                   textAlign: TextAlign.center,
                   style: const TextStyle(fontSize: 16, color: Colors.black54),
                 ),
                 const SizedBox(height: 40),
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                  children: List.generate(6, _otpBox),
+                Directionality(
+                  textDirection: TextDirection.ltr,
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                    children: List.generate(6, _otpBox),
+                  ),
                 ),
                 const SizedBox(height: 40),
                 Container(
@@ -190,6 +193,7 @@ class _OtpVerificationPageState extends ConsumerState<OtpVerificationPage> {
         focusNode: _focusNodes[index],
         keyboardType: TextInputType.number,
         textAlign: TextAlign.center,
+        textDirection: TextDirection.ltr,
         maxLength: 1,
         enabled: !ref.watch(authControllerProvider.select((s) => s.isLoading)),
         style: const TextStyle(fontSize: 22, fontWeight: FontWeight.bold),

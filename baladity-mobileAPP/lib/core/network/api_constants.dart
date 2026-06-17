@@ -1,3 +1,5 @@
+import 'package:flutter/foundation.dart';
+
 /// Central place for all API configuration.
 ///
 /// To override the base URL at build time:
@@ -7,10 +9,18 @@ abstract class ApiConstants {
   // Android emulator  → http://10.0.2.2:8000/api
   // iOS simulator     → http://localhost:8000/api
   // Physical device   → http://<your-machine-ip>:8000/api
-  static const String baseUrl = String.fromEnvironment(
+  static const String _configuredBaseUrl = String.fromEnvironment(
     'API_BASE_URL',
-    defaultValue: 'http://10.0.2.2:8000/api',
   );
+
+  static String get baseUrl {
+    if (_configuredBaseUrl.isNotEmpty) return _configuredBaseUrl;
+    if (kIsWeb) return 'http://127.0.0.1:8000/api';
+
+    return defaultTargetPlatform == TargetPlatform.android
+        ? 'http://10.0.2.2:8000/api'
+        : 'http://127.0.0.1:8000/api';
+  }
 
   static const Duration connectTimeout = Duration(seconds: 30);
   static const Duration receiveTimeout = Duration(seconds: 30);

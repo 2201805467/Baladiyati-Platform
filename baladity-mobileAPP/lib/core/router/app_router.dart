@@ -39,15 +39,13 @@ final goRouterProvider = Provider<GoRouter>((ref) {
       ),
       GoRoute(
         path: AppRoutes.otpVerification,
-        builder: (context, state) => OtpVerificationPage(
-          phoneNumber: state.extra as String? ?? '',
-        ),
+        builder: (context, state) =>
+            OtpVerificationPage(email: state.extra as String? ?? ''),
       ),
       GoRoute(
         path: AppRoutes.resetPassword,
-        builder: (context, state) => ResetPasswordPage(
-          phoneNumber: state.extra as String? ?? '',
-        ),
+        builder: (context, state) =>
+            ResetPasswordPage(phoneNumber: state.extra as String? ?? ''),
       ),
       GoRoute(
         path: AppRoutes.home,
@@ -63,9 +61,8 @@ final goRouterProvider = Provider<GoRouter>((ref) {
       ),
       GoRoute(
         path: AppRoutes.proposalDetails,
-        builder: (context, state) => ProposalDetailsPage(
-          proposal: state.extra as ProposalEntity,
-        ),
+        builder: (context, state) =>
+            ProposalDetailsPage(proposal: state.extra as ProposalEntity),
       ),
       GoRoute(
         path: AppRoutes.suggestService,
@@ -94,7 +91,8 @@ class _RouterNotifier extends ChangeNotifier {
     final authState = _ref.read(authControllerProvider);
     final loc = state.matchedLocation;
 
-    final isAuthPage = loc == AppRoutes.login ||
+    final isAuthPage =
+        loc == AppRoutes.login ||
         loc == AppRoutes.register ||
         loc == AppRoutes.forgotPassword ||
         loc == AppRoutes.otpVerification ||

@@ -14,7 +14,7 @@ class User extends Authenticatable
 
     protected $fillable = [
         'full_name', 'email', 'phone', 'password', 
-        'employee_number', 'profile_image', 'phone_verified_at', 'otp_code', 'otp_purpose',
+        'employee_number', 'profile_image', 'phone_verified_at', 'email_verified_at', 'otp_code', 'otp_purpose',
         'otp_expires_at', 'is_active', 'role_id', 'dept_id'
     ];
 
@@ -23,6 +23,7 @@ class User extends Authenticatable
     protected $casts = [
         'is_active' => 'boolean',
         'phone_verified_at' => 'datetime',
+        'email_verified_at' => 'datetime',
         'otp_expires_at' => 'datetime',
     ];
 

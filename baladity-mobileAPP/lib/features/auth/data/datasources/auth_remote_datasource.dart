@@ -63,14 +63,7 @@ class AuthRemoteDataSourceImpl implements AuthRemoteDataSource {
     try {
       await _dio.post(
         ApiConstants.verifyOtp,
-        data: {
-          if (identifier.contains('@'))
-            'email': identifier
-          else
-            'phone': identifier,
-          'otp_code': otpCode,
-          'purpose': purpose,
-        },
+        data: {'email': identifier, 'otp_code': otpCode, 'purpose': purpose},
       );
     } on DioException catch (e) {
       throw _extractException(e);
@@ -85,13 +78,7 @@ class AuthRemoteDataSourceImpl implements AuthRemoteDataSource {
     try {
       await _dio.post(
         ApiConstants.resendOtp,
-        data: {
-          if (identifier.contains('@'))
-            'email': identifier
-          else
-            'phone': identifier,
-          'purpose': purpose,
-        },
+        data: {'email': identifier, 'purpose': purpose},
       );
     } on DioException catch (e) {
       throw _extractException(e);
@@ -113,7 +100,7 @@ class AuthRemoteDataSourceImpl implements AuthRemoteDataSource {
           'email': email,
           'password': password,
           'password_confirmation': password,
-          'phone': ?phone,
+          if (phone != null) 'phone': phone,
         },
       );
       final data = res.data['data'] ?? res.data;

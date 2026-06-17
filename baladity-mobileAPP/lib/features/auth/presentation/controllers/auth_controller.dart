@@ -62,11 +62,11 @@ class AuthController extends Notifier<AuthState> {
     _logoutUseCase = ref.read(logoutUseCaseProvider);
     _tokenStorage = ref.read(tokenStorageProvider);
     _repository = ref.read(authRepositoryProvider);
-    
+
     _init();
     ref.read(tokenStorageProvider);
     forceLogoutStream.listen((_) => logout());
-    
+
     return AuthState.initial();
   }
 
@@ -104,7 +104,7 @@ class AuthController extends Notifier<AuthState> {
       );
       state = result.token.isNotEmpty
           ? AuthState.authenticated(result.user)
-          : AuthState.otpPending(phone?.isNotEmpty == true ? phone! : email);
+          : AuthState.otpPending(email);
     } catch (e) {
       state = AuthState.withError(e.toString());
     }

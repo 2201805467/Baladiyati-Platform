@@ -9,7 +9,8 @@ return new class extends Migration {
     {
         Schema::table('users', function (Blueprint $table) {
             $table->timestamp('phone_verified_at')->nullable()->after('profile_image');
-            $table->string('otp_code', 10)->nullable()->after('phone_verified_at');
+            $table->timestamp('email_verified_at')->nullable()->after('phone_verified_at');
+            $table->string('otp_code', 10)->nullable()->after('email_verified_at');
             $table->string('otp_purpose', 30)->nullable()->after('otp_code');
             $table->timestamp('otp_expires_at')->nullable()->after('otp_purpose');
         });
@@ -20,6 +21,7 @@ return new class extends Migration {
         Schema::table('users', function (Blueprint $table) {
             $table->dropColumn([
                 'phone_verified_at',
+                'email_verified_at',
                 'otp_code',
                 'otp_purpose',
                 'otp_expires_at',

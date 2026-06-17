@@ -2,12 +2,16 @@
 
 namespace App\Http\Controllers\Api;
 
+use App\Mail\OtpCodeMail;
 use App\Http\Controllers\Controller;
+use App\Models\PendingRegistration;
 use App\Models\Role;
 use App\Models\User;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Validation\Rule;
 use Illuminate\Validation\ValidationException;
@@ -18,31 +22,71 @@ class AuthController extends Controller
     {
         $data = $request->validate([
             'full_name' => ['required', 'string', 'max:100'],
-            'email' => ['required', 'email', 'max:100', 'unique:users,email'],
-            'phone' => ['required', 'string', 'max:20', 'unique:users,phone'],
+            'email' => ['required', 'email', 'max:100'],
+            'phone' => ['required', 'string', 'max:20'],
             'password' => ['required', 'string', 'min:6', 'confirmed'],
         ]);
 
-        $citizenRole = Role::where('role_name', 'citizen')->firstOrFail();
-        $otp = $this->generateOtp();
+        PendingRegistration::where('otp_expires_at', '<', now())->delete();
 
-        $user = User::create([
-            'full_name' => $data['full_name'],
+        User::where(function ($query) use ($data) {
+            $query->where('email', $data['email'])
+                ->orWhere('phone', $data['phone']);
+        })
+            ->where('is_active', false)
+            ->where('otp_purpose', 'registration')
+            ->delete();
+
+        if (User::where('email', $data['email'])->exists()) {
+            throw ValidationException::withMessages([
+                'email' => ['The email has already been taken.'],
+            ]);
+        }
+
+        if (User::where('phone', $data['phone'])->exists()) {
+            throw ValidationException::withMessages([
+                'phone' => ['The phone has already been taken.'],
+            ]);
+        }
+
+        $existingPendingByPhone = PendingRegistration::where('phone', $data['phone'])
+            ->where('email', '!=', $data['email'])
+            ->first();
+
+        if ($existingPendingByPhone) {
+            throw ValidationException::withMessages([
+                'phone' => ['The phone has already been used for a pending registration.'],
+            ]);
+        }
+
+        $existingPendingRegistration = PendingRegistration::where('email', $data['email'])->first();
+        $hasReusableOtp = $existingPendingRegistration?->otp_expires_at?->isFuture() === true;
+        $otp = $hasReusableOtp ? $existingPendingRegistration->otp_code : $this->generateOtp();
+        $otpExpiresAt = $hasReusableOtp
+            ? $existingPendingRegistration->otp_expires_at
+            : now()->addMinutes(10);
+
+        $pendingRegistration = PendingRegistration::updateOrCreate([
             'email' => $data['email'],
+        ], [
+            'full_name' => $data['full_name'],
             'phone' => $data['phone'],
             'password' => Hash::make($data['password']),
-            'is_active' => false,
-            'role_id' => $citizenRole->id,
-            'dept_id' => null,
             'otp_code' => $otp,
-            'otp_purpose' => 'registration',
-            'otp_expires_at' => now()->addMinutes(10),
+            'otp_expires_at' => $otpExpiresAt,
         ]);
 
+        $this->sendOtpEmail($pendingRegistration->email, $pendingRegistration->full_name, $otp, 'registration');
+
         return response()->json([
-            'message' => 'Registration successful. Verify the OTP to activate your account.',
-            'user' => $user->load('role', 'department'),
-            'otp_expires_at' => $user->otp_expires_at,
+            'message' => 'Registration successful. Verify the OTP sent to your email to activate your account.',
+            'user' => [
+                'id' => 0,
+                'full_name' => $pendingRegistration->full_name,
+                'email' => $pendingRegistration->email,
+                'phone' => $pendingRegistration->phone,
+            ],
+            'otp_expires_at' => $pendingRegistration->otp_expires_at,
             'dev_otp' => app()->isProduction() ? null : $otp,
         ], 201);
     }
@@ -88,29 +132,58 @@ class AuthController extends Controller
     public function verifyOtp(Request $request): JsonResponse
     {
         $data = $request->validate([
-            'phone' => ['required_without:email', 'string', 'max:20'],
-            'email' => ['required_without:phone', 'email', 'max:100'],
+            'email' => ['required', 'email', 'max:100'],
             'otp_code' => ['required', 'string', 'max:10'],
             'purpose' => ['nullable', Rule::in(['registration', 'password_reset'])],
         ]);
 
-        $user = $this->findUserByLogin($data['email'] ?? $data['phone']);
-        $this->ensureValidOtp($user, $data['otp_code'], $data['purpose'] ?? null);
+        $purpose = $data['purpose'] ?? 'registration';
 
-        if ($user->otp_purpose === 'registration') {
-            $user->update([
-                'is_active' => true,
-                'phone_verified_at' => now(),
-                'otp_code' => null,
-                'otp_purpose' => null,
-                'otp_expires_at' => null,
-            ]);
+        $otpCode = $this->normalizeOtp($data['otp_code']);
+
+        if ($purpose === 'registration') {
+            $pendingRegistration = $this->findPendingRegistrationByEmail($data['email']);
+            $this->ensureValidOtp($pendingRegistration, $otpCode, null);
+
+            $user = DB::transaction(function () use ($pendingRegistration) {
+                $citizenRole = Role::where('role_name', 'citizen')->firstOrFail();
+
+                if (User::where('email', $pendingRegistration->email)->exists()) {
+                    throw ValidationException::withMessages([
+                        'email' => ['The email has already been taken.'],
+                    ]);
+                }
+
+                if (User::where('phone', $pendingRegistration->phone)->exists()) {
+                    throw ValidationException::withMessages([
+                        'phone' => ['The phone has already been taken.'],
+                    ]);
+                }
+
+                $user = User::create([
+                    'full_name' => $pendingRegistration->full_name,
+                    'email' => $pendingRegistration->email,
+                    'phone' => $pendingRegistration->phone,
+                    'password' => $pendingRegistration->password,
+                    'is_active' => true,
+                    'email_verified_at' => now(),
+                    'role_id' => $citizenRole->id,
+                    'dept_id' => null,
+                ]);
+
+                $pendingRegistration->delete();
+
+                return $user;
+            });
 
             return response()->json([
                 'message' => 'Account verified successfully.',
                 'user' => $user->fresh()->load('role', 'department'),
             ]);
         }
+
+        $user = $this->findUserByEmail($data['email']);
+        $this->ensureValidOtp($user, $otpCode, 'password_reset');
 
         return response()->json([
             'message' => 'OTP verified successfully.',
@@ -120,16 +193,28 @@ class AuthController extends Controller
     public function resendOtp(Request $request): JsonResponse
     {
         $data = $request->validate([
-            'phone' => ['required_without:email', 'string', 'max:20'],
-            'email' => ['required_without:phone', 'email', 'max:100'],
+            'email' => ['required', 'email', 'max:100'],
             'purpose' => ['required', Rule::in(['registration', 'password_reset'])],
         ]);
 
-        $user = $this->findUserByLogin($data['email'] ?? $data['phone']);
+        if ($data['purpose'] === 'registration') {
+            $pendingRegistration = $this->findPendingRegistrationByEmail($data['email']);
+            $otp = $this->setOtp($pendingRegistration, $data['purpose']);
+            $this->sendOtpEmail($pendingRegistration->email, $pendingRegistration->full_name, $otp, $data['purpose']);
+
+            return response()->json([
+                'message' => 'OTP sent to email successfully.',
+                'otp_expires_at' => $pendingRegistration->fresh()->otp_expires_at,
+                'dev_otp' => app()->isProduction() ? null : $otp,
+            ]);
+        }
+
+        $user = $this->findUserByEmail($data['email']);
         $otp = $this->setOtp($user, $data['purpose']);
+        $this->sendOtpEmail($user->email, $user->full_name, $otp, $data['purpose']);
 
         return response()->json([
-            'message' => 'OTP sent successfully.',
+            'message' => 'OTP sent to email successfully.',
             'otp_expires_at' => $user->fresh()->otp_expires_at,
             'dev_otp' => app()->isProduction() ? null : $otp,
         ]);
@@ -138,14 +223,15 @@ class AuthController extends Controller
     public function forgotPassword(Request $request): JsonResponse
     {
         $data = $request->validate([
-            'login' => ['required', 'string'],
+            'email' => ['required', 'email', 'max:100'],
         ]);
 
-        $user = $this->findUserByLogin($data['login']);
+        $user = $this->findUserByEmail($data['email']);
         $otp = $this->setOtp($user, 'password_reset');
+        $this->sendOtpEmail($user->email, $user->full_name, $otp, 'password_reset');
 
         return response()->json([
-            'message' => 'Password reset OTP sent successfully.',
+            'message' => 'Password reset OTP sent to email successfully.',
             'otp_expires_at' => $user->fresh()->otp_expires_at,
             'dev_otp' => app()->isProduction() ? null : $otp,
         ]);
@@ -154,13 +240,13 @@ class AuthController extends Controller
     public function resetPassword(Request $request): JsonResponse
     {
         $data = $request->validate([
-            'login' => ['required', 'string'],
+            'email' => ['required', 'email', 'max:100'],
             'otp_code' => ['required', 'string', 'max:10'],
             'password' => ['required', 'string', 'min:6', 'confirmed'],
         ]);
 
-        $user = $this->findUserByLogin($data['login']);
-        $this->ensureValidOtp($user, $data['otp_code'], 'password_reset');
+        $user = $this->findUserByEmail($data['email']);
+        $this->ensureValidOtp($user, $this->normalizeOtp($data['otp_code']), 'password_reset');
 
         $user->update([
             'password' => Hash::make($data['password']),
@@ -254,27 +340,58 @@ class AuthController extends Controller
         return $user;
     }
 
-    private function setOtp(User $user, string $purpose): string
+    private function findUserByEmail(string $email): User
+    {
+        $user = User::where('email', $email)->first();
+
+        if (! $user) {
+            throw ValidationException::withMessages([
+                'email' => ['No account was found for the provided email.'],
+            ]);
+        }
+
+        return $user;
+    }
+
+    private function findPendingRegistrationByEmail(string $email): PendingRegistration
+    {
+        $pendingRegistration = PendingRegistration::where('email', $email)->first();
+
+        if (! $pendingRegistration) {
+            throw ValidationException::withMessages([
+                'email' => ['No pending registration was found for the provided email. Please register again.'],
+            ]);
+        }
+
+        return $pendingRegistration;
+    }
+
+    private function setOtp(User|PendingRegistration $record, string $purpose): string
     {
         $otp = $this->generateOtp();
 
-        $user->update([
+        $attributes = [
             'otp_code' => $otp,
-            'otp_purpose' => $purpose,
             'otp_expires_at' => now()->addMinutes(10),
-        ]);
+        ];
+
+        if ($record instanceof User) {
+            $attributes['otp_purpose'] = $purpose;
+        }
+
+        $record->update($attributes);
 
         return $otp;
     }
 
-    private function ensureValidOtp(User $user, string $otp, ?string $purpose): void
+    private function ensureValidOtp(User|PendingRegistration $record, string $otp, ?string $purpose): void
     {
         if (
-            ! $user->otp_code ||
-            ! hash_equals($user->otp_code, $otp) ||
-            ($purpose && $user->otp_purpose !== $purpose) ||
-            ! $user->otp_expires_at ||
-            $user->otp_expires_at->isPast()
+            ! $record->otp_code ||
+            ! hash_equals($record->otp_code, $otp) ||
+            ($purpose && $record instanceof User && $record->otp_purpose !== $purpose) ||
+            ! $record->otp_expires_at ||
+            $record->otp_expires_at->isPast()
         ) {
             throw ValidationException::withMessages([
                 'otp_code' => ['The OTP code is invalid or expired.'],
@@ -285,5 +402,36 @@ class AuthController extends Controller
     private function generateOtp(): string
     {
         return (string) random_int(100000, 999999);
+    }
+
+    private function normalizeOtp(string $otp): string
+    {
+        return strtr(trim($otp), [
+            '٠' => '0',
+            '١' => '1',
+            '٢' => '2',
+            '٣' => '3',
+            '٤' => '4',
+            '٥' => '5',
+            '٦' => '6',
+            '٧' => '7',
+            '٨' => '8',
+            '٩' => '9',
+            '۰' => '0',
+            '۱' => '1',
+            '۲' => '2',
+            '۳' => '3',
+            '۴' => '4',
+            '۵' => '5',
+            '۶' => '6',
+            '۷' => '7',
+            '۸' => '8',
+            '۹' => '9',
+        ]);
+    }
+
+    private function sendOtpEmail(string $email, string $fullName, string $otp, string $purpose): void
+    {
+        Mail::to($email)->send(new OtpCodeMail($fullName, $otp, $purpose));
     }
 }
