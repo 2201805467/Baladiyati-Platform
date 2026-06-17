@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../domain/entities/proposal_entity.dart';
+import '../../../profile/presentation/controllers/profile_controller.dart';
 import '../controllers/proposals_controller.dart';
 import '../controllers/proposals_state.dart';
 import 'proposal_details_page.dart';
@@ -14,9 +15,6 @@ class CitizenProposalsPage extends ConsumerStatefulWidget {
 }
 
 class _CitizenProposalsPageState extends ConsumerState<CitizenProposalsPage> {
-  // The current logged-in user's name — will come from AuthState in a real app.
-  static const String _currentUser = 'أحمد';
-
   @override
   void initState() {
     super.initState();
@@ -45,6 +43,9 @@ class _CitizenProposalsPageState extends ConsumerState<CitizenProposalsPage> {
     });
 
     final state = ref.watch(proposalsControllerProvider);
+    final currentUser = ref.watch(profileControllerProvider).user;
+    final currentUserId = currentUser?.id;
+    final currentUserName = currentUser?.name.trim() ?? '';
 
     if (state.isLoading && state.proposals.isEmpty) {
       return const Center(child: CircularProgressIndicator());
@@ -57,8 +58,10 @@ class _CitizenProposalsPageState extends ConsumerState<CitizenProposalsPage> {
           children: [
             Icon(Icons.lightbulb_outline, size: 80, color: Colors.grey[400]),
             const SizedBox(height: 16),
-            const Text('لا توجد مقترحات حالياً',
-                style: TextStyle(fontSize: 18, color: Colors.black54)),
+            const Text(
+              'لا توجد مقترحات حالياً',
+              style: TextStyle(fontSize: 18, color: Colors.black54),
+            ),
             const SizedBox(height: 16),
             ElevatedButton.icon(
               onPressed: () => ref
@@ -73,7 +76,7 @@ class _CitizenProposalsPageState extends ConsumerState<CitizenProposalsPage> {
     }
 
     final myProposals = state.proposals
-        .where((p) => p.author == _currentUser)
+        .where((p) => _isMine(p, currentUserId, currentUserName))
         .toList();
     final allSorted = [...state.proposals]
       ..sort((a, b) => b.votes.compareTo(a.votes));
@@ -87,17 +90,39 @@ class _CitizenProposalsPageState extends ConsumerState<CitizenProposalsPage> {
         children: [
           if (myProposals.isNotEmpty) ...[
             _buildSectionHeader(
-                'مقترحاتي', Icons.person_pin_outlined, primaryGreen),
+              'مقترحاتي',
+              Icons.person_pin_outlined,
+              primaryGreen,
+            ),
             const SizedBox(height: 12),
-            ...myProposals.map((p) =>
-                _buildProposalCard(p, primaryGreen, isDark, context)),
+            ...myProposals.map(
+              (p) => _buildProposalCard(
+                p,
+                primaryGreen,
+                isDark,
+                context,
+                currentUserId,
+                currentUserName,
+              ),
+            ),
             const SizedBox(height: 24),
           ],
           _buildSectionHeader(
-              'كل مقترحات المواطنين', Icons.campaign_outlined, primaryGreen),
+            'كل مقترحات المواطنين',
+            Icons.campaign_outlined,
+            primaryGreen,
+          ),
           const SizedBox(height: 12),
           ...allSorted.map(
-              (p) => _buildProposalCard(p, primaryGreen, isDark, context)),
+            (p) => _buildProposalCard(
+              p,
+              primaryGreen,
+              isDark,
+              context,
+              currentUserId,
+              currentUserName,
+            ),
+          ),
           if (state.hasMore && !state.isLoading)
             Padding(
               padding: const EdgeInsets.symmetric(vertical: 16),
@@ -125,9 +150,10 @@ class _CitizenProposalsPageState extends ConsumerState<CitizenProposalsPage> {
       children: [
         Icon(icon, color: color, size: 24),
         const SizedBox(width: 8),
-        Text(title,
-            style: const TextStyle(
-                fontSize: 18, fontWeight: FontWeight.bold)),
+        Text(
+          title,
+          style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+        ),
       ],
     );
   }
@@ -137,14 +163,17 @@ class _CitizenProposalsPageState extends ConsumerState<CitizenProposalsPage> {
     Color primaryColor,
     bool isDark,
     BuildContext context,
+    int? currentUserId,
+    String currentUserName,
   ) {
+    final isMine = _isMine(proposal, currentUserId, currentUserName);
+
     return Card(
       margin: const EdgeInsets.only(bottom: 12),
       elevation: 0,
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(16),
-        side:
-            BorderSide(color: isDark ? Colors.grey[800]! : Colors.grey[200]!),
+        side: BorderSide(color: isDark ? Colors.grey[800]! : Colors.grey[200]!),
       ),
       child: Padding(
         padding: const EdgeInsets.all(16),
@@ -155,8 +184,10 @@ class _CitizenProposalsPageState extends ConsumerState<CitizenProposalsPage> {
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
                 Container(
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 10,
+                    vertical: 4,
+                  ),
                   decoration: BoxDecoration(
                     color: primaryColor.withValues(alpha: 0.1),
                     borderRadius: BorderRadius.circular(20),
@@ -164,26 +195,31 @@ class _CitizenProposalsPageState extends ConsumerState<CitizenProposalsPage> {
                   child: Text(
                     proposal.category,
                     style: TextStyle(
-                        color: primaryColor,
-                        fontSize: 11,
-                        fontWeight: FontWeight.bold),
+                      color: primaryColor,
+                      fontSize: 11,
+                      fontWeight: FontWeight.bold,
+                    ),
                   ),
                 ),
                 Text(
-                  proposal.author == _currentUser ? 'أنت' : proposal.author,
+                  isMine ? 'أنت' : proposal.author,
                   style: const TextStyle(color: Colors.grey, fontSize: 12),
                 ),
               ],
             ),
             const SizedBox(height: 12),
-            Text(proposal.title,
-                style: const TextStyle(
-                    fontSize: 16, fontWeight: FontWeight.bold)),
+            Text(
+              proposal.title,
+              style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+            ),
             const SizedBox(height: 8),
             Row(
               children: [
-                const Icon(Icons.timer_outlined,
-                    size: 14, color: Colors.orange),
+                const Icon(
+                  Icons.timer_outlined,
+                  size: 14,
+                  color: Colors.orange,
+                ),
                 const SizedBox(width: 4),
                 Text(
                   _getRemainingTime(proposal.expiryDate),
@@ -201,15 +237,18 @@ class _CitizenProposalsPageState extends ConsumerState<CitizenProposalsPage> {
               children: [
                 Row(
                   children: [
-                    Icon(Icons.how_to_vote,
-                        size: 20,
-                        color: proposal.isVoted ? primaryColor : Colors.grey),
+                    Icon(
+                      Icons.how_to_vote,
+                      size: 20,
+                      color: proposal.isVoted ? primaryColor : Colors.grey,
+                    ),
                     const SizedBox(width: 8),
                     Text(
                       '${proposal.votes} أصوات',
                       style: TextStyle(
-                          fontWeight: FontWeight.bold,
-                          color: proposal.isVoted ? primaryColor : null),
+                        fontWeight: FontWeight.bold,
+                        color: proposal.isVoted ? primaryColor : null,
+                      ),
                     ),
                   ],
                 ),
@@ -217,9 +256,11 @@ class _CitizenProposalsPageState extends ConsumerState<CitizenProposalsPage> {
                   onPressed: proposal.isExpired
                       ? null
                       : () => ref
-                          .read(proposalsControllerProvider.notifier)
-                          .toggleVote(proposal.id,
-                              currentlyVoted: proposal.isVoted),
+                            .read(proposalsControllerProvider.notifier)
+                            .toggleVote(
+                              proposal.id,
+                              currentlyVoted: proposal.isVoted,
+                            ),
                   icon: Icon(
                     proposal.isVoted
                         ? Icons.thumb_up_alt
@@ -235,7 +276,8 @@ class _CitizenProposalsPageState extends ConsumerState<CitizenProposalsPage> {
                         ? primaryColor.withValues(alpha: 0.1)
                         : Colors.transparent,
                     shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(12)),
+                      borderRadius: BorderRadius.circular(12),
+                    ),
                   ),
                 ),
               ],
@@ -247,8 +289,7 @@ class _CitizenProposalsPageState extends ConsumerState<CitizenProposalsPage> {
                 onPressed: () => Navigator.push(
                   context,
                   MaterialPageRoute(
-                    builder: (_) =>
-                        ProposalDetailsPage(proposal: proposal),
+                    builder: (_) => ProposalDetailsPage(proposal: proposal),
                   ),
                 ),
                 child: const Text('عرض التفاصيل الكاملة'),
@@ -258,6 +299,20 @@ class _CitizenProposalsPageState extends ConsumerState<CitizenProposalsPage> {
         ),
       ),
     );
+  }
+
+  bool _isMine(
+    ProposalEntity proposal,
+    int? currentUserId,
+    String currentUserName,
+  ) {
+    if (currentUserId != null &&
+        proposal.authorId != null &&
+        proposal.authorId == currentUserId) {
+      return true;
+    }
+
+    return currentUserName.isNotEmpty && proposal.author == currentUserName;
   }
 
   String _getRemainingTime(DateTime expiryDate) {

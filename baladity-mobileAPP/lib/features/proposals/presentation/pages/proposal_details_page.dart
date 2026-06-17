@@ -1,26 +1,34 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../domain/entities/proposal_entity.dart';
+import '../../../profile/presentation/controllers/profile_controller.dart';
 import '../controllers/proposals_controller.dart';
 
 class ProposalDetailsPage extends ConsumerWidget {
   final ProposalEntity proposal;
   const ProposalDetailsPage({super.key, required this.proposal});
 
-  static const String _currentUser = 'أحمد';
-
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     const primaryGreen = Color(0xFF2E7D32);
     final isDark = Theme.of(context).brightness == Brightness.dark;
+    final currentUser = ref.watch(profileControllerProvider).user;
+    final currentUserId = currentUser?.id;
+    final currentUserName = currentUser?.name.trim() ?? '';
 
     // Always read the latest state for this proposal from the provider
     final latest = ref.watch(
       proposalsControllerProvider.select(
-        (s) => s.proposals.where((p) => p.id == proposal.id).firstOrNull ??
+        (s) =>
+            s.proposals.where((p) => p.id == proposal.id).firstOrNull ??
             proposal,
       ),
     );
+    final isMine =
+        (currentUserId != null &&
+            latest.authorId != null &&
+            latest.authorId == currentUserId) ||
+        (currentUserName.isNotEmpty && latest.author == currentUserName);
 
     return Scaffold(
       appBar: AppBar(title: const Text('تفاصيل المقترح'), centerTitle: true),
@@ -32,8 +40,10 @@ class ProposalDetailsPage extends ConsumerWidget {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Container(
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 12,
+                  vertical: 6,
+                ),
                 decoration: BoxDecoration(
                   color: primaryGreen.withValues(alpha: 0.1),
                   borderRadius: BorderRadius.circular(20),
@@ -41,25 +51,31 @@ class ProposalDetailsPage extends ConsumerWidget {
                 child: Text(
                   latest.category,
                   style: const TextStyle(
-                      color: primaryGreen,
-                      fontWeight: FontWeight.bold,
-                      fontSize: 12),
+                    color: primaryGreen,
+                    fontWeight: FontWeight.bold,
+                    fontSize: 12,
+                  ),
                 ),
               ),
               const SizedBox(height: 20),
               Text(
                 latest.title,
                 style: const TextStyle(
-                    fontSize: 22, fontWeight: FontWeight.bold),
+                  fontSize: 22,
+                  fontWeight: FontWeight.bold,
+                ),
               ),
               const SizedBox(height: 12),
               Row(
                 children: [
-                  const Icon(Icons.person_pin_circle_outlined,
-                      size: 18, color: Colors.grey),
+                  const Icon(
+                    Icons.person_pin_circle_outlined,
+                    size: 18,
+                    color: Colors.grey,
+                  ),
                   const SizedBox(width: 8),
                   Text(
-                    'صاحب المقترح: ${latest.author == _currentUser ? 'أنت' : latest.author}',
+                    'صاحب المقترح: ${isMine ? 'أنت' : latest.author}',
                     style: const TextStyle(color: Colors.grey),
                   ),
                 ],
@@ -73,7 +89,10 @@ class ProposalDetailsPage extends ConsumerWidget {
               Text(
                 latest.description,
                 style: const TextStyle(
-                    fontSize: 16, height: 1.8, color: Colors.black87),
+                  fontSize: 16,
+                  height: 1.8,
+                  color: Colors.black87,
+                ),
               ),
               const SizedBox(height: 40),
               Container(
@@ -89,8 +108,11 @@ class ProposalDetailsPage extends ConsumerWidget {
                   child: Row(
                     mainAxisAlignment: MainAxisAlignment.spaceAround,
                     children: [
-                      _buildStatItem('عدد الأصوات', '${latest.votes}',
-                          primaryGreen),
+                      _buildStatItem(
+                        'عدد الأصوات',
+                        '${latest.votes}',
+                        primaryGreen,
+                      ),
                       const VerticalDivider(),
                       _buildStatItem(
                         'حالة التصويت',
@@ -108,13 +130,15 @@ class ProposalDetailsPage extends ConsumerWidget {
                   child: ElevatedButton.icon(
                     onPressed: () => ref
                         .read(proposalsControllerProvider.notifier)
-                        .toggleVote(latest.id,
-                            currentlyVoted: latest.isVoted),
-                    icon: Icon(latest.isVoted
-                        ? Icons.thumb_up_alt
-                        : Icons.thumb_up_off_alt),
+                        .toggleVote(latest.id, currentlyVoted: latest.isVoted),
+                    icon: Icon(
+                      latest.isVoted
+                          ? Icons.thumb_up_alt
+                          : Icons.thumb_up_off_alt,
+                    ),
                     label: Text(
-                        latest.isVoted ? 'إلغاء التصويت' : 'تصويت لهذا المقترح'),
+                      latest.isVoted ? 'إلغاء التصويت' : 'تصويت لهذا المقترح',
+                    ),
                     style: ElevatedButton.styleFrom(
                       backgroundColor: latest.isVoted
                           ? Colors.grey[300]
@@ -124,7 +148,8 @@ class ProposalDetailsPage extends ConsumerWidget {
                           : Colors.white,
                       padding: const EdgeInsets.symmetric(vertical: 14),
                       shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(12)),
+                        borderRadius: BorderRadius.circular(12),
+                      ),
                     ),
                   ),
                 ),
@@ -138,13 +163,15 @@ class ProposalDetailsPage extends ConsumerWidget {
   Widget _buildStatItem(String label, String value, Color color) {
     return Column(
       children: [
-        Text(label,
-            style: const TextStyle(color: Colors.grey, fontSize: 12)),
+        Text(label, style: const TextStyle(color: Colors.grey, fontSize: 12)),
         const SizedBox(height: 8),
         Text(
           value,
           style: TextStyle(
-              fontSize: 20, fontWeight: FontWeight.bold, color: color),
+            fontSize: 20,
+            fontWeight: FontWeight.bold,
+            color: color,
+          ),
         ),
       ],
     );

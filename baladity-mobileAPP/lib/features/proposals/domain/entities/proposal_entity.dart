@@ -1,5 +1,6 @@
 class ProposalEntity {
   final String id;
+  final int? authorId;
   final String title;
   final String category;
   final String author;
@@ -10,6 +11,7 @@ class ProposalEntity {
 
   const ProposalEntity({
     required this.id,
+    this.authorId,
     required this.title,
     required this.category,
     required this.author,
@@ -24,6 +26,7 @@ class ProposalEntity {
   ProposalEntity copyWith({int? votes, bool? isVoted}) {
     return ProposalEntity(
       id: id,
+      authorId: authorId,
       title: title,
       category: category,
       author: author,

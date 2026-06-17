@@ -3,6 +3,7 @@ import '../../domain/entities/proposal_entity.dart';
 class ProposalModel extends ProposalEntity {
   const ProposalModel({
     required super.id,
+    super.authorId,
     required super.title,
     required super.category,
     required super.author,
@@ -19,6 +20,9 @@ class ProposalModel extends ProposalEntity {
 
     return ProposalModel(
       id: json['id'].toString(),
+      authorId: citizen is Map
+          ? (citizen['id'] as num?)?.toInt()
+          : (json['citizen_id'] as num?)?.toInt(),
       title: json['title']?.toString() ?? '',
       category: json['category']?.toString() ?? '',
       author: citizen is Map
@@ -38,6 +42,7 @@ class ProposalModel extends ProposalEntity {
 
   Map<String, dynamic> toJson() => {
     'id': id,
+    if (authorId != null) 'citizen_id': authorId,
     'title': title,
     'category': category,
     'author': author,

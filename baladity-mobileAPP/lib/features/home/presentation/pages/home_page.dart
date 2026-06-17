@@ -1,8 +1,12 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import '../../../../core/router/app_routes.dart';
 import '../../../../theme_manager.dart';
 import '../../../emergency/presentation/pages/emergency_numbers_page.dart';
+import '../../../profile/presentation/controllers/profile_controller.dart';
+import '../../../reports/domain/entities/report_entity.dart';
+import '../../../reports/presentation/controllers/reports_controller.dart';
 import '../../../reports/presentation/pages/add_report_page.dart';
 import '../../../reports/presentation/pages/reports_page.dart';
 import '../../../proposals/presentation/pages/suggest_service_page.dart';
@@ -10,14 +14,33 @@ import '../../../proposals/presentation/pages/citizen_proposals_page.dart';
 import '../../../facilities/presentation/pages/public_facilities_page.dart';
 import '../../../projects/presentation/pages/municipal_projects_page.dart';
 
-class HomePage extends StatelessWidget {
+class HomePage extends ConsumerStatefulWidget {
   const HomePage({super.key});
+
+  @override
+  ConsumerState<HomePage> createState() => _HomePageState();
+}
+
+class _HomePageState extends ConsumerState<HomePage> {
+  @override
+  void initState() {
+    super.initState();
+    Future.microtask(() {
+      ref.read(profileControllerProvider.notifier).fetchProfile();
+      ref.read(reportsControllerProvider.notifier).fetchReports(refresh: true);
+    });
+  }
 
   @override
   Widget build(BuildContext context) {
     final colorScheme = Theme.of(context).colorScheme;
     final isDark = Theme.of(context).brightness == Brightness.dark;
     const primaryGreen = Color(0xFF2E7D32);
+    final user = ref.watch(profileControllerProvider).user;
+    final reports = ref.watch(reportsControllerProvider).reports;
+    final displayName = user?.name.trim().isNotEmpty == true
+        ? user!.name.trim()
+        : 'مستخدم';
 
     return DefaultTabController(
       length: 5,
@@ -63,8 +86,9 @@ class HomePage extends StatelessWidget {
               isScrollable: true,
               indicatorColor: primaryGreen,
               labelColor: primaryGreen,
-              unselectedLabelColor:
-                  colorScheme.onSurface.withValues(alpha: 0.6),
+              unselectedLabelColor: colorScheme.onSurface.withValues(
+                alpha: 0.6,
+              ),
               tabs: const [
                 Tab(text: 'الرئيسية'),
                 Tab(text: 'مرافق البلدية'),
@@ -76,7 +100,11 @@ class HomePage extends StatelessWidget {
           ),
           body: TabBarView(
             children: [
-              _HomeTabContent(primaryGreen: primaryGreen),
+              _HomeTabContent(
+                primaryGreen: primaryGreen,
+                displayName: displayName,
+                reports: reports,
+              ),
               const PublicFacilitiesPage(),
               const MunicipalProjectsPage(),
               const CitizenProposalsPage(),
@@ -91,7 +119,14 @@ class HomePage extends StatelessWidget {
 
 class _HomeTabContent extends StatelessWidget {
   final Color primaryGreen;
-  const _HomeTabContent({required this.primaryGreen});
+  final String displayName;
+  final List<ReportEntity> reports;
+
+  const _HomeTabContent({
+    required this.primaryGreen,
+    required this.displayName,
+    required this.reports,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -100,25 +135,26 @@ class _HomeTabContent extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Text(
-            'أهلاً بك، أحمد',
-            style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold),
+          Text(
+            'أهلاً بك، $displayName',
+            style: const TextStyle(fontSize: 22, fontWeight: FontWeight.bold),
           ),
           const Text(
             'كيف يمكننا مساعدتك في مدينتك اليوم؟',
             style: TextStyle(fontSize: 14, color: Colors.black54),
           ),
           const SizedBox(height: 16),
-          const _NotificationPreview(),
-          const SizedBox(height: 24),
-          _StatisticsSection(primaryColor: primaryGreen),
+          if (reports.isNotEmpty) ...[
+            _NotificationPreview(report: reports.first),
+            const SizedBox(height: 24),
+          ],
+          _StatisticsSection(primaryColor: primaryGreen, reports: reports),
           const SizedBox(height: 24),
           Text(
             'إجراءات سريعة',
-            style: Theme.of(context)
-                .textTheme
-                .titleLarge
-                ?.copyWith(fontWeight: FontWeight.bold),
+            style: Theme.of(
+              context,
+            ).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.bold),
           ),
           const SizedBox(height: 12),
           _ActionGrid(primaryColor: primaryGreen),
@@ -128,10 +164,9 @@ class _HomeTabContent extends StatelessWidget {
             children: [
               Text(
                 'آخر البلاغات',
-                style: Theme.of(context)
-                    .textTheme
-                    .titleLarge
-                    ?.copyWith(fontWeight: FontWeight.bold),
+                style: Theme.of(
+                  context,
+                ).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.bold),
               ),
               TextButton(
                 onPressed: () => Navigator.push(
@@ -142,35 +177,58 @@ class _HomeTabContent extends StatelessWidget {
               ),
             ],
           ),
-          const _ReportsFeed(reports: []),
+          _ReportsFeed(reports: reports.take(3).toList()),
         ],
       ),
     );
   }
 }
 
-
 class _StatisticsSection extends StatelessWidget {
   final Color primaryColor;
+  final List<ReportEntity> reports;
 
-  const _StatisticsSection({required this.primaryColor});
+  const _StatisticsSection({required this.primaryColor, required this.reports});
 
   @override
   Widget build(BuildContext context) {
     final cardColor = Theme.of(context).cardColor;
     return Row(
       children: [
-        _statCard(context, 'إجمالي البلاغات', '0', primaryColor, cardColor),
+        _statCard(
+          context,
+          'إجمالي البلاغات',
+          '${reports.length}',
+          primaryColor,
+          cardColor,
+        ),
         const SizedBox(width: 12),
-        _statCard(context, 'قيد الانتظار', '0', Colors.orange, cardColor),
+        _statCard(
+          context,
+          'قيد الانتظار',
+          '${reports.where((r) => !_isClosed(r.status)).length}',
+          Colors.orange,
+          cardColor,
+        ),
         const SizedBox(width: 12),
-        _statCard(context, 'تم الحل', '0', Colors.blue, cardColor),
+        _statCard(
+          context,
+          'تم الحل',
+          '${reports.where((r) => _isClosed(r.status)).length}',
+          Colors.blue,
+          cardColor,
+        ),
       ],
     );
   }
 
-  Widget _statCard(BuildContext context, String label, String value,
-      Color color, Color cardBg) {
+  Widget _statCard(
+    BuildContext context,
+    String label,
+    String value,
+    Color color,
+    Color cardBg,
+  ) {
     return Expanded(
       child: Container(
         padding: const EdgeInsets.symmetric(vertical: 16),
@@ -185,20 +243,32 @@ class _StatisticsSection extends StatelessWidget {
             Text(
               value,
               style: TextStyle(
-                  fontSize: 20, fontWeight: FontWeight.bold, color: color),
+                fontSize: 20,
+                fontWeight: FontWeight.bold,
+                color: color,
+              ),
             ),
             const SizedBox(height: 4),
             Text(
               label,
               style: TextStyle(
-                  fontSize: 12,
-                  color: Theme.of(context).textTheme.bodySmall?.color),
+                fontSize: 12,
+                color: Theme.of(context).textTheme.bodySmall?.color,
+              ),
               textAlign: TextAlign.center,
             ),
           ],
         ),
       ),
     );
+  }
+
+  bool _isClosed(String status) {
+    final normalized = status.toLowerCase();
+    return normalized == 'closed' ||
+        normalized == 'resolved' ||
+        normalized.contains('مغلق') ||
+        normalized.contains('تم الحل');
   }
 }
 
@@ -249,7 +319,8 @@ class _ActionGrid extends StatelessWidget {
           onTap: () => Navigator.push(
             context,
             MaterialPageRoute(
-                builder: (context) => const EmergencyNumbersPage()),
+              builder: (context) => const EmergencyNumbersPage(),
+            ),
           ),
         ),
       ],
@@ -276,9 +347,13 @@ class _ActionGrid extends StatelessWidget {
             children: [
               Icon(icon, color: primaryColor, size: 32),
               const SizedBox(height: 8),
-              Text(label,
-                  style: const TextStyle(
-                      fontSize: 12, fontWeight: FontWeight.w600)),
+              Text(
+                label,
+                style: const TextStyle(
+                  fontSize: 12,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
             ],
           ),
         ),
@@ -288,7 +363,7 @@ class _ActionGrid extends StatelessWidget {
 }
 
 class _ReportsFeed extends StatelessWidget {
-  final List<dynamic> reports;
+  final List<ReportEntity> reports;
   const _ReportsFeed({required this.reports});
 
   @override
@@ -303,6 +378,7 @@ class _ReportsFeed extends StatelessWidget {
       separatorBuilder: (_, _) => const SizedBox(height: 12),
       itemBuilder: (context, index) {
         final report = reports[index];
+        final statusColor = _statusColor(report.status);
         return Container(
           padding: const EdgeInsets.all(16),
           decoration: BoxDecoration(
@@ -314,13 +390,10 @@ class _ReportsFeed extends StatelessWidget {
               Container(
                 padding: const EdgeInsets.all(10),
                 decoration: BoxDecoration(
-                  color: (report['color'] as Color).withValues(alpha: 0.1),
+                  color: statusColor.withValues(alpha: 0.1),
                   shape: BoxShape.circle,
                 ),
-                child: Icon(
-                  Icons.description_outlined,
-                  color: report['color'] as Color,
-                ),
+                child: Icon(Icons.description_outlined, color: statusColor),
               ),
               const SizedBox(width: 16),
               Expanded(
@@ -328,23 +401,82 @@ class _ReportsFeed extends StatelessWidget {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      report['title'] as String,
+                      report.category.isNotEmpty
+                          ? report.category
+                          : 'بلاغ #${report.id ?? ''}',
                       style: const TextStyle(fontWeight: FontWeight.bold),
                     ),
-                    const Text(
-                      'منذ ساعتين • طرابلس، ليبيا',
-                      style: TextStyle(fontSize: 12, color: Colors.grey),
+                    Text(
+                      _reportSubtitle(report),
+                      style: const TextStyle(fontSize: 12, color: Colors.grey),
                     ),
                   ],
                 ),
               ),
-              _statusBadge(
-                  report['label'] as String, report['color'] as Color),
+              _statusBadge(_statusLabel(report.status), statusColor),
             ],
           ),
         );
       },
     );
+  }
+
+  String _reportSubtitle(ReportEntity report) {
+    final parts = <String>[];
+    if (report.createdAt != null) {
+      parts.add(_relativeTime(report.createdAt!));
+    }
+    if (report.locationAddress?.trim().isNotEmpty == true) {
+      parts.add(report.locationAddress!.trim());
+    }
+    if (parts.isEmpty && report.description.trim().isNotEmpty) {
+      parts.add(report.description.trim());
+    }
+    return parts.isEmpty ? 'لا توجد تفاصيل إضافية' : parts.join(' • ');
+  }
+
+  String _relativeTime(DateTime createdAt) {
+    final diff = DateTime.now().difference(createdAt);
+    if (diff.inMinutes < 1) return 'الآن';
+    if (diff.inHours < 1) return 'منذ ${diff.inMinutes} دقيقة';
+    if (diff.inDays < 1) return 'منذ ${diff.inHours} ساعة';
+    return 'منذ ${diff.inDays} يوم';
+  }
+
+  String _statusLabel(String status) {
+    switch (status.toLowerCase()) {
+      case 'new':
+        return 'جديد';
+      case 'under_review':
+        return 'قيد المراجعة';
+      case 'transferred':
+        return 'محال للقسم';
+      case 'in_progress':
+        return 'قيد التنفيذ';
+      case 'pending':
+        return 'معلّق';
+      case 'closed':
+        return 'مغلق';
+      default:
+        return status;
+    }
+  }
+
+  Color _statusColor(String status) {
+    switch (status.toLowerCase()) {
+      case 'closed':
+        return Colors.blue;
+      case 'in_progress':
+      case 'transferred':
+        return Colors.green;
+      case 'pending':
+      case 'under_review':
+        return Colors.orange;
+      case 'rejected':
+        return Colors.red;
+      default:
+        return Colors.grey;
+    }
   }
 
   Widget _statusBadge(String label, Color color) {
@@ -358,15 +490,18 @@ class _ReportsFeed extends StatelessWidget {
       child: Text(
         label,
         style: TextStyle(
-            color: color, fontSize: 10, fontWeight: FontWeight.bold),
+          color: color,
+          fontSize: 10,
+          fontWeight: FontWeight.bold,
+        ),
       ),
     );
   }
 }
 
-
 class _NotificationPreview extends StatelessWidget {
-  const _NotificationPreview();
+  final ReportEntity report;
+  const _NotificationPreview({required this.report});
 
   @override
   Widget build(BuildContext context) {
@@ -384,13 +519,15 @@ class _NotificationPreview extends StatelessWidget {
               : Colors.amber.shade200,
         ),
       ),
-      child: const Row(
+      child: Row(
         children: [
-          Icon(Icons.info_outline, color: Colors.amber, size: 20),
-          SizedBox(width: 8),
-          Text(
-            'تم تحديث حالة بلاغك #1204 إلى "تم الحل"',
-            style: TextStyle(fontSize: 12),
+          const Icon(Icons.info_outline, color: Colors.amber, size: 20),
+          const SizedBox(width: 8),
+          Expanded(
+            child: Text(
+              'آخر تحديث لبلاغك #${report.id ?? '-'}: ${report.status}',
+              style: const TextStyle(fontSize: 12),
+            ),
           ),
         ],
       ),
