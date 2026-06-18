@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:image_picker/image_picker.dart';
+import 'dart:async';
 import 'dart:io';
 import 'package:geolocator/geolocator.dart';
 import 'package:geocoding/geocoding.dart';
@@ -164,16 +165,40 @@ class _AddReportPageState extends ConsumerState<AddReportPage> {
     }
 
     try {
-      final position = await Geolocator.getCurrentPosition(
+      var position = await Geolocator.getCurrentPosition(
         locationSettings: const LocationSettings(
-          accuracy: LocationAccuracy.high,
+          accuracy: LocationAccuracy.bestForNavigation,
           timeLimit: Duration(seconds: 10),
         ),
       );
+
+      if (position.accuracy > 100) {
+        final streamPosition = await Geolocator.getPositionStream(
+          locationSettings: const LocationSettings(
+            accuracy: LocationAccuracy.bestForNavigation,
+            distanceFilter: 0,
+          ),
+        ).first.timeout(const Duration(seconds: 12));
+
+        if (streamPosition.accuracy <= position.accuracy) {
+          position = streamPosition;
+        }
+      }
+
       if (!mounted) return;
       final location = LatLng(position.latitude, position.longitude);
       setState(() => _pickedLocation = location);
       _getAddressFromLatLng(location);
+
+      if (position.isMocked && mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text(
+              'تنبيه: الجهاز يستخدم موقعاً تجريبياً/Mock، لذلك قد لا يكون موقعك الحقيقي.',
+            ),
+          ),
+        );
+      }
     } catch (e) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(

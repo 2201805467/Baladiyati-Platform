@@ -31,6 +31,14 @@ abstract class AuthRemoteDataSource {
     required String identifier,
     String purpose = 'registration',
   });
+
+  Future<void> forgotPassword({required String email});
+
+  Future<void> resetPassword({
+    required String email,
+    required String otpCode,
+    required String password,
+  });
 }
 
 class AuthRemoteDataSourceImpl implements AuthRemoteDataSource {
@@ -86,6 +94,36 @@ class AuthRemoteDataSourceImpl implements AuthRemoteDataSource {
   }
 
   @override
+  Future<void> forgotPassword({required String email}) async {
+    try {
+      await _dio.post(ApiConstants.forgotPassword, data: {'email': email});
+    } on DioException catch (e) {
+      throw _extractException(e);
+    }
+  }
+
+  @override
+  Future<void> resetPassword({
+    required String email,
+    required String otpCode,
+    required String password,
+  }) async {
+    try {
+      await _dio.post(
+        ApiConstants.resetPassword,
+        data: {
+          'email': email,
+          'otp_code': otpCode,
+          'password': password,
+          'password_confirmation': password,
+        },
+      );
+    } on DioException catch (e) {
+      throw _extractException(e);
+    }
+  }
+
+  @override
   Future<AuthResponseModel> register({
     required String name,
     required String email,
@@ -100,7 +138,7 @@ class AuthRemoteDataSourceImpl implements AuthRemoteDataSource {
           'email': email,
           'password': password,
           'password_confirmation': password,
-          if (phone != null) 'phone': phone,
+          'phone': ?phone,
         },
       );
       final data = res.data['data'] ?? res.data;

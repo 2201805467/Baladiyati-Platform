@@ -113,19 +113,27 @@ class AuthController extends Notifier<AuthState> {
   Future<void> verifyOtp({
     required String identifier,
     required String otpCode,
+    String purpose = 'registration',
   }) async {
     state = AuthState.loading();
     try {
-      await refVerifyOtp(identifier: identifier, otpCode: otpCode);
+      await refVerifyOtp(
+        identifier: identifier,
+        otpCode: otpCode,
+        purpose: purpose,
+      );
       state = AuthState.otpVerified();
     } catch (e) {
       state = AuthState.withError(e.toString());
     }
   }
 
-  Future<void> resendOtp({required String identifier}) async {
+  Future<void> resendOtp({
+    required String identifier,
+    String purpose = 'registration',
+  }) async {
     try {
-      await refResendOtp(identifier: identifier);
+      await refResendOtp(identifier: identifier, purpose: purpose);
     } catch (e) {
       state = AuthState.withError(e.toString());
     }
@@ -134,14 +142,49 @@ class AuthController extends Notifier<AuthState> {
   Future<void> refVerifyOtp({
     required String identifier,
     required String otpCode,
+    String purpose = 'registration',
   }) => _repository.verifyOtp(
     identifier: identifier,
     otpCode: otpCode,
-    purpose: 'registration',
+    purpose: purpose,
   );
 
-  Future<void> refResendOtp({required String identifier}) =>
-      _repository.resendOtp(identifier: identifier, purpose: 'registration');
+  Future<void> refResendOtp({
+    required String identifier,
+    String purpose = 'registration',
+  }) => _repository.resendOtp(identifier: identifier, purpose: purpose);
+
+  Future<bool> forgotPassword({required String email}) async {
+    state = AuthState.loading();
+    try {
+      await _repository.forgotPassword(email: email);
+      state = AuthState.unauthenticated();
+      return true;
+    } catch (e) {
+      state = AuthState.withError(e.toString());
+      return false;
+    }
+  }
+
+  Future<bool> resetPassword({
+    required String email,
+    required String otpCode,
+    required String password,
+  }) async {
+    state = AuthState.loading();
+    try {
+      await _repository.resetPassword(
+        email: email,
+        otpCode: otpCode,
+        password: password,
+      );
+      state = AuthState.unauthenticated();
+      return true;
+    } catch (e) {
+      state = AuthState.withError(e.toString());
+      return false;
+    }
+  }
 
   Future<void> bypassLogin() async {
     await _tokenStorage.saveToken('bypass-test-token');

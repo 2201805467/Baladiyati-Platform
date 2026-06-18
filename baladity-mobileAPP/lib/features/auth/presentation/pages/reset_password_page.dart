@@ -1,14 +1,25 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
+import '../../../../core/router/app_routes.dart';
+import '../controllers/auth_controller.dart';
+import '../controllers/auth_state.dart';
 
-class ResetPasswordPage extends StatefulWidget {
-  final String phoneNumber;
-  const ResetPasswordPage({super.key, required this.phoneNumber});
+class ResetPasswordPage extends ConsumerStatefulWidget {
+  final String email;
+  final String otpCode;
+
+  const ResetPasswordPage({
+    super.key,
+    required this.email,
+    required this.otpCode,
+  });
 
   @override
-  State<ResetPasswordPage> createState() => _ResetPasswordPageState();
+  ConsumerState<ResetPasswordPage> createState() => _ResetPasswordPageState();
 }
 
-class _ResetPasswordPageState extends State<ResetPasswordPage> {
+class _ResetPasswordPageState extends ConsumerState<ResetPasswordPage> {
   final _formKey = GlobalKey<FormState>();
   final _newPasswordController = TextEditingController();
   final _confirmNewPasswordController = TextEditingController();
@@ -22,10 +33,43 @@ class _ResetPasswordPageState extends State<ResetPasswordPage> {
     super.dispose();
   }
 
+  Future<void> _resetPassword() async {
+    if (!_formKey.currentState!.validate()) return;
+
+    final success = await ref
+        .read(authControllerProvider.notifier)
+        .resetPassword(
+          email: widget.email,
+          otpCode: widget.otpCode,
+          password: _newPasswordController.text,
+        );
+    if (!mounted || !success) return;
+
+    ScaffoldMessenger.of(
+      context,
+    ).showSnackBar(const SnackBar(content: Text('تم تغيير كلمة المرور بنجاح')));
+    context.go(AppRoutes.login);
+  }
+
   @override
   Widget build(BuildContext context) {
     const primaryGreen = Color(0xFF2E7D32);
     const backgroundColor = Color(0xFFF8F9FA);
+
+    ref.listen<AuthState>(authControllerProvider, (previous, next) {
+      if (next.status == AuthStatus.error && next.errorMessage != null) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(next.errorMessage!),
+            backgroundColor: Colors.red[700],
+          ),
+        );
+      }
+    });
+
+    final isLoading = ref.watch(
+      authControllerProvider.select((state) => state.isLoading),
+    );
 
     return Scaffold(
       backgroundColor: backgroundColor,
@@ -46,7 +90,11 @@ class _ResetPasswordPageState extends State<ResetPasswordPage> {
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
                 const SizedBox(height: 20),
-                const Icon(Icons.vpn_key_rounded, size: 80, color: primaryGreen),
+                const Icon(
+                  Icons.vpn_key_rounded,
+                  size: 80,
+                  color: primaryGreen,
+                ),
                 const SizedBox(height: 32),
                 const Text(
                   'تعيين كلمة مرور جديدة',
@@ -65,6 +113,7 @@ class _ResetPasswordPageState extends State<ResetPasswordPage> {
                       TextFormField(
                         controller: _newPasswordController,
                         obscureText: !_isNewPasswordVisible,
+                        enabled: !isLoading,
                         decoration: _inputDecoration(
                           labelText: 'كلمة المرور الجديدة',
                           prefixIcon: Icons.lock_outline,
@@ -75,19 +124,21 @@ class _ResetPasswordPageState extends State<ResetPasswordPage> {
                                   : Icons.visibility_off,
                             ),
                             onPressed: () => setState(
-                              () => _isNewPasswordVisible = !_isNewPasswordVisible,
+                              () => _isNewPasswordVisible =
+                                  !_isNewPasswordVisible,
                             ),
                           ),
                         ),
                         validator: (value) =>
                             (value == null || value.length < 6)
-                                ? '6 أحرف على الأقل'
-                                : null,
+                            ? '6 أحرف على الأقل'
+                            : null,
                       ),
                       const SizedBox(height: 16),
                       TextFormField(
                         controller: _confirmNewPasswordController,
                         obscureText: !_isConfirmNewPasswordVisible,
+                        enabled: !isLoading,
                         decoration: _inputDecoration(
                           labelText: 'تأكيد كلمة المرور',
                           prefixIcon: Icons.lock_outline,
@@ -105,22 +156,15 @@ class _ResetPasswordPageState extends State<ResetPasswordPage> {
                         ),
                         validator: (value) =>
                             (value != _newPasswordController.text)
-                                ? 'كلمة المرور غير متطابقة'
-                                : null,
+                            ? 'كلمة المرور غير متطابقة'
+                            : null,
                       ),
                     ],
                   ),
                 ),
                 const SizedBox(height: 32),
                 ElevatedButton(
-                  onPressed: () {
-                    if (_formKey.currentState!.validate()) {
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(content: Text('تم التغيير بنجاح')),
-                      );
-                      Navigator.popUntil(context, (route) => route.isFirst);
-                    }
-                  },
+                  onPressed: isLoading ? null : _resetPassword,
                   style: ElevatedButton.styleFrom(
                     backgroundColor: primaryGreen,
                     padding: const EdgeInsets.symmetric(vertical: 18),
@@ -128,10 +172,22 @@ class _ResetPasswordPageState extends State<ResetPasswordPage> {
                       borderRadius: BorderRadius.circular(8),
                     ),
                   ),
-                  child: const Text(
-                    'تغيير كلمة المرور',
-                    style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
-                  ),
+                  child: isLoading
+                      ? const SizedBox(
+                          height: 20,
+                          width: 20,
+                          child: CircularProgressIndicator(
+                            color: Colors.white,
+                            strokeWidth: 2,
+                          ),
+                        )
+                      : const Text(
+                          'تغيير كلمة المرور',
+                          style: TextStyle(
+                            color: Colors.white,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
                 ),
               ],
             ),

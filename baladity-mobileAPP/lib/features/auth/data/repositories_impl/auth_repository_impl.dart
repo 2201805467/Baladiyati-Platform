@@ -68,4 +68,19 @@ class AuthRepositoryImpl implements AuthRepository {
     required String identifier,
     String purpose = 'registration',
   }) => _dataSource.resendOtp(identifier: identifier, purpose: purpose);
+
+  @override
+  Future<void> forgotPassword({required String email}) =>
+      _dataSource.forgotPassword(email: email);
+
+  @override
+  Future<void> resetPassword({
+    required String email,
+    required String otpCode,
+    required String password,
+  }) => _dataSource.resetPassword(
+    email: email,
+    otpCode: otpCode,
+    password: password,
+  );
 }

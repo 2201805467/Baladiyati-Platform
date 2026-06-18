@@ -39,13 +39,29 @@ final goRouterProvider = Provider<GoRouter>((ref) {
       ),
       GoRoute(
         path: AppRoutes.otpVerification,
-        builder: (context, state) =>
-            OtpVerificationPage(email: state.extra as String? ?? ''),
+        builder: (context, state) {
+          final extra = state.extra;
+          if (extra is Map) {
+            return OtpVerificationPage(
+              email: extra['email']?.toString() ?? '',
+              purpose: extra['purpose']?.toString() ?? 'registration',
+            );
+          }
+          return OtpVerificationPage(email: extra as String? ?? '');
+        },
       ),
       GoRoute(
         path: AppRoutes.resetPassword,
-        builder: (context, state) =>
-            ResetPasswordPage(phoneNumber: state.extra as String? ?? ''),
+        builder: (context, state) {
+          final extra = state.extra;
+          if (extra is Map) {
+            return ResetPasswordPage(
+              email: extra['email']?.toString() ?? '',
+              otpCode: extra['otpCode']?.toString() ?? '',
+            );
+          }
+          return const ResetPasswordPage(email: '', otpCode: '');
+        },
       ),
       GoRoute(
         path: AppRoutes.home,

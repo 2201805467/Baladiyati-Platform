@@ -4,10 +4,17 @@ import 'package:go_router/go_router.dart';
 import '../../../../core/router/app_routes.dart';
 import '../controllers/auth_controller.dart';
 import '../controllers/auth_state.dart';
+import 'reset_password_page.dart';
 
 class OtpVerificationPage extends ConsumerStatefulWidget {
   final String email;
-  const OtpVerificationPage({super.key, required this.email});
+  final String purpose;
+
+  const OtpVerificationPage({
+    super.key,
+    required this.email,
+    this.purpose = 'registration',
+  });
 
   @override
   ConsumerState<OtpVerificationPage> createState() =>
@@ -38,13 +45,17 @@ class _OtpVerificationPageState extends ConsumerState<OtpVerificationPage> {
 
     await ref
         .read(authControllerProvider.notifier)
-        .verifyOtp(identifier: widget.email, otpCode: otp);
+        .verifyOtp(
+          identifier: widget.email,
+          otpCode: otp,
+          purpose: widget.purpose,
+        );
   }
 
   Future<void> _resend() async {
     await ref
         .read(authControllerProvider.notifier)
-        .resendOtp(identifier: widget.email);
+        .resendOtp(identifier: widget.email, purpose: widget.purpose);
     if (!mounted) return;
     ScaffoldMessenger.of(
       context,
@@ -67,6 +78,18 @@ class _OtpVerificationPageState extends ConsumerState<OtpVerificationPage> {
       }
 
       if (next.status == AuthStatus.otpVerified) {
+        if (widget.purpose == 'password_reset') {
+          final otp = _controllers.map((e) => e.text).join();
+          Navigator.pushReplacement(
+            context,
+            MaterialPageRoute(
+              builder: (context) =>
+                  ResetPasswordPage(email: widget.email, otpCode: otp),
+            ),
+          );
+          return;
+        }
+
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text('تم تفعيل الحساب، يمكنك تسجيل الدخول')),
         );

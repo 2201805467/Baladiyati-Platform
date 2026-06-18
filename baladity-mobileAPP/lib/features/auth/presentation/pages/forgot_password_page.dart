@@ -1,14 +1,17 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import '../controllers/auth_controller.dart';
+import '../controllers/auth_state.dart';
 import 'otp_verification_page.dart';
 
-class ForgotPasswordPage extends StatefulWidget {
+class ForgotPasswordPage extends ConsumerStatefulWidget {
   const ForgotPasswordPage({super.key});
 
   @override
-  State<ForgotPasswordPage> createState() => _ForgotPasswordPageState();
+  ConsumerState<ForgotPasswordPage> createState() => _ForgotPasswordPageState();
 }
 
-class _ForgotPasswordPageState extends State<ForgotPasswordPage> {
+class _ForgotPasswordPageState extends ConsumerState<ForgotPasswordPage> {
   final _formKey = GlobalKey<FormState>();
   final _emailController = TextEditingController();
 
@@ -18,10 +21,46 @@ class _ForgotPasswordPageState extends State<ForgotPasswordPage> {
     super.dispose();
   }
 
+  Future<void> _sendResetOtp() async {
+    if (!_formKey.currentState!.validate()) return;
+
+    final email = _emailController.text.trim();
+    final sent = await ref
+        .read(authControllerProvider.notifier)
+        .forgotPassword(email: email);
+    if (!mounted || !sent) return;
+
+    ScaffoldMessenger.of(
+      context,
+    ).showSnackBar(const SnackBar(content: Text('تم إرسال رمز التحقق للبريد')));
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) =>
+            OtpVerificationPage(email: email, purpose: 'password_reset'),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     const primaryGreen = Color(0xFF2E7D32);
     const backgroundColor = Color(0xFFF8F9FA);
+
+    ref.listen<AuthState>(authControllerProvider, (previous, next) {
+      if (next.status == AuthStatus.error && next.errorMessage != null) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(next.errorMessage!),
+            backgroundColor: Colors.red[700],
+          ),
+        );
+      }
+    });
+
+    final isLoading = ref.watch(
+      authControllerProvider.select((state) => state.isLoading),
+    );
 
     return Scaffold(
       backgroundColor: backgroundColor,
@@ -59,7 +98,7 @@ class _ForgotPasswordPageState extends State<ForgotPasswordPage> {
                 ),
                 const SizedBox(height: 12),
                 const Text(
-                  'أدخل رقم هاتفك المسجل وسنقوم بإرسال رمز التحقق (OTP) لإعادة تعيين كلمة المرور الخاصة بك.',
+                  'أدخل بريدك الإلكتروني وسنقوم بإرسال رمز التحقق لإعادة تعيين كلمة المرور الخاصة بك.',
                   textAlign: TextAlign.center,
                   style: TextStyle(fontSize: 16, color: Colors.black54),
                 ),
@@ -104,18 +143,7 @@ class _ForgotPasswordPageState extends State<ForgotPasswordPage> {
                     ],
                   ),
                   child: ElevatedButton(
-                    onPressed: () {
-                      if (_formKey.currentState!.validate()) {
-                        Navigator.push(
-                          context,
-                          MaterialPageRoute(
-                            builder: (context) => OtpVerificationPage(
-                              email: _emailController.text.trim(),
-                            ),
-                          ),
-                        );
-                      }
-                    },
+                    onPressed: isLoading ? null : _sendResetOtp,
                     style: ElevatedButton.styleFrom(
                       backgroundColor: primaryGreen,
                       foregroundColor: Colors.white,
@@ -124,13 +152,22 @@ class _ForgotPasswordPageState extends State<ForgotPasswordPage> {
                         borderRadius: BorderRadius.circular(8),
                       ),
                     ),
-                    child: const Text(
-                      'إرسال الرمز',
-                      style: TextStyle(
-                        fontSize: 16,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
+                    child: isLoading
+                        ? const SizedBox(
+                            height: 20,
+                            width: 20,
+                            child: CircularProgressIndicator(
+                              color: Colors.white,
+                              strokeWidth: 2,
+                            ),
+                          )
+                        : const Text(
+                            'إرسال الرمز',
+                            style: TextStyle(
+                              fontSize: 16,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
                   ),
                 ),
               ],
