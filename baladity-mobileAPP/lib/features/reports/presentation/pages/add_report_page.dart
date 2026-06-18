@@ -4,11 +4,11 @@ import 'package:image_picker/image_picker.dart';
 import 'dart:io';
 import 'package:geolocator/geolocator.dart';
 import 'package:geocoding/geocoding.dart';
-import 'package:google_maps_flutter/google_maps_flutter.dart';
-import '../../../facilities/presentation/pages/location_selection_page.dart';
+import 'package:latlong2/latlong.dart';
 import '../../domain/entities/report_image_classification_entity.dart';
 import '../controllers/reports_controller.dart';
 import '../controllers/reports_state.dart';
+import 'location_selection_page.dart';
 
 class AddReportPage extends ConsumerStatefulWidget {
   const AddReportPage({super.key});
@@ -28,9 +28,10 @@ class _AddReportPageState extends ConsumerState<AddReportPage> {
   @override
   void initState() {
     super.initState();
-    Future.microtask(
-      () => ref.read(reportsControllerProvider.notifier).fetchCategories(),
-    );
+    Future.microtask(() {
+      ref.read(reportsControllerProvider.notifier).clearImageClassification();
+      ref.read(reportsControllerProvider.notifier).fetchCategories();
+    });
   }
 
   @override
@@ -44,14 +45,28 @@ class _AddReportPageState extends ConsumerState<AddReportPage> {
       final XFile? pickedFile = await _picker.pickImage(source: source);
       if (pickedFile == null) return;
 
-      setState(() => _imageFile = pickedFile);
+      ref.read(reportsControllerProvider.notifier).clearImageClassification();
+      setState(() {
+        _imageFile = pickedFile;
+        _selectedCategory = null;
+      });
+
+      if (ref.read(reportsControllerProvider).categories.isEmpty) {
+        await ref.read(reportsControllerProvider.notifier).fetchCategories();
+      }
+
       final classification = await ref
           .read(reportsControllerProvider.notifier)
           .classifyImage(imagePath: pickedFile.path);
 
       if (!mounted || classification == null) return;
 
-      if (classification.hasConfidentCategory) {
+      final categories = ref.read(reportsControllerProvider).categories;
+      final suggestedCategoryExists = categories.any(
+        (category) => category.id == classification.categoryId,
+      );
+
+      if (classification.hasConfidentCategory && suggestedCategoryExists) {
         setState(
           () => _selectedCategory = classification.categoryId.toString(),
         );
@@ -150,14 +165,15 @@ class _AddReportPageState extends ConsumerState<AddReportPage> {
 
     try {
       final position = await Geolocator.getCurrentPosition(
-        desiredAccuracy: LocationAccuracy.high,
-        timeLimit: const Duration(seconds: 10),
+        locationSettings: const LocationSettings(
+          accuracy: LocationAccuracy.high,
+          timeLimit: Duration(seconds: 10),
+        ),
       );
       if (!mounted) return;
-      setState(
-        () => _pickedLocation = LatLng(position.latitude, position.longitude),
-      );
-      _getAddressFromLatLng(_pickedLocation!);
+      final location = LatLng(position.latitude, position.longitude);
+      setState(() => _pickedLocation = location);
+      _getAddressFromLatLng(location);
     } catch (e) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
@@ -218,6 +234,7 @@ class _AddReportPageState extends ConsumerState<AddReportPage> {
         );
     if (!mounted) return;
     if (success) {
+      ref.read(reportsControllerProvider.notifier).clearImageClassification();
       Navigator.pop(context);
       ScaffoldMessenger.of(
         context,
@@ -281,7 +298,7 @@ class _AddReportPageState extends ConsumerState<AddReportPage> {
                     ),
                   ),
                   hint: const Text('اختر التصنيف'),
-                  value: _selectedCategory,
+                  initialValue: _selectedCategory,
                   items: categories
                       .map(
                         (c) => DropdownMenuItem(
@@ -560,28 +577,27 @@ class _LocationPickerPlaceholder extends StatelessWidget {
                   style: const TextStyle(fontSize: 14),
                 ),
               ),
-              if (pickedLocation != null)
-                Padding(
-                  padding: const EdgeInsets.only(right: 8.0),
-                  child: TextButton(
-                    onPressed: onManualLocate,
-                    style: TextButton.styleFrom(
-                      minimumSize: Size.zero,
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 12,
-                        vertical: 8,
-                      ),
-                      tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+              Padding(
+                padding: const EdgeInsets.only(right: 8.0),
+                child: TextButton(
+                  onPressed: onManualLocate,
+                  style: TextButton.styleFrom(
+                    minimumSize: Size.zero,
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 12,
+                      vertical: 8,
                     ),
-                    child: Text(
-                      'تغيير',
-                      style: TextStyle(
-                        color: primaryColor,
-                        fontWeight: FontWeight.bold,
-                      ),
+                    tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                  ),
+                  child: Text(
+                    pickedLocation == null ? 'الخريطة' : 'تغيير',
+                    style: TextStyle(
+                      color: primaryColor,
+                      fontWeight: FontWeight.bold,
                     ),
                   ),
                 ),
+              ),
             ],
           ),
         ),

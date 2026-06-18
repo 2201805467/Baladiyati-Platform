@@ -13,8 +13,8 @@ class ProjectModel extends ProjectEntity {
 
   factory ProjectModel.fromJson(Map<String, dynamic> json) {
     return ProjectModel(
-      id: json['id'] != null ? (json['id'] as num).toInt() : null,
-      municipalityId: (json['municipality_id'] as num?)?.toInt() ?? 0,
+      id: _intOrNull(json['id']),
+      municipalityId: _intOrNull(json['municipality_id']) ?? 0,
       name: json['name']?.toString() ?? '',
       description: (json['description'] as String?) ?? '',
       status: (json['status'] as String?) ?? 'قيد التنفيذ',
@@ -25,5 +25,12 @@ class ProjectModel extends ProjectEntity {
           ? DateTime.parse(json['end_date'] as String)
           : null,
     );
+  }
+
+  static int? _intOrNull(dynamic value) {
+    if (value == null) return null;
+    if (value is int) return value;
+    if (value is num) return value.toInt();
+    return int.tryParse(value.toString());
   }
 }

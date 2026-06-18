@@ -22,14 +22,14 @@ class ReportModel extends ReportEntity {
         : null;
 
     return ReportModel(
-      id: json['id'] as int?,
+      id: _intOrNull(json['id']),
       category: categoryJson is Map
           ? categoryJson['category_name']?.toString() ?? ''
           : json['category']?.toString() ?? '',
       description:
           json['description']?.toString() ?? json['title']?.toString() ?? '',
-      latitude: (json['latitude'] as num?)?.toDouble(),
-      longitude: (json['longitude'] as num?)?.toDouble(),
+      latitude: _doubleOrNull(json['latitude']),
+      longitude: _doubleOrNull(json['longitude']),
       locationAddress: json['location_address']?.toString(),
       imageUrl: json['image_url']?.toString() ?? firstImage,
       status: json['status']?.toString() ?? 'قيد الانتظار',
@@ -49,4 +49,18 @@ class ReportModel extends ReportEntity {
     if (imageUrl != null) 'image_url': imageUrl,
     'status': status,
   };
+
+  static int? _intOrNull(dynamic value) {
+    if (value == null) return null;
+    if (value is int) return value;
+    if (value is num) return value.toInt();
+    return int.tryParse(value.toString());
+  }
+
+  static double? _doubleOrNull(dynamic value) {
+    if (value == null) return null;
+    if (value is double) return value;
+    if (value is num) return value.toDouble();
+    return double.tryParse(value.toString());
+  }
 }

@@ -21,8 +21,8 @@ class ProposalModel extends ProposalEntity {
     return ProposalModel(
       id: json['id'].toString(),
       authorId: citizen is Map
-          ? (citizen['id'] as num?)?.toInt()
-          : (json['citizen_id'] as num?)?.toInt(),
+          ? _intOrNull(citizen['id'])
+          : _intOrNull(json['citizen_id']),
       title: json['title']?.toString() ?? '',
       category: json['category']?.toString() ?? '',
       author: citizen is Map
@@ -30,8 +30,8 @@ class ProposalModel extends ProposalEntity {
           : json['author']?.toString() ?? 'Unknown',
       description: json['description']?.toString() ?? '',
       votes:
-          (json['support_votes_count'] as num?)?.toInt() ??
-          (json['votes'] as num?)?.toInt() ??
+          _intOrNull(json['support_votes_count']) ??
+          _intOrNull(json['votes']) ??
           0,
       isVoted: (json['is_voted'] as bool?) ?? userVotes.isNotEmpty,
       expiryDate: json['expiry_date'] != null
@@ -51,4 +51,11 @@ class ProposalModel extends ProposalEntity {
     'is_voted': isVoted,
     'expiry_date': expiryDate.toIso8601String(),
   };
+
+  static int? _intOrNull(dynamic value) {
+    if (value == null) return null;
+    if (value is int) return value;
+    if (value is num) return value.toInt();
+    return int.tryParse(value.toString());
+  }
 }

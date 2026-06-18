@@ -17,16 +17,16 @@ class FacilityModel extends FacilityEntity {
 
   factory FacilityModel.fromJson(Map<String, dynamic> json) {
     return FacilityModel(
-      id: (json['id'] as num).toInt(),
-      municipalityId: (json['municipality_id'] as num?)?.toInt() ?? 0,
+      id: _intOrZero(json['id']),
+      municipalityId: _intOrZero(json['municipality_id']),
       facilityType: json['facility_type']?.toString() ?? '',
       name: json['name']?.toString() ?? '',
       description:
           json['services']?.toString() ??
           (json['description'] as String?) ??
           '',
-      latitude: (json['latitude'] as num).toDouble(),
-      longitude: (json['longitude'] as num).toDouble(),
+      latitude: _doubleOrZero(json['latitude']),
+      longitude: _doubleOrZero(json['longitude']),
       address: (json['address'] as String?) ?? '',
       openingHours:
           json['working_hours']?.toString() ??
@@ -36,5 +36,19 @@ class FacilityModel extends FacilityEntity {
       isOpen:
           (json['is_active'] as bool?) ?? (json['is_open'] as bool?) ?? true,
     );
+  }
+
+  static int _intOrZero(dynamic value) {
+    if (value == null) return 0;
+    if (value is int) return value;
+    if (value is num) return value.toInt();
+    return int.tryParse(value.toString()) ?? 0;
+  }
+
+  static double _doubleOrZero(dynamic value) {
+    if (value == null) return 0;
+    if (value is double) return value;
+    if (value is num) return value.toDouble();
+    return double.tryParse(value.toString()) ?? 0;
   }
 }

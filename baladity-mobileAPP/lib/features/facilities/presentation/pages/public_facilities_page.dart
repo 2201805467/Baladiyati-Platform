@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:url_launcher/url_launcher.dart';
 import '../controllers/facilities_controller.dart';
 import '../controllers/facilities_state.dart';
 import '../../domain/entities/facility_entity.dart';
@@ -51,10 +52,20 @@ class _PublicFacilitiesPageState extends ConsumerState<PublicFacilitiesPage> {
         );
   }
 
-  void _openInGoogleMaps(double lat, double lng) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text('جاري فتح الموقع في الخرائط: $lat, $lng')),
+  Future<void> _openInOpenStreetMap(double lat, double lng) async {
+    final uri = Uri.parse(
+      'https://www.openstreetmap.org/?mlat=$lat&mlon=$lng#map=17/$lat/$lng',
     );
+
+    if (await canLaunchUrl(uri)) {
+      await launchUrl(uri, mode: LaunchMode.externalApplication);
+      return;
+    }
+
+    if (!mounted) return;
+    ScaffoldMessenger.of(
+      context,
+    ).showSnackBar(const SnackBar(content: Text('تعذر فتح OpenStreetMap')));
   }
 
   @override
@@ -94,7 +105,7 @@ class _PublicFacilitiesPageState extends ConsumerState<PublicFacilitiesPage> {
                         borderSide: BorderSide.none,
                       ),
                     ),
-                    value: _selectedMunicipalityName,
+                    initialValue: _selectedMunicipalityName,
                     items: _municipalities
                         .map(
                           (m) => DropdownMenuItem<String>(
@@ -128,7 +139,7 @@ class _PublicFacilitiesPageState extends ConsumerState<PublicFacilitiesPage> {
                         borderSide: BorderSide.none,
                       ),
                     ),
-                    value: _selectedFacilityType,
+                    initialValue: _selectedFacilityType,
                     items: _facilityTypes
                         .map(
                           (t) => DropdownMenuItem<String>(
@@ -285,10 +296,10 @@ class _PublicFacilitiesPageState extends ConsumerState<PublicFacilitiesPage> {
               width: double.infinity,
               child: OutlinedButton.icon(
                 onPressed: () =>
-                    _openInGoogleMaps(facility.latitude, facility.longitude),
+                    _openInOpenStreetMap(facility.latitude, facility.longitude),
                 icon: const Icon(Icons.map_outlined, size: 18),
                 label: const Text(
-                  'عرض على خرائط Google',
+                  'عرض على OpenStreetMap',
                   style: TextStyle(fontWeight: FontWeight.bold),
                 ),
                 style: OutlinedButton.styleFrom(

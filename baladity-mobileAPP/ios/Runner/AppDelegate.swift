@@ -1,6 +1,5 @@
 import Flutter
 import UIKit
-import GoogleMaps
 
 @main
 @objc class AppDelegate: FlutterAppDelegate, FlutterImplicitEngineDelegate {
@@ -8,9 +7,6 @@ import GoogleMaps
     _ application: UIApplication,
     didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]?
   ) -> Bool {
-    // مفتاح خرائط جوجل الحقيقي للـ iOS
-    GMSServices.provideAPIKey("AIzaSy...ضع_مفتاحك_هنا")
-    
     return super.application(application, didFinishLaunchingWithOptions: launchOptions)
   }
 

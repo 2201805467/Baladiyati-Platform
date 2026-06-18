@@ -77,6 +77,13 @@ class ReportsController extends Notifier<ReportsState> {
     }
   }
 
+  void clearImageClassification() {
+    state = state.copyWith(
+      isClassifyingImage: false,
+      clearImageClassification: true,
+    );
+  }
+
   Future<ReportImageClassificationEntity?> classifyImage({
     required String imagePath,
   }) async {
@@ -124,6 +131,7 @@ class ReportsController extends Notifier<ReportsState> {
       state = state.copyWith(
         isSubmitting: false,
         reports: [report, ...state.reports],
+        clearImageClassification: true,
       );
       return true;
     } catch (e) {

@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
-import 'package:google_maps_flutter/google_maps_flutter.dart';
+import 'package:flutter_map/flutter_map.dart';
+import 'package:latlong2/latlong.dart';
 
 class LocationSelectionPage extends StatefulWidget {
   final LatLng? initialLocation;
+
   const LocationSelectionPage({super.key, this.initialLocation});
 
   @override
@@ -11,34 +13,21 @@ class LocationSelectionPage extends StatefulWidget {
 
 class _LocationSelectionPageState extends State<LocationSelectionPage> {
   LatLng? _selectedLocation;
-  Set<Marker> _markers = {};
 
   @override
   void initState() {
     super.initState();
     _selectedLocation = widget.initialLocation;
-    if (_selectedLocation != null) {
-      _markers.add(
-        Marker(
-          markerId: const MarkerId('selected_location'),
-          position: _selectedLocation!,
-        ),
-      );
-    }
   }
 
-  void _onTap(LatLng latLng) {
-    setState(() {
-      _selectedLocation = latLng;
-      _markers = {
-        Marker(markerId: const MarkerId('selected_location'), position: latLng),
-      };
-    });
+  void _onTap(TapPosition _, LatLng latLng) {
+    setState(() => _selectedLocation = latLng);
   }
 
   @override
   Widget build(BuildContext context) {
     const primaryGreen = Color(0xFF2E7D32);
+    final initialCenter = _selectedLocation ?? const LatLng(32.8872, 13.5828);
 
     return Scaffold(
       appBar: AppBar(
@@ -47,46 +36,67 @@ class _LocationSelectionPageState extends State<LocationSelectionPage> {
         actions: [
           IconButton(
             icon: const Icon(Icons.check),
-            onPressed: () {
-              Navigator.pop(context, _selectedLocation);
-            },
+            onPressed: _selectedLocation == null
+                ? null
+                : () => Navigator.pop(context, _selectedLocation),
           ),
         ],
       ),
       body: Stack(
         children: [
-          GoogleMap(
-            initialCameraPosition: CameraPosition(
-              target: _selectedLocation ?? const LatLng(32.8872, 13.5828),
-              zoom: 12,
+          FlutterMap(
+            options: MapOptions(
+              initialCenter: initialCenter,
+              initialZoom: 13,
+              minZoom: 3,
+              maxZoom: 18,
+              onTap: _onTap,
             ),
-            onTap: _onTap,
-            markers: _markers,
-            myLocationEnabled: true,
-            myLocationButtonEnabled: true,
+            children: [
+              TileLayer(
+                urlTemplate: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
+                userAgentPackageName: 'com.example.baladity',
+              ),
+              if (_selectedLocation != null)
+                MarkerLayer(
+                  markers: [
+                    Marker(
+                      point: _selectedLocation!,
+                      width: 48,
+                      height: 48,
+                      child: const Icon(
+                        Icons.location_on,
+                        color: Colors.red,
+                        size: 44,
+                      ),
+                    ),
+                  ],
+                ),
+            ],
           ),
           if (_selectedLocation == null)
-            Positioned.fill(
-              child: Center(
-                child: Card(
-                  color: Theme.of(context).colorScheme.surface,
-                  child: Padding(
-                    padding: const EdgeInsets.all(16),
-                    child: Column(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Icon(
-                          Icons.touch_app,
-                          size: 48,
-                          color: Theme.of(context).colorScheme.primary,
-                        ),
-                        const SizedBox(height: 10),
-                        Text(
+            Positioned(
+              top: 16,
+              left: 16,
+              right: 16,
+              child: Card(
+                color: Theme.of(context).colorScheme.surface,
+                child: Padding(
+                  padding: const EdgeInsets.all(14),
+                  child: Row(
+                    children: [
+                      Icon(
+                        Icons.touch_app,
+                        color: Theme.of(context).colorScheme.primary,
+                      ),
+                      const SizedBox(width: 10),
+                      Expanded(
+                        child: Text(
                           'اضغط على الخريطة لتحديد الموقع',
                           style: Theme.of(context).textTheme.titleMedium,
                         ),
-                      ],
-                    ),
+                      ),
+                    ],
                   ),
                 ),
               ),
@@ -97,9 +107,7 @@ class _LocationSelectionPageState extends State<LocationSelectionPage> {
             right: 16,
             child: ElevatedButton(
               onPressed: _selectedLocation != null
-                  ? () {
-                      Navigator.pop(context, _selectedLocation);
-                    }
+                  ? () => Navigator.pop(context, _selectedLocation)
                   : null,
               style: ElevatedButton.styleFrom(
                 backgroundColor: primaryGreen,
