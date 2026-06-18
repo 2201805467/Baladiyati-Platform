@@ -60,7 +60,7 @@ class _CitizenProposalsPageState extends ConsumerState<CitizenProposalsPage> {
             Icon(Icons.lightbulb_outline, size: 80, color: Colors.grey[400]),
             const SizedBox(height: 16),
             Text(
-              'لا توجد مقترحات حالياً',
+              'لا توجد مقترحات مقبولة حالياً',
               style: TextStyle(fontSize: 18, color: emptyTextColor),
             ),
             const SizedBox(height: 16),
@@ -79,8 +79,11 @@ class _CitizenProposalsPageState extends ConsumerState<CitizenProposalsPage> {
     final myProposals = state.proposals
         .where((p) => _isMine(p, currentUserId, currentUserName))
         .toList();
-    final allSorted = [...state.proposals]
-      ..sort((a, b) => b.votes.compareTo(a.votes));
+    final allSorted =
+        state.proposals
+            .where((p) => !_isMine(p, currentUserId, currentUserName))
+            .toList()
+          ..sort((a, b) => b.votes.compareTo(a.votes));
 
     return RefreshIndicator(
       onRefresh: () => ref
@@ -108,22 +111,24 @@ class _CitizenProposalsPageState extends ConsumerState<CitizenProposalsPage> {
             ),
             const SizedBox(height: 24),
           ],
-          _buildSectionHeader(
-            'كل مقترحات المواطنين',
-            Icons.campaign_outlined,
-            primaryGreen,
-          ),
-          const SizedBox(height: 12),
-          ...allSorted.map(
-            (p) => _buildProposalCard(
-              p,
+          if (allSorted.isNotEmpty) ...[
+            _buildSectionHeader(
+              'كل مقترحات المواطنين',
+              Icons.campaign_outlined,
               primaryGreen,
-              isDark,
-              context,
-              currentUserId,
-              currentUserName,
             ),
-          ),
+            const SizedBox(height: 12),
+            ...allSorted.map(
+              (p) => _buildProposalCard(
+                p,
+                primaryGreen,
+                isDark,
+                context,
+                currentUserId,
+                currentUserName,
+              ),
+            ),
+          ],
           if (state.hasMore && !state.isLoading)
             Padding(
               padding: const EdgeInsets.symmetric(vertical: 16),
@@ -168,6 +173,7 @@ class _CitizenProposalsPageState extends ConsumerState<CitizenProposalsPage> {
     String currentUserName,
   ) {
     final isMine = _isMine(proposal, currentUserId, currentUserName);
+    final canVote = proposal.isAccepted && !isMine && !proposal.isExpired;
 
     return Card(
       margin: const EdgeInsets.only(bottom: 12),
@@ -257,21 +263,27 @@ class _CitizenProposalsPageState extends ConsumerState<CitizenProposalsPage> {
                   ],
                 ),
                 TextButton.icon(
-                  onPressed: proposal.isExpired
-                      ? null
-                      : () => ref
+                  onPressed: canVote
+                      ? () => ref
                             .read(proposalsControllerProvider.notifier)
                             .toggleVote(
                               proposal.id,
                               currentlyVoted: proposal.isVoted,
-                            ),
+                            )
+                      : null,
                   icon: Icon(
                     proposal.isVoted
                         ? Icons.thumb_up_alt
                         : Icons.thumb_up_off_alt,
                     size: 18,
                   ),
-                  label: Text(proposal.isVoted ? 'إلغاء التصويت' : 'تصويت'),
+                  label: Text(
+                    isMine
+                        ? 'مقترحك'
+                        : proposal.isVoted
+                        ? 'إلغاء التصويت'
+                        : 'تصويت',
+                  ),
                   style: TextButton.styleFrom(
                     foregroundColor: proposal.isVoted
                         ? primaryColor

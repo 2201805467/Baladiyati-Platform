@@ -5,6 +5,7 @@ class ProposalEntity {
   final String category;
   final String author;
   final String description;
+  final String status;
   final int votes;
   final bool isVoted;
   final DateTime expiryDate;
@@ -16,12 +17,15 @@ class ProposalEntity {
     required this.category,
     required this.author,
     required this.description,
+    this.status = 'accepted',
     this.votes = 0,
     this.isVoted = false,
     required this.expiryDate,
   });
 
   bool get isExpired => expiryDate.isBefore(DateTime.now());
+  bool get isAccepted => status == 'accepted';
+  bool get isUnderReview => status == 'under_review';
 
   ProposalEntity copyWith({int? votes, bool? isVoted}) {
     return ProposalEntity(
@@ -31,6 +35,7 @@ class ProposalEntity {
       category: category,
       author: author,
       description: description,
+      status: status,
       votes: votes ?? this.votes,
       isVoted: isVoted ?? this.isVoted,
       expiryDate: expiryDate,

@@ -15,9 +15,7 @@ final proposalsRemoteDataSourceProvider = Provider<ProposalsRemoteDataSource>(
 );
 
 final proposalsRepositoryProvider = Provider<ProposalsRepository>(
-  (ref) => ProposalsRepositoryImpl(
-    ref.read(proposalsRemoteDataSourceProvider),
-  ),
+  (ref) => ProposalsRepositoryImpl(ref.read(proposalsRemoteDataSourceProvider)),
 );
 
 final getProposalsUseCaseProvider = Provider(
@@ -36,8 +34,8 @@ final suggestProposalUseCaseProvider = Provider(
 
 final proposalsControllerProvider =
     NotifierProvider<ProposalsController, ProposalsState>(
-  () => ProposalsController(),
-);
+      () => ProposalsController(),
+    );
 
 class ProposalsController extends Notifier<ProposalsState> {
   late GetProposalsUseCase _getProposals;
@@ -69,9 +67,27 @@ class ProposalsController extends Notifier<ProposalsState> {
     }
   }
 
-  Future<void> toggleVote(String proposalId, {required bool currentlyVoted}) async {
+  Future<void> toggleVote(
+    String proposalId, {
+    required bool currentlyVoted,
+  }) async {
     try {
-      final updated = await _voteProposal(proposalId, currentlyVoted: currentlyVoted);
+      final current = state.proposals
+          .where((proposal) => proposal.id == proposalId)
+          .firstOrNull;
+
+      if (current == null) return;
+
+      await _voteProposal(proposalId, currentlyVoted: currentlyVoted);
+
+      final nextVotes = currentlyVoted
+          ? (current.votes > 0 ? current.votes - 1 : 0)
+          : current.votes + 1;
+      final updated = current.copyWith(
+        votes: nextVotes,
+        isVoted: !currentlyVoted,
+      );
+
       state = state.copyWith(
         proposals: state.proposals
             .map((p) => p.id == proposalId ? updated : p)

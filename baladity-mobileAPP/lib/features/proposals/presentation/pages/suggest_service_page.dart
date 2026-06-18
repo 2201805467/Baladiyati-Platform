@@ -45,9 +45,13 @@ class _SuggestServicePageState extends ConsumerState<SuggestServicePage> {
     if (!mounted) return;
     if (success) {
       Navigator.pop(context);
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(const SnackBar(content: Text('تم إرسال المقترح بنجاح ✓')));
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text(
+            'تم إرسال المقترح بنجاح، وسيظهر للمواطنين بعد قبوله من البلدية.',
+          ),
+        ),
+      );
     }
   }
 
@@ -118,7 +122,7 @@ class _SuggestServicePageState extends ConsumerState<SuggestServicePage> {
                     ),
                   ),
                   hint: const Text('اختر التصنيف'),
-                  value: _selectedCategory,
+                  initialValue: _selectedCategory,
                   items: _categories
                       .map((c) => DropdownMenuItem(value: c, child: Text(c)))
                       .toList(),

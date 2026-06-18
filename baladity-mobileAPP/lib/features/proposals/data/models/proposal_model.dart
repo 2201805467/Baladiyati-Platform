@@ -8,6 +8,7 @@ class ProposalModel extends ProposalEntity {
     required super.category,
     required super.author,
     required super.description,
+    super.status = 'accepted',
     super.votes = 0,
     super.isVoted = false,
     required super.expiryDate,
@@ -17,6 +18,9 @@ class ProposalModel extends ProposalEntity {
     final citizen = json['citizen'];
     final userVotes = json['votes'] is List ? json['votes'] as List : const [];
     final createdAt = DateTime.tryParse(json['created_at']?.toString() ?? '');
+    final fallbackExpiry =
+        createdAt?.add(const Duration(days: 30)) ??
+        DateTime.now().add(const Duration(days: 30));
 
     return ProposalModel(
       id: json['id'].toString(),
@@ -29,6 +33,7 @@ class ProposalModel extends ProposalEntity {
           ? citizen['full_name']?.toString() ?? 'Unknown'
           : json['author']?.toString() ?? 'Unknown',
       description: json['description']?.toString() ?? '',
+      status: json['status']?.toString() ?? 'accepted',
       votes:
           _intOrNull(json['support_votes_count']) ??
           _intOrNull(json['votes']) ??
@@ -36,7 +41,7 @@ class ProposalModel extends ProposalEntity {
       isVoted: (json['is_voted'] as bool?) ?? userVotes.isNotEmpty,
       expiryDate: json['expiry_date'] != null
           ? DateTime.parse(json['expiry_date'].toString())
-          : createdAt ?? DateTime.now(),
+          : fallbackExpiry,
     );
   }
 
@@ -47,6 +52,7 @@ class ProposalModel extends ProposalEntity {
     'category': category,
     'author': author,
     'description': description,
+    'status': status,
     'votes': votes,
     'is_voted': isVoted,
     'expiry_date': expiryDate.toIso8601String(),

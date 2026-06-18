@@ -30,6 +30,7 @@ class ProposalDetailsPage extends ConsumerWidget {
             latest.authorId != null &&
             latest.authorId == currentUserId) ||
         (currentUserName.isNotEmpty && latest.author == currentUserName);
+    final canVote = latest.isAccepted && !isMine && !latest.isExpired;
 
     return Scaffold(
       appBar: AppBar(title: const Text('تفاصيل المقترح'), centerTitle: true),
@@ -117,8 +118,16 @@ class ProposalDetailsPage extends ConsumerWidget {
                       const VerticalDivider(),
                       _buildStatItem(
                         'حالة التصويت',
-                        latest.isExpired ? 'مغلق' : 'نشط',
-                        latest.isExpired ? Colors.red : Colors.orange,
+                        latest.isExpired
+                            ? 'مغلق'
+                            : isMine
+                            ? 'مقترحك'
+                            : 'نشط',
+                        latest.isExpired
+                            ? Colors.red
+                            : isMine
+                            ? Colors.grey
+                            : Colors.orange,
                       ),
                     ],
                   ),
@@ -129,16 +138,25 @@ class ProposalDetailsPage extends ConsumerWidget {
                 SizedBox(
                   width: double.infinity,
                   child: ElevatedButton.icon(
-                    onPressed: () => ref
-                        .read(proposalsControllerProvider.notifier)
-                        .toggleVote(latest.id, currentlyVoted: latest.isVoted),
+                    onPressed: canVote
+                        ? () => ref
+                              .read(proposalsControllerProvider.notifier)
+                              .toggleVote(
+                                latest.id,
+                                currentlyVoted: latest.isVoted,
+                              )
+                        : null,
                     icon: Icon(
                       latest.isVoted
                           ? Icons.thumb_up_alt
                           : Icons.thumb_up_off_alt,
                     ),
                     label: Text(
-                      latest.isVoted ? 'إلغاء التصويت' : 'تصويت لهذا المقترح',
+                      isMine
+                          ? 'لا يمكنك التصويت على مقترحك'
+                          : latest.isVoted
+                          ? 'إلغاء التصويت'
+                          : 'تصويت لهذا المقترح',
                     ),
                     style: ElevatedButton.styleFrom(
                       backgroundColor: latest.isVoted
