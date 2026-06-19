@@ -62,15 +62,24 @@ class _AddReportPageState extends ConsumerState<AddReportPage> {
 
       if (!mounted || classification == null) return;
 
-      final categories = ref.read(reportsControllerProvider).categories;
-      final suggestedCategoryExists = categories.any(
-        (category) => category.id == classification.categoryId,
+      var matchedCategoryId = _matchSuggestedCategoryId(classification);
+      if (classification.hasConfidentCategory && matchedCategoryId == null) {
+        await ref.read(reportsControllerProvider.notifier).fetchCategories();
+        if (!mounted) return;
+        matchedCategoryId = _matchSuggestedCategoryId(classification);
+      }
+
+      debugPrint(
+        '[AI_CLASSIFICATION] provider=${classification.provider}, '
+        'categoryId=${classification.categoryId}, '
+        'categoryName=${classification.categoryName}, '
+        'confidence=${classification.confidence}, '
+        'needsManualReview=${classification.needsManualReview}, '
+        'matchedCategoryId=$matchedCategoryId',
       );
 
-      if (classification.hasConfidentCategory && suggestedCategoryExists) {
-        setState(
-          () => _selectedCategory = classification.categoryId.toString(),
-        );
+      if (classification.hasConfidentCategory && matchedCategoryId != null) {
+        setState(() => _selectedCategory = matchedCategoryId.toString());
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text(
@@ -79,11 +88,23 @@ class _AddReportPageState extends ConsumerState<AddReportPage> {
             ),
           ),
         );
-      } else {
+      } else if (classification.hasConfidentCategory) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
+          SnackBar(
             content: Text(
-              'لم يتم التعرف بثقة على التصنيف، يرجى اختياره يدوياً.',
+              'اقترح الذكاء الاصطناعي "${classification.categoryName ?? 'تصنيفاً'}" '
+              'لكن هذا التصنيف غير موجود في القائمة الحالية.',
+            ),
+          ),
+        );
+      } else {
+        final providerFailureReason = classification.providerFailureReason;
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              providerFailureReason == null
+                  ? 'لم يتم التعرف بثقة على التصنيف، يرجى اختياره يدوياً.'
+                  : 'تعذر استخدام مزود الذكاء الاصطناعي حالياً ($providerFailureReason)، يرجى اختيار التصنيف يدوياً.',
             ),
           ),
         );
@@ -91,6 +112,49 @@ class _AddReportPageState extends ConsumerState<AddReportPage> {
     } catch (e) {
       debugPrint('Error picking image: $e');
     }
+  }
+
+  int? _matchSuggestedCategoryId(
+    ReportImageClassificationEntity classification,
+  ) {
+    final categories = ref.read(reportsControllerProvider).categories;
+
+    for (final category in categories) {
+      if (category.id == classification.categoryId) {
+        return category.id;
+      }
+    }
+
+    final suggestedName = _normalizeCategoryName(classification.categoryName);
+    if (suggestedName.isEmpty) return null;
+
+    for (final category in categories) {
+      if (_normalizeCategoryName(category.name) == suggestedName) {
+        return category.id;
+      }
+    }
+
+    for (final category in categories) {
+      final categoryName = _normalizeCategoryName(category.name);
+      if (categoryName.contains(suggestedName) ||
+          suggestedName.contains(categoryName)) {
+        return category.id;
+      }
+    }
+
+    return null;
+  }
+
+  String _normalizeCategoryName(String? value) {
+    return (value ?? '')
+        .trim()
+        .toLowerCase()
+        .replaceAll(RegExp(r'[\s_\-]+'), '')
+        .replaceAll('أ', 'ا')
+        .replaceAll('إ', 'ا')
+        .replaceAll('آ', 'ا')
+        .replaceAll('ة', 'ه')
+        .replaceAll('ى', 'ي');
   }
 
   void _showPickerOptions() {
@@ -529,7 +593,10 @@ class _ClassificationHint extends StatelessWidget {
     final isConfident = classification.hasConfidentCategory;
     final color = isConfident ? Colors.green : Colors.orange;
     final title = isConfident ? 'اقتراح التصنيف' : 'التصنيف يحتاج مراجعة يدوية';
-    final category = classification.categoryName ?? 'غير واضح';
+    final category =
+        classification.providerFailureReason ??
+        classification.categoryName ??
+        'غير واضح';
 
     return Container(
       padding: const EdgeInsets.all(12),

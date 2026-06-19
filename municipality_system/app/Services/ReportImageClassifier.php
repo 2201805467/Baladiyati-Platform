@@ -5,11 +5,13 @@ namespace App\Services;
 use App\Models\Category;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
 
 class ReportImageClassifier
 {
     private const MANUAL_REVIEW_THRESHOLD = 50;
+    private ?string $providerFailureReason = null;
 
     public function classify(UploadedFile $image): array
     {
@@ -28,22 +30,21 @@ class ReportImageClassifier
             ];
         }
 
-        if (config('services.gemini.key')) {
-            $geminiResult = $this->classifyWithGemini($image, $categories);
+        if (config('services.groq.key')) {
+            $groqResult = $this->classifyWithGroq($image, $categories);
 
-            if ($geminiResult) {
-                return $geminiResult;
+            if ($groqResult) {
+                return $groqResult;
             }
         }
 
         return $this->classifyLocally($image, $categories);
     }
 
-    private function classifyWithGemini(UploadedFile $image, \Illuminate\Support\Collection $categories): ?array
+    private function classifyWithGroq(UploadedFile $image, \Illuminate\Support\Collection $categories): ?array
     {
-        $model = config('services.gemini.model', 'gemini-2.0-flash');
-        $endpoint = rtrim(config('services.gemini.endpoint'), '/');
-        $url = "{$endpoint}/{$model}:generateContent";
+        $model = config('services.groq.model', 'meta-llama/llama-4-scout-17b-16e-instruct');
+        $endpoint = config('services.groq.endpoint', 'https://api.groq.com/openai/v1/chat/completions');
 
         $categoryLines = $categories
             ->map(fn (Category $category) => sprintf(
@@ -61,37 +62,72 @@ class ReportImageClassifier
             ."Confidence must be 0-100.\n\n"
             ."Categories:\n{$categoryLines}";
 
-        $response = Http::timeout(20)->post($url.'?key='.config('services.gemini.key'), [
-            'contents' => [[
-                'parts' => [
-                    ['text' => $prompt],
-                    [
-                        'inline_data' => [
-                            'mime_type' => $image->getMimeType() ?: 'image/jpeg',
-                            'data' => base64_encode(file_get_contents($image->getRealPath())),
-                        ],
-                    ],
-                ],
-            ]],
-            'generationConfig' => [
-                'temperature' => 0.1,
-                'response_mime_type' => 'application/json',
-            ],
-        ]);
+        $mimeType = $image->getMimeType() ?: 'image/jpeg';
+        $base64Image = base64_encode(file_get_contents($image->getRealPath()));
 
-        if (! $response->successful()) {
+        try {
+            $response = Http::withToken(config('services.groq.key'))
+                ->acceptJson()
+                ->timeout(30)
+                ->post($endpoint, [
+                    'model' => $model,
+                    'messages' => [[
+                        'role' => 'user',
+                        'content' => [
+                            [
+                                'type' => 'text',
+                                'text' => $prompt,
+                            ],
+                            [
+                                'type' => 'image_url',
+                                'image_url' => [
+                                    'url' => "data:{$mimeType};base64,{$base64Image}",
+                                ],
+                            ],
+                        ],
+                    ]],
+                    'temperature' => 0.1,
+                    'max_completion_tokens' => 512,
+                    'response_format' => ['type' => 'json_object'],
+                ]);
+        } catch (\Throwable $exception) {
+            $this->providerFailureReason = 'Groq request failed: '.$exception->getMessage();
+            Log::warning('Groq image classification request failed', [
+                'error' => $exception->getMessage(),
+            ]);
+
             return null;
         }
 
-        $text = data_get($response->json(), 'candidates.0.content.parts.0.text');
+        if (! $response->successful()) {
+            $this->providerFailureReason = 'Groq HTTP '.$response->status();
+            Log::warning('Groq image classification returned an unsuccessful response', [
+                'status' => $response->status(),
+                'body' => Str::limit($response->body(), 500),
+            ]);
+
+            return null;
+        }
+
+        $text = data_get($response->json(), 'choices.0.message.content');
 
         if (! is_string($text)) {
+            $this->providerFailureReason = 'Groq response did not include text output.';
+            Log::warning('Groq image classification response had no text output', [
+                'response' => $response->json(),
+            ]);
+
             return null;
         }
 
         $decoded = json_decode($text, true);
 
         if (! is_array($decoded)) {
+            $this->providerFailureReason = 'Groq response was not valid JSON.';
+            Log::warning('Groq image classification returned invalid JSON', [
+                'text' => Str::limit($text, 500),
+            ]);
+
             return null;
         }
 
@@ -99,7 +135,7 @@ class ReportImageClassifier
         $confidence = max(0, min(100, (int) round((float) ($decoded['confidence'] ?? 0))));
 
         return $this->resultPayload(
-            provider: 'gemini',
+            provider: 'groq',
             category: $category,
             confidence: $category ? $confidence : 0,
             alternatives: $this->alternatives($categories, $category?->id),
@@ -124,7 +160,7 @@ class ReportImageClassifier
         $category = ($best['score'] ?? 0) > 0 ? $best['category'] : null;
         $confidence = $category ? min(95, 55 + ($best['score'] * 15)) : 0;
 
-        return $this->resultPayload(
+        $payload = $this->resultPayload(
             provider: 'local_keyword',
             category: $category,
             confidence: $confidence,
@@ -133,6 +169,12 @@ class ReportImageClassifier
                 ? 'Matched local category keywords from the uploaded file metadata.'
                 : 'No confident local keyword match. Manual category selection is recommended.'
         );
+
+        if ($this->providerFailureReason && app()->hasDebugModeEnabled()) {
+            $payload['provider_failure_reason'] = $this->providerFailureReason;
+        }
+
+        return $payload;
     }
 
     private function resultPayload(string $provider, ?Category $category, int $confidence, array $alternatives, ?string $reasoning): array

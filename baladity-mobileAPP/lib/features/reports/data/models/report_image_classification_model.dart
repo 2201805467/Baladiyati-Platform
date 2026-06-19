@@ -9,6 +9,7 @@ class ReportImageClassificationModel extends ReportImageClassificationEntity {
     required super.needsManualReview,
     required super.provider,
     super.reasoning,
+    super.providerFailureReason,
   });
 
   factory ReportImageClassificationModel.fromJson(Map<String, dynamic> json) {
@@ -45,6 +46,10 @@ class ReportImageClassificationModel extends ReportImageClassificationEntity {
       ),
       provider: classification['provider']?.toString() ?? 'unknown',
       reasoning: classification['reasoning']?.toString(),
+      providerFailureReason:
+          classification['provider_failure_reason']?.toString() ??
+          classification['gemini_failure_reason']?.toString() ??
+          classification['groq_failure_reason']?.toString(),
     );
   }
 

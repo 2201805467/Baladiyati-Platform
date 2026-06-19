@@ -6,6 +6,7 @@ class ReportImageClassificationEntity {
   final bool needsManualReview;
   final String provider;
   final String? reasoning;
+  final String? providerFailureReason;
 
   const ReportImageClassificationEntity({
     required this.categoryId,
@@ -15,6 +16,7 @@ class ReportImageClassificationEntity {
     required this.needsManualReview,
     required this.provider,
     this.reasoning,
+    this.providerFailureReason,
   });
 
   bool get hasConfidentCategory =>
