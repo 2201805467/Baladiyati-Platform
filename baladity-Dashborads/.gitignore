@@ -1,0 +1,16 @@
+# تصفية مجلد المكتبات الضخم
+node_modules/
+
+# تصفية مجلد الملفات المجمعة للإنتاج
+dist/
+
+# تصفية ملفات البيئة والإعدادات السرية المحلية
+.env
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+
+# ملفات النظام المؤقتة
+.DS_Store
+thumbs.db
