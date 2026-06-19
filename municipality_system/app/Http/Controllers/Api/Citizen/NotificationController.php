@@ -12,12 +12,18 @@ class NotificationController extends Controller
 {
     public function index(Request $request): JsonResponse
     {
+        $unreadCount = Notification::where('user_id', $request->user()->id)
+            ->where('is_read', false)
+            ->count();
+
         $notifications = Notification::where('user_id', $request->user()->id)
             ->when($request->has('is_read'), fn ($query) => $query->where('is_read', $request->boolean('is_read')))
             ->latest('created_at')
-            ->paginate($request->integer('per_page', 15));
+            ->paginate($request->integer('per_page', $request->integer('limit', 15)));
 
-        return response()->json($notifications);
+        return response()->json($notifications->toArray() + [
+            'unread_count' => $unreadCount,
+        ]);
     }
 
     public function markAsRead(Request $request, Notification $notification): JsonResponse

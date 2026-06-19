@@ -61,8 +61,17 @@ export interface Project {
 }
 
 export interface Notification {
-  id: string; title: string; body: string; type: string; isRead: boolean;
-  report: { id: string; title: string; status: string } | null; createdAt: string;
+  id: string;
+  title: string;
+  body: string;
+  type: string;
+  is_read?: boolean;
+  isRead?: boolean;
+  related_id?: string | number | null;
+  related_type?: string | null;
+  report?: { id: string; title: string; status: string } | null;
+  created_at?: string;
+  createdAt?: string;
 }
 
 export interface PaginatedResponse<T> {

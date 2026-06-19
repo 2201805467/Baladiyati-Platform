@@ -367,7 +367,7 @@ export default function ReceptionPage() {
   return (
     <div className="space-y-6 p-6" dir="rtl">
       <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-bold text-emerald-400">لوحة الاستقبال</h1>
+        <h1 className="text-2xl font-bold text-emerald-400">لوحة استقبال البلاغات</h1>
         <button onClick={tab === "reports" ? loadReports : loadSuggestions} className="px-3 py-2 bg-slate-800 hover:bg-slate-700 rounded-lg text-sm">تحديث</button>
       </div>
 
