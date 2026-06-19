@@ -24,6 +24,13 @@ interface ReportLog {
   note?: string | null;
 }
 
+interface ReportComment {
+  id: string;
+  comment_text: string;
+  created_at?: string | null;
+  user?: { full_name?: string; name?: string; role?: { role_name?: string } } | null;
+}
+
 interface Report {
   id: string;
   report_number?: string;
@@ -41,6 +48,7 @@ interface Report {
   department?: Department | null;
   images?: ReportImage[];
   logs?: ReportLog[];
+  comments?: ReportComment[];
 }
 
 interface Suggestion {
@@ -114,6 +122,20 @@ const assetUrl = (url?: string | null) => {
 
 const personName = (person?: { full_name?: string; name?: string } | null) => person?.full_name || person?.name || "-";
 const departmentName = (department?: Department | null) => department?.dept_name || department?.name || "-";
+const commenterRole = (comment: ReportComment) => {
+  const role = comment.user?.role?.role_name;
+  if (role === "citizen") return "مواطن";
+  if (role === "department") return "موظف القسم";
+  if (role === "reception") return "موظف الاستقبال";
+  return "موظف";
+};
+const formatDateTime = (value?: string | null) => {
+  if (!value) return "";
+  return new Intl.DateTimeFormat("ar-LY", {
+    dateStyle: "medium",
+    timeStyle: "short",
+  }).format(new Date(value));
+};
 
 export default function ReceptionPage() {
   const { user, isLoading } = useAuth();
@@ -132,6 +154,7 @@ export default function ReceptionPage() {
   const [departmentId, setDepartmentId] = useState("");
   const [note, setNote] = useState("");
   const [rejectReason, setRejectReason] = useState("");
+  const [commentText, setCommentText] = useState("");
 
   const [suggestions, setSuggestions] = useState<Suggestion[]>([]);
   const [selectedSuggestion, setSelectedSuggestion] = useState<Suggestion | null>(null);
@@ -201,6 +224,7 @@ export default function ReceptionPage() {
       setDepartmentId(String(response.report.dept_id || response.report.department?.id || ""));
       setNote("");
       setRejectReason("");
+      setCommentText("");
       loadReports();
     } catch (error: any) {
       alert(error.message);
@@ -250,6 +274,21 @@ export default function ReceptionPage() {
       loadReports();
     } catch (error: any) {
       alert(error.message);
+    }
+  };
+
+  const addReportComment = async () => {
+    if (!selectedReport || !commentText.trim()) return;
+    try {
+      const response = await api.post<{ comment: ReportComment }>(`/reception/reports/${selectedReport.id}/comments`, {
+        comment_text: commentText,
+      });
+      setSelectedReport((current) => current
+        ? { ...current, comments: [...(current.comments || []), response.comment] }
+        : current);
+      setCommentText("");
+    } catch (error: any) {
+      alert(error.message || "تعذر إرسال التعليق. النص محفوظ ويمكنك إعادة المحاولة.");
     }
   };
 
@@ -406,6 +445,32 @@ export default function ReceptionPage() {
                   <p><strong>الموقع:</strong> {selectedReport.latitude || "-"}, {selectedReport.longitude || "-"}</p>
                 </div>
                 <p className="text-sm leading-7">{selectedReport.description || "-"}</p>
+
+                <div className="border-t border-slate-800 pt-4">
+                  <h3 className="font-bold mb-3">التعليقات والمناقشة</h3>
+                  <div className="space-y-2 max-h-48 overflow-y-auto mb-3">
+                    {(selectedReport.comments || []).map((comment) => (
+                      <div key={comment.id} className="text-xs bg-slate-800/60 rounded-lg p-2">
+                        <div className="flex items-center justify-between gap-2 text-slate-300">
+                          <span>{personName(comment.user)} · {commenterRole(comment)}</span>
+                          {comment.created_at && <span className="text-slate-500">{formatDateTime(comment.created_at)}</span>}
+                        </div>
+                        <div className="text-slate-500 mt-1 whitespace-pre-line">{comment.comment_text}</div>
+                      </div>
+                    ))}
+                    {(!selectedReport.comments || selectedReport.comments.length === 0) && (
+                      <p className="text-xs text-slate-500">لا توجد تعليقات بعد</p>
+                    )}
+                  </div>
+                  {["new", "under_review"].includes(selectedReport.status) ? (
+                    <div className="space-y-2">
+                      <textarea value={commentText} onChange={(event) => setCommentText(event.target.value)} placeholder="اكتب رداً أو استفساراً للمواطن" className="w-full px-3 py-2 bg-slate-800 border border-slate-700 rounded-lg text-sm h-20" />
+                      <button onClick={addReportComment} disabled={!commentText.trim()} className="px-3 py-2 bg-emerald-600 disabled:opacity-50 rounded-lg text-sm">إرسال التعليق</button>
+                    </div>
+                  ) : (
+                    <p className="text-xs text-slate-500">بعد تحويل البلاغ يصبح قسم التعليقات للمتابعة فقط، والرد الفعلي ينتقل لموظف القسم.</p>
+                  )}
+                </div>
 
                 <div className="space-y-2 border-t border-slate-800 pt-4">
                   <label className="block text-sm text-slate-400">التصنيف</label>

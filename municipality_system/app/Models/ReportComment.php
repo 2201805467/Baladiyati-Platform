@@ -8,6 +8,10 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 class ReportComment extends Model
 {
     protected $fillable = ['report_id', 'user_id', 'comment_text'];
+
+    protected $casts = [
+        'created_at' => 'datetime',
+    ];
     
     public $timestamps = false;
 

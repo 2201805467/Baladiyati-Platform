@@ -178,7 +178,7 @@ class Report extends Model
     // البلاغ يحتوي على تعليقات متعددة
     public function comments(): HasMany
     {
-        return $this->hasMany(ReportComment::class, 'report_id');
+        return $this->hasMany(ReportComment::class, 'report_id')->orderBy('id');
     }
 
     // البلاغ يحصل على تقييم واحد فقط بعد إغلاقه (بناءً على قيد الفريد في الـ Migration)

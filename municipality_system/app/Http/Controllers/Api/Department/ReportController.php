@@ -59,7 +59,7 @@ class ReportController extends Controller
                 'department',
                 'area',
                 'images.uploader',
-                'comments.user',
+                'comments.user.role',
                 'logs.actor',
                 'rating',
             ]),
@@ -137,7 +137,7 @@ class ReportController extends Controller
 
         return response()->json([
             'message' => 'Comment added successfully.',
-            'comment' => $comment->load('user'),
+            'comment' => $comment->load('user.role'),
         ], 201);
     }
 

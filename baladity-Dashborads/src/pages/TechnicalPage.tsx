@@ -19,7 +19,8 @@ interface ReportLog {
 interface ReportComment {
   id: string;
   comment_text: string;
-  user?: { full_name?: string; name?: string } | null;
+  created_at?: string | null;
+  user?: { full_name?: string; name?: string; role?: { role_name?: string } } | null;
 }
 
 interface Report {
@@ -71,6 +72,20 @@ const assetUrl = (url?: string | null) => {
 };
 
 const personName = (person?: { full_name?: string; name?: string } | null) => person?.full_name || person?.name || "-";
+const commenterRole = (comment: ReportComment) => {
+  const role = comment.user?.role?.role_name;
+  if (role === "citizen") return "مواطن";
+  if (role === "department") return "موظف القسم";
+  if (role === "reception") return "موظف الاستقبال";
+  return "موظف";
+};
+const formatDateTime = (value?: string | null) => {
+  if (!value) return "";
+  return new Intl.DateTimeFormat("ar-LY", {
+    dateStyle: "medium",
+    timeStyle: "short",
+  }).format(new Date(value));
+};
 
 export default function TechnicalPage() {
   const { user, isLoading } = useAuth();
@@ -140,11 +155,13 @@ export default function TechnicalPage() {
   const addComment = async () => {
     if (!selected || !commentText.trim()) return;
     try {
-      await api.post(`/department/reports/${selected.id}/comments`, { comment_text: commentText });
+      const response = await api.post<{ comment: ReportComment }>(`/department/reports/${selected.id}/comments`, { comment_text: commentText });
+      setSelected((current) => current
+        ? { ...current, comments: [...(current.comments || []), response.comment] }
+        : current);
       setCommentText("");
-      openReport(selected.id);
     } catch (error: any) {
-      alert(error.message);
+      alert(error.message || "تعذر إرسال التعليق. النص محفوظ ويمكنك إعادة المحاولة.");
     }
   };
 
@@ -292,12 +309,15 @@ export default function TechnicalPage() {
               )}
 
               <div className="border-t border-slate-800 pt-4">
-                <h3 className="font-bold mb-2">التعليقات</h3>
+                <h3 className="font-bold mb-2">التعليقات والمناقشة</h3>
                 <div className="space-y-2 max-h-36 overflow-y-auto">
                   {(selected.comments || []).map((comment) => (
                     <div key={comment.id} className="text-xs bg-slate-800/60 rounded-lg p-2">
-                      <div className="text-slate-300">{personName(comment.user)}</div>
-                      <div className="text-slate-500 mt-1">{comment.comment_text}</div>
+                      <div className="flex items-center justify-between gap-2 text-slate-300">
+                        <span>{personName(comment.user)} · {commenterRole(comment)}</span>
+                        {comment.created_at && <span className="text-slate-500">{formatDateTime(comment.created_at)}</span>}
+                      </div>
+                      <div className="text-slate-500 mt-1 whitespace-pre-line">{comment.comment_text}</div>
                     </div>
                   ))}
                   {(!selected.comments || selected.comments.length === 0) && <p className="text-xs text-slate-500">لا توجد تعليقات</p>}

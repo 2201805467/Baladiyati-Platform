@@ -186,7 +186,7 @@ class ReportController extends Controller
                 'parentReport',
                 'duplicateReports',
                 'images.uploader',
-                'comments.user',
+                'comments.user.role',
                 'logs.actor',
                 'rating',
             ]),
@@ -207,16 +207,20 @@ class ReportController extends Controller
             'comment_text' => $data['comment_text'],
         ]);
 
+        $isClosedComment = $report->status === 'closed';
+
         $this->notifyDepartmentUsers(
             $report,
-            'Citizen replied to report',
-            'The citizen replied to report '.$report->report_number.'.',
-            'citizen_report_comment'
+            $isClosedComment ? 'Citizen commented on a closed report' : 'Citizen replied to report',
+            $isClosedComment
+                ? 'The citizen commented on closed report '.$report->report_number.'. Please review possible dissatisfaction.'
+                : 'The citizen replied to report '.$report->report_number.'.',
+            $isClosedComment ? 'closed_report_citizen_comment' : 'citizen_report_comment'
         );
 
         return response()->json([
             'message' => 'Comment added successfully.',
-            'comment' => $comment->load('user'),
+            'comment' => $comment->load('user.role'),
         ], 201);
     }
 

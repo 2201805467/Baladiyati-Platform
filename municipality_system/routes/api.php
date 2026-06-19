@@ -125,6 +125,7 @@ Route::middleware(['auth:sanctum', 'role:reception'])
         Route::get('/reports/{report}', [ReceptionReportController::class, 'show'])->middleware('permission:review_reports')->name('reports.show');
         Route::patch('/reports/{report}/classify', [ReceptionReportController::class, 'classify'])->middleware('permission:review_reports')->name('reports.classify');
         Route::patch('/reports/{report}/assign', [ReceptionReportController::class, 'assign'])->middleware('permission:assign_reports')->name('reports.assign');
+        Route::post('/reports/{report}/comments', [ReceptionReportController::class, 'storeComment'])->middleware('permission:review_reports')->name('reports.comments.store');
         Route::delete('/reports/{report}', [ReceptionReportController::class, 'reject'])->middleware('permission:review_reports')->name('reports.reject');
 
         Route::get('/suggestions', [ReceptionSuggestionController::class, 'index'])->middleware('permission:review_suggestions')->name('suggestions.index');

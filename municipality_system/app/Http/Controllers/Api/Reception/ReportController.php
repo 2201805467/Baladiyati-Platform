@@ -7,6 +7,7 @@ use App\Models\Category;
 use App\Models\Department;
 use App\Models\Notification;
 use App\Models\Report;
+use App\Models\ReportComment;
 use App\Models\ReportLog;
 use App\Models\User;
 use Illuminate\Http\JsonResponse;
@@ -87,7 +88,7 @@ class ReportController extends Controller
                 'department',
                 'area',
                 'images.uploader',
-                'comments.user',
+                'comments.user.role',
                 'logs.actor',
                 'rating',
                 'duplicateReports',
@@ -173,6 +174,46 @@ class ReportController extends Controller
             'message' => 'Report transferred successfully.',
             'report' => $report->fresh()->load(['category', 'department', 'logs.actor']),
         ]);
+    }
+
+    public function storeComment(Request $request, Report $report): JsonResponse
+    {
+        if (! in_array($report->status, ['new', 'under_review'], true)) {
+            return response()->json([
+                'message' => 'Reception can only comment before the report is transferred.',
+            ], 422);
+        }
+
+        $data = $request->validate([
+            'comment_text' => ['required', 'string', 'max:2000'],
+        ]);
+
+        $comment = ReportComment::create([
+            'report_id' => $report->id,
+            'user_id' => $request->user()->id,
+            'comment_text' => $data['comment_text'],
+        ]);
+
+        ReportLog::create([
+            'report_id' => $report->id,
+            'action_by' => $request->user()->id,
+            'action' => 'comment_added',
+            'old_status' => $report->status,
+            'new_status' => $report->status,
+            'note' => 'Reception added a comment.',
+        ]);
+
+        $this->notifyCitizen(
+            $report,
+            'New reply on your report',
+            'Reception replied to report '.$report->report_number.'.',
+            'report_comment'
+        );
+
+        return response()->json([
+            'message' => 'Comment added successfully.',
+            'comment' => $comment->load('user.role'),
+        ], 201);
     }
 
     public function reject(Request $request, Report $report): JsonResponse
