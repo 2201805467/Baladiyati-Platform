@@ -36,8 +36,8 @@ export default function App() {
         <Route index element={
           user?.role === "admin" ? <Navigate to="/admin/analytics" replace /> : user?.role === "department" ? <Navigate to="/admin/technical" replace /> : <Navigate to="/admin/reception" replace />
         } />
-        <Route path="reception" element={<ProtectedRoute roles={["reception", "admin"]}><ReceptionPage /></ProtectedRoute>} />
-        <Route path="technical" element={<ProtectedRoute roles={["department", "admin"]}><TechnicalPage /></ProtectedRoute>} />
+        <Route path="reception" element={<ProtectedRoute roles={["reception"]}><ReceptionPage /></ProtectedRoute>} />
+        <Route path="technical" element={<ProtectedRoute roles={["department"]}><TechnicalPage /></ProtectedRoute>} />
         <Route path="analytics" element={<ProtectedRoute roles={["admin"]}><AnalyticsPage /></ProtectedRoute>} />
         <Route path="users" element={<ProtectedRoute roles={["admin"]}><UsersPage /></ProtectedRoute>} />
         <Route path="departments" element={<ProtectedRoute roles={["admin"]}><DepartmentsPage /></ProtectedRoute>} />

@@ -136,7 +136,7 @@ export default function ReceptionPage() {
   const [suggestions, setSuggestions] = useState<Suggestion[]>([]);
   const [selectedSuggestion, setSelectedSuggestion] = useState<Suggestion | null>(null);
   const [suggestionSearch, setSuggestionSearch] = useState("");
-  const [suggestionStatus, setSuggestionStatus] = useState("under_review");
+  const [suggestionStatus, setSuggestionStatus] = useState("");
   const [suggestionCategory, setSuggestionCategory] = useState("");
   const [suggestionRejectReason, setSuggestionRejectReason] = useState("");
   const [implementationStatus, setImplementationStatus] = useState("planned");
@@ -285,6 +285,7 @@ export default function ReceptionPage() {
     try {
       const response = await api.patch<{ suggestion: Suggestion }>(`/reception/suggestions/${selectedSuggestion.id}/accept`);
       replaceSuggestion(response.suggestion);
+      setSuggestionStatus("accepted");
       loadSuggestions();
     } catch (error: any) {
       alert(error.message);
@@ -298,6 +299,7 @@ export default function ReceptionPage() {
         rejection_reason: suggestionRejectReason,
       });
       replaceSuggestion(response.suggestion);
+      setSuggestionStatus("rejected");
       loadSuggestions();
     } catch (error: any) {
       alert(error.message);
@@ -449,13 +451,25 @@ export default function ReceptionPage() {
       ) : (
         <div className="grid grid-cols-1 xl:grid-cols-12 gap-6">
           <section className="xl:col-span-7 bg-slate-900 rounded-xl p-4 border border-slate-800">
+            <div className="grid grid-cols-3 gap-2 mb-4">
+              {[
+                { value: "under_review", label: "قيد المراجعة", color: "text-amber-400" },
+                { value: "accepted", label: "مقبولة", color: "text-emerald-400" },
+                { value: "rejected", label: "مرفوضة", color: "text-red-400" },
+              ].map((item) => (
+                <button key={item.value} onClick={() => setSuggestionStatus(item.value)} className={`bg-slate-800/60 border rounded-lg p-3 text-right ${suggestionStatus === item.value ? "border-emerald-500" : "border-slate-800"}`}>
+                  <div className={`text-xl font-bold ${item.color}`}>{suggestions.filter((suggestion) => suggestion.status === item.value).length}</div>
+                  <div className="text-xs text-slate-500">{item.label}</div>
+                </button>
+              ))}
+            </div>
             <div className="flex flex-wrap gap-2 mb-4">
               <input value={suggestionSearch} onChange={(event) => setSuggestionSearch(event.target.value)} onKeyDown={(event) => event.key === "Enter" && loadSuggestions()} placeholder="بحث في المقترحات" className="flex-1 min-w-52 px-3 py-2 bg-slate-800 border border-slate-700 rounded-lg text-sm" />
               <select value={suggestionStatus} onChange={(event) => setSuggestionStatus(event.target.value)} className="px-3 py-2 bg-slate-800 border border-slate-700 rounded-lg text-sm">
+                <option value="">كل الحالات</option>
                 <option value="under_review">قيد المراجعة</option>
                 <option value="accepted">مقبولة</option>
                 <option value="rejected">مرفوضة</option>
-                <option value="">كل الحالات</option>
               </select>
               <input value={suggestionCategory} onChange={(event) => setSuggestionCategory(event.target.value)} placeholder="التصنيف" className="w-36 px-3 py-2 bg-slate-800 border border-slate-700 rounded-lg text-sm" />
               <button onClick={loadSuggestions} className="px-3 py-2 bg-emerald-600 rounded-lg text-sm">بحث</button>
