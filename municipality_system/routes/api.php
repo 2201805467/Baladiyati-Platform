@@ -8,6 +8,7 @@ use App\Http\Controllers\Api\Admin\EmergencyContactController as AdminEmergencyC
 use App\Http\Controllers\Api\Admin\PermissionController as AdminPermissionController;
 use App\Http\Controllers\Api\Admin\ProjectController as AdminProjectController;
 use App\Http\Controllers\Api\Admin\PublicFacilityController as AdminPublicFacilityController;
+use App\Http\Controllers\Api\Admin\ReportMapController as AdminReportMapController;
 use App\Http\Controllers\Api\Admin\SecurityLogController as AdminSecurityLogController;
 use App\Http\Controllers\Api\Admin\UserController as AdminUserController;
 use App\Http\Controllers\Api\Citizen\NotificationController as CitizenNotificationController;
@@ -85,6 +86,9 @@ Route::middleware(['auth:sanctum', 'role:admin'])
         Route::put('/roles/{role}/permissions', [AdminPermissionController::class, 'updateRolePermissions'])->middleware('permission:manage_permissions')->name('roles.permissions.update');
         Route::get('/security-logs', [AdminSecurityLogController::class, 'index'])->middleware('permission:manage_permissions')->name('security-logs.index');
 
+        Route::get('/reports-map', [AdminReportMapController::class, 'index'])->middleware('permission:view_analytics')->name('reports-map.index');
+        Route::get('/reports-map/{report}', [AdminReportMapController::class, 'show'])->middleware('permission:view_analytics')->name('reports-map.show');
+
         Route::get('/departments', [AdminDepartmentController::class, 'index'])->middleware('permission:manage_departments')->name('departments.index');
         Route::post('/departments', [AdminDepartmentController::class, 'store'])->middleware('permission:manage_departments')->name('departments.store');
         Route::put('/departments/{department}', [AdminDepartmentController::class, 'update'])->middleware('permission:manage_departments')->name('departments.update');
@@ -117,6 +121,7 @@ Route::middleware(['auth:sanctum', 'role:reception'])
     ->name('reception.')
     ->group(function () use ($todo) {
         Route::get('/reports', [ReceptionReportController::class, 'index'])->middleware('permission:review_reports')->name('reports.index');
+        Route::get('/categories', [ReceptionReportController::class, 'categories'])->middleware('permission:review_reports')->name('categories.index');
         Route::get('/reports/{report}', [ReceptionReportController::class, 'show'])->middleware('permission:review_reports')->name('reports.show');
         Route::patch('/reports/{report}/classify', [ReceptionReportController::class, 'classify'])->middleware('permission:review_reports')->name('reports.classify');
         Route::patch('/reports/{report}/assign', [ReceptionReportController::class, 'assign'])->middleware('permission:assign_reports')->name('reports.assign');

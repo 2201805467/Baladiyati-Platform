@@ -1,143 +1,323 @@
-import { useState, useEffect } from "react";
-import { useAuth } from "../lib/auth";
-import { api } from "../lib/api-client";
+import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import type { Report, PaginatedResponse } from "../types";
+import { api } from "../lib/api-client";
+import { useAuth } from "../lib/auth";
 
-const statusBadge: Record<string, string> = {
-  NEW: "bg-blue-500/20 text-blue-400", ASSIGNED: "bg-amber-500/20 text-amber-400",
-  IN_PROGRESS: "bg-purple-500/20 text-purple-400", RESOLVED: "bg-emerald-500/20 text-emerald-400", REJECTED: "bg-red-500/20 text-red-400",
+interface ReportImage {
+  id: string;
+  image_url: string;
+  image_type?: string;
+}
+
+interface ReportLog {
+  id: string;
+  action: string;
+  new_status?: string | null;
+  note?: string | null;
+}
+
+interface ReportComment {
+  id: string;
+  comment_text: string;
+  user?: { full_name?: string; name?: string } | null;
+}
+
+interface Report {
+  id: string;
+  report_number?: string;
+  title?: string;
+  description?: string | null;
+  latitude?: string | number | null;
+  longitude?: string | number | null;
+  severity?: string | null;
+  status: string;
+  sla_status?: string | null;
+  sla_color?: string | null;
+  sla_due_at?: string | null;
+  completion_report?: string | null;
+  citizen?: { full_name?: string; name?: string; phone?: string } | null;
+  category?: { category_name?: string } | null;
+  department?: { dept_name?: string; name?: string } | null;
+  images?: ReportImage[];
+  comments?: ReportComment[];
+  logs?: ReportLog[];
+  rating?: { stars?: number; comment?: string | null } | null;
+}
+
+const statusLabels: Record<string, string> = {
+  transferred: "محول",
+  in_progress: "قيد التنفيذ",
+  pending: "معلق",
+  closed: "مغلق",
 };
+
+const statusClasses: Record<string, string> = {
+  transferred: "bg-purple-500/20 text-purple-400",
+  in_progress: "bg-cyan-500/20 text-cyan-400",
+  pending: "bg-orange-500/20 text-orange-400",
+  closed: "bg-emerald-500/20 text-emerald-400",
+};
+
+const severityClasses: Record<string, string> = {
+  low: "bg-slate-500/20 text-slate-300",
+  medium: "bg-amber-500/20 text-amber-400",
+  high: "bg-red-500/20 text-red-400",
+};
+
+const assetUrl = (url?: string | null) => {
+  if (!url) return "";
+  if (url.startsWith("http")) return url;
+  return `http://127.0.0.1:8000${url.startsWith("/") ? url : `/${url}`}`;
+};
+
+const personName = (person?: { full_name?: string; name?: string } | null) => person?.full_name || person?.name || "-";
 
 export default function TechnicalPage() {
   const { user, isLoading } = useAuth();
   const navigate = useNavigate();
   const [reports, setReports] = useState<Report[]>([]);
   const [selected, setSelected] = useState<Report | null>(null);
-  const [filter, setFilter] = useState("");
-  const [noteText, setNoteText] = useState("");
-  const [resolveNote, setResolveNote] = useState("");
-  const [showResolve, setShowResolve] = useState(false);
+  const [statusFilter, setStatusFilter] = useState("");
+  const [severityFilter, setSeverityFilter] = useState("");
+  const [search, setSearch] = useState("");
+  const [statusNote, setStatusNote] = useState("");
+  const [commentText, setCommentText] = useState("");
+  const [completionReport, setCompletionReport] = useState("");
+  const [completionImage, setCompletionImage] = useState<File | null>(null);
 
-  useEffect(() => { if (!isLoading && !user) navigate("/login"); }, [user, isLoading, navigate]);
-  useEffect(() => { loadReports(); }, [filter]);
+  useEffect(() => {
+    if (!isLoading && !user) navigate("/login");
+  }, [user, isLoading, navigate]);
+
+  useEffect(() => {
+    loadReports();
+  }, [statusFilter, severityFilter]);
 
   const loadReports = async () => {
     try {
-      const qs = filter ? `?status=${filter}` : "";
-      setReports((await api.get<PaginatedResponse<Report>>(`/department/reports${qs}`)).data);
-    } catch (e) { console.error("loadReports", e); }
+      const params = new URLSearchParams();
+      if (statusFilter) params.set("status", statusFilter);
+      if (severityFilter) params.set("severity", severityFilter);
+      if (search) params.set("search", search);
+      params.set("per_page", "30");
+      const response = await api.get<any>(`/department/reports?${params.toString()}`);
+      setReports(response.data || []);
+    } catch (error) {
+      console.error("loadReports", error);
+    }
   };
 
-  const handleStatus = async (reportId: string, status: string, note?: string) => {
-    try { await api.patch(`/department/reports/${reportId}/status`, { status: status.toLowerCase(), note }); loadReports(); setSelected(null); } catch (e: any) { alert(e.message); }
+  const openReport = async (reportId: string) => {
+    try {
+      const response = await api.get<{ report: Report }>(`/department/reports/${reportId}`);
+      setSelected(response.report);
+      setStatusNote("");
+      setCommentText("");
+      setCompletionReport("");
+      setCompletionImage(null);
+    } catch (error: any) {
+      alert(error.message);
+    }
   };
 
-  const handleAddNote = async (reportId: string) => {
-    if (!noteText.trim()) return;
-    try { await api.post(`/department/reports/${reportId}/comments`, { comment: noteText }); setNoteText(""); loadReports(); } catch (e: any) { alert(e.message); }
+  const updateStatus = async (status: "in_progress" | "pending") => {
+    if (!selected || !statusNote.trim()) return;
+    try {
+      const response = await api.patch<{ report: Report }>(`/department/reports/${selected.id}/status`, {
+        status,
+        note: statusNote,
+      });
+      setSelected((current) => current ? { ...current, ...response.report } : response.report);
+      setStatusNote("");
+      loadReports();
+      openReport(selected.id);
+    } catch (error: any) {
+      alert(error.message);
+    }
   };
+
+  const addComment = async () => {
+    if (!selected || !commentText.trim()) return;
+    try {
+      await api.post(`/department/reports/${selected.id}/comments`, { comment_text: commentText });
+      setCommentText("");
+      openReport(selected.id);
+    } catch (error: any) {
+      alert(error.message);
+    }
+  };
+
+  const closeReport = async () => {
+    if (!selected || !completionReport.trim() || !completionImage) return;
+    const form = new FormData();
+    form.append("_method", "PATCH");
+    form.append("completion_report", completionReport);
+    form.append("completion_image", completionImage);
+
+    try {
+      const response = await api.post<{ report: Report }>(`/department/reports/${selected.id}/close`, form);
+      setSelected((current) => current ? { ...current, ...response.report } : response.report);
+      setCompletionReport("");
+      setCompletionImage(null);
+      loadReports();
+      openReport(selected.id);
+    } catch (error: any) {
+      alert(error.message);
+    }
+  };
+
+  const counts = useMemo(() => ({
+    transferred: reports.filter((report) => report.status === "transferred").length,
+    in_progress: reports.filter((report) => report.status === "in_progress").length,
+    pending: reports.filter((report) => report.status === "pending").length,
+  }), [reports]);
+
+  const firstImage = selected?.images?.[0];
+  const afterImages = selected?.images?.filter((image) => image.image_type === "after") || [];
 
   if (isLoading) return <div className="animate-pulse text-emerald-400">جاري التحميل...</div>;
 
-  const filtered = reports;
-  const counts = { NEW: reports.filter(r => r.status === "NEW").length, IN_PROGRESS: reports.filter(r => r.status === "IN_PROGRESS").length, RESOLVED: reports.filter(r => r.status === "RESOLVED").length };
-
   return (
-    <div className="space-y-6">
-      <h1 className="text-2xl font-bold text-emerald-400">لوحة الصيانة</h1>
-      <div className="grid grid-cols-4 gap-4">
-        <div className="bg-slate-900 rounded-xl p-4 border border-slate-800 text-center">
-          <div className="text-2xl font-bold text-blue-400">{counts.NEW}</div><div className="text-xs text-slate-500">جديد</div>
-        </div>
-        <div className="bg-slate-900 rounded-xl p-4 border border-slate-800 text-center">
-          <div className="text-2xl font-bold text-purple-400">{counts.IN_PROGRESS}</div><div className="text-xs text-slate-500">قيد المعالجة</div>
-        </div>
-        <div className="bg-slate-900 rounded-xl p-4 border border-slate-800 text-center">
-          <div className="text-2xl font-bold text-emerald-400">{counts.RESOLVED}</div><div className="text-xs text-slate-500">محلول</div>
-        </div>
-        <div className="bg-slate-900 rounded-xl p-4 border border-slate-800 text-center">
-          <div className="text-2xl font-bold text-slate-400">{reports.length}</div><div className="text-xs text-slate-500">المجموع</div>
-        </div>
+    <div className="space-y-6 p-6" dir="rtl">
+      <div className="flex items-center justify-between">
+        <h1 className="text-2xl font-bold text-emerald-400">لوحة موظف القسم</h1>
+        <button onClick={loadReports} className="px-3 py-2 bg-slate-800 hover:bg-slate-700 rounded-lg text-sm">تحديث</button>
       </div>
 
-      <div className="grid grid-cols-12 gap-6">
-        <div className="col-span-7 bg-slate-900 rounded-xl p-4 border border-slate-800">
-          <div className="flex gap-2 mb-4 flex-wrap">
-            {["", "NEW", "ASSIGNED", "IN_PROGRESS", "RESOLVED"].map(s => (
-              <button key={s} onClick={() => setFilter(s)} className={`px-3 py-1.5 rounded-lg text-xs ${filter === s ? "bg-emerald-600 text-white" : "bg-slate-800 text-slate-400"}`}>{s || "الكل"}</button>
-            ))}
-          </div>
-          <div className="grid grid-cols-2 gap-3 max-h-[600px] overflow-y-auto">
-            {filtered.map(r => (
-              <div key={r.id} onClick={() => setSelected(r)} className={`p-3 rounded-lg cursor-pointer border ${selected?.id === r.id ? "bg-emerald-600/10 border-emerald-600" : "bg-slate-800/50 border-slate-800 hover:border-slate-700"}`}>
-                <div className="flex gap-2">
-                  {r.imageUrl && <img src={r.imageUrl} alt="" className="w-10 h-10 rounded object-cover shrink-0" />}
-                  <div className="min-w-0 flex-1">
-                    <div className="flex items-center justify-between mb-1">
-                      <span className="font-medium text-sm line-clamp-1">{r.title}</span>
-                      <span className={`px-2 py-0.5 rounded text-xs shrink-0 ${statusBadge[r.status]}`}>{r.status}</span>
-                    </div>
-                    <p className="text-xs text-slate-500 line-clamp-2">{r.description}</p>
-                    {r.slaDeadline && <p className={`text-xs mt-1 ${new Date(r.slaDeadline) < new Date() ? "text-red-400" : "text-slate-600"}`}>SLA: {new Date(r.slaDeadline).toLocaleDateString("ar")}</p>}
-                  </div>
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
+      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+        <div className="bg-slate-900 rounded-xl p-4 border border-slate-800 text-center"><div className="text-2xl font-bold text-purple-400">{counts.transferred}</div><div className="text-xs text-slate-500">محولة</div></div>
+        <div className="bg-slate-900 rounded-xl p-4 border border-slate-800 text-center"><div className="text-2xl font-bold text-cyan-400">{counts.in_progress}</div><div className="text-xs text-slate-500">قيد التنفيذ</div></div>
+        <div className="bg-slate-900 rounded-xl p-4 border border-slate-800 text-center"><div className="text-2xl font-bold text-orange-400">{counts.pending}</div><div className="text-xs text-slate-500">معلقة</div></div>
+        <div className="bg-slate-900 rounded-xl p-4 border border-slate-800 text-center"><div className="text-2xl font-bold text-slate-300">{reports.length}</div><div className="text-xs text-slate-500">المجموع</div></div>
+      </div>
 
-        <div className="col-span-5 bg-slate-900 rounded-xl p-4 border border-slate-800">
-          {selected ? (
+      <div className="grid grid-cols-1 xl:grid-cols-12 gap-6">
+        <section className="xl:col-span-7 bg-slate-900 rounded-xl p-4 border border-slate-800">
+          <div className="flex flex-wrap gap-2 mb-4">
+            <input value={search} onChange={(event) => setSearch(event.target.value)} onKeyDown={(event) => event.key === "Enter" && loadReports()} placeholder="بحث في بلاغات القسم" className="flex-1 min-w-52 px-3 py-2 bg-slate-800 border border-slate-700 rounded-lg text-sm" />
+            <select value={statusFilter} onChange={(event) => setStatusFilter(event.target.value)} className="px-3 py-2 bg-slate-800 border border-slate-700 rounded-lg text-sm">
+              <option value="">النشطة</option>
+              <option value="transferred">محولة</option>
+              <option value="in_progress">قيد التنفيذ</option>
+              <option value="pending">معلقة</option>
+              <option value="closed">مغلقة</option>
+            </select>
+            <select value={severityFilter} onChange={(event) => setSeverityFilter(event.target.value)} className="px-3 py-2 bg-slate-800 border border-slate-700 rounded-lg text-sm">
+              <option value="">كل الخطورة</option>
+              <option value="low">منخفضة</option>
+              <option value="medium">متوسطة</option>
+              <option value="high">عالية</option>
+            </select>
+            <button onClick={loadReports} className="px-3 py-2 bg-emerald-600 rounded-lg text-sm">بحث</button>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-3 max-h-[650px] overflow-y-auto">
+            {reports.map((report) => (
+              <button key={report.id} onClick={() => openReport(report.id)} className={`text-right p-3 rounded-lg border transition-colors ${selected?.id === report.id ? "bg-emerald-600/10 border-emerald-500" : "bg-slate-800/50 border-slate-800 hover:border-slate-700"}`}>
+                <div className="flex items-start justify-between gap-3">
+                  <div className="min-w-0">
+                    <div className="font-medium truncate">{report.report_number || `#${report.id}`}</div>
+                    <p className="text-xs text-slate-500 line-clamp-2 mt-1">{report.title || report.description || "-"}</p>
+                    <p className="text-xs text-slate-600 mt-2">{report.category?.category_name || "بدون تصنيف"}</p>
+                  </div>
+                  <div className="flex flex-col gap-1 items-end">
+                    <span className={`px-2 py-0.5 rounded text-xs ${statusClasses[report.status] || "bg-slate-500/20 text-slate-400"}`}>{statusLabels[report.status] || report.status}</span>
+                    <span className={`px-2 py-0.5 rounded text-xs ${severityClasses[report.severity || ""] || "bg-slate-500/20 text-slate-400"}`}>{report.severity || "-"}</span>
+                  </div>
+                </div>
+              </button>
+            ))}
+            {reports.length === 0 && <p className="text-slate-500 text-sm text-center py-10 md:col-span-2">لا توجد بلاغات للقسم</p>}
+          </div>
+        </section>
+
+        <section className="xl:col-span-5 bg-slate-900 rounded-xl p-4 border border-slate-800">
+          {!selected ? (
+            <p className="text-slate-500 text-sm text-center py-16">اختر بلاغاً لعرض التفاصيل</p>
+          ) : (
             <div className="space-y-4">
-              <h2 className="text-lg font-bold">{selected.title}</h2>
-              <span className={`px-2 py-1 rounded text-xs ${statusBadge[selected.status]}`}>{selected.status}</span>
-              <p className="text-sm text-slate-400"><strong>المواطن:</strong> {selected.citizen?.name}</p>
-              <p className="text-sm text-slate-400"><strong>القسم:</strong> {selected.department?.name || "-"}</p>
-              {selected.rating && <p className="text-sm text-slate-400"><strong>التقييم:</strong> {"⭐".repeat(selected.rating)}</p>}
-              <p className="text-sm">{selected.description}</p>
-              {(selected.imageUrl || selected.afterImageUrl) && (
-                <div className="grid grid-cols-2 gap-2">
-                  {selected.imageUrl && (
-                    <div>
-                      <p className="text-xs text-slate-500 mb-1">قبل</p>
-                      <img src={selected.imageUrl} alt="قبل" className="w-full h-32 object-cover rounded-lg cursor-pointer" onClick={() => window.open(selected.imageUrl!, "_blank")} />
-                    </div>
-                  )}
-                  {selected.afterImageUrl && (
-                    <div>
-                      <p className="text-xs text-slate-500 mb-1">بعد</p>
-                      <img src={selected.afterImageUrl} alt="بعد" className="w-full h-32 object-cover rounded-lg cursor-pointer" onClick={() => window.open(selected.afterImageUrl!, "_blank")} />
-                    </div>
-                  )}
-                </div>
-              )}
-              <div className="flex flex-wrap gap-2">
-                {selected.status === "ASSIGNED" && <button onClick={() => handleStatus(selected.id, "IN_PROGRESS", noteText)} className="px-4 py-2 bg-purple-600 rounded-lg text-sm">المباشرة بالصيانة</button>}
-                {selected.status === "IN_PROGRESS" && <button onClick={() => setShowResolve(true)} className="px-4 py-2 bg-emerald-600 rounded-lg text-sm">تم الحل</button>}
-              </div>
               <div>
-                <label className="block text-sm text-slate-400 mb-1">ملاحظة:</label>
-                <div className="flex gap-2">
-                  <input value={noteText} onChange={e => setNoteText(e.target.value)} placeholder="اكتب ملاحظة..." className="flex-1 px-3 py-2 bg-slate-800 border border-slate-700 rounded-lg text-sm" />
-                  <button onClick={() => handleAddNote(selected.id)} className="px-3 py-2 bg-emerald-600 rounded-lg text-sm">إرسال</button>
-                </div>
+                <h2 className="text-lg font-bold">{selected.report_number || `#${selected.id}`}</h2>
+                <p className="text-sm text-slate-400">{selected.title || "بلاغ بدون عنوان"}</p>
               </div>
-              {showResolve && (
-                <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50">
-                  <div className="bg-slate-900 p-6 rounded-xl border border-slate-700 w-96">
-                    <h3 className="font-bold mb-3">تأكيد حل البلاغ</h3>
-                    <textarea value={resolveNote} onChange={e => setResolveNote(e.target.value)} placeholder="تقرير الإنجاز..." className="w-full px-3 py-2 bg-slate-800 border border-slate-700 rounded-lg text-sm mb-3 h-24" />
-                    <div className="flex gap-2 justify-end">
-                      <button onClick={() => setShowResolve(false)} className="px-3 py-1.5 bg-slate-700 rounded-lg text-sm">إلغاء</button>
-                      <button onClick={() => { handleStatus(selected.id, "RESOLVED", resolveNote); setShowResolve(false); }} className="px-3 py-1.5 bg-emerald-600 rounded-lg text-sm">تأكيد</button>
-                    </div>
+              <div className="flex flex-wrap gap-2">
+                <span className={`px-2 py-1 rounded text-xs ${statusClasses[selected.status] || "bg-slate-500/20 text-slate-400"}`}>{statusLabels[selected.status] || selected.status}</span>
+                <span className={`px-2 py-1 rounded text-xs ${severityClasses[selected.severity || ""] || "bg-slate-500/20 text-slate-400"}`}>{selected.severity || "-"}</span>
+                {selected.sla_status && <span className="px-2 py-1 rounded text-xs bg-slate-800 text-slate-300">SLA: {selected.sla_status}</span>}
+              </div>
+
+              {firstImage && <img src={assetUrl(firstImage.image_url)} alt="صورة البلاغ" className="w-full h-56 object-cover rounded-lg border border-slate-800" />}
+
+              <div className="text-sm text-slate-300 space-y-1">
+                <p><strong>المواطن:</strong> {personName(selected.citizen)} {selected.citizen?.phone ? `- ${selected.citizen.phone}` : ""}</p>
+                <p><strong>التصنيف:</strong> {selected.category?.category_name || "-"}</p>
+                <p><strong>الموقع:</strong> {selected.latitude || "-"}, {selected.longitude || "-"}</p>
+              </div>
+              <p className="text-sm leading-7">{selected.description || "-"}</p>
+
+              {selected.status !== "closed" && (
+                <div className="space-y-2 border-t border-slate-800 pt-4">
+                  <label className="block text-sm text-slate-400">ملاحظة الحالة</label>
+                  <textarea value={statusNote} onChange={(event) => setStatusNote(event.target.value)} placeholder="الملاحظة إلزامية عند تحديث الحالة" className="w-full px-3 py-2 bg-slate-800 border border-slate-700 rounded-lg text-sm h-20" />
+                  <div className="flex flex-wrap gap-2">
+                    <button onClick={() => updateStatus("in_progress")} disabled={!statusNote.trim()} className="px-3 py-2 bg-cyan-600 disabled:opacity-50 rounded-lg text-sm">بدء التنفيذ</button>
+                    <button onClick={() => updateStatus("pending")} disabled={!statusNote.trim()} className="px-3 py-2 bg-orange-600 disabled:opacity-50 rounded-lg text-sm">تعليق البلاغ</button>
                   </div>
                 </div>
               )}
+
+              <div className="space-y-2 border-t border-slate-800 pt-4">
+                <label className="block text-sm text-slate-400">رد للمواطن</label>
+                <textarea value={commentText} onChange={(event) => setCommentText(event.target.value)} placeholder="اكتب الرد..." className="w-full px-3 py-2 bg-slate-800 border border-slate-700 rounded-lg text-sm h-20" />
+                <button onClick={addComment} disabled={!commentText.trim()} className="px-3 py-2 bg-emerald-600 disabled:opacity-50 rounded-lg text-sm">إرسال الرد</button>
+              </div>
+
+              {selected.status !== "closed" && (
+                <div className="space-y-2 border-t border-slate-800 pt-4">
+                  <label className="block text-sm text-slate-400">إغلاق البلاغ</label>
+                  <textarea value={completionReport} onChange={(event) => setCompletionReport(event.target.value)} placeholder="تقرير الإنجاز إلزامي" className="w-full px-3 py-2 bg-slate-800 border border-slate-700 rounded-lg text-sm h-24" />
+                  <input type="file" accept="image/*" onChange={(event) => setCompletionImage(event.target.files?.[0] || null)} className="w-full text-sm text-slate-400 file:ml-2 file:px-3 file:py-1.5 file:bg-slate-800 file:border file:border-slate-700 file:rounded-lg file:text-sm file:text-white" />
+                  <button onClick={closeReport} disabled={!completionReport.trim() || !completionImage} className="px-3 py-2 bg-emerald-700 disabled:opacity-50 rounded-lg text-sm">إغلاق البلاغ</button>
+                </div>
+              )}
+
+              {afterImages.length > 0 && (
+                <div className="border-t border-slate-800 pt-4">
+                  <h3 className="font-bold mb-2">صور الإنجاز</h3>
+                  <div className="grid grid-cols-2 gap-2">
+                    {afterImages.map((image) => <img key={image.id} src={assetUrl(image.image_url)} alt="صورة إنجاز" className="h-28 w-full object-cover rounded-lg border border-slate-800" />)}
+                  </div>
+                </div>
+              )}
+
+              <div className="border-t border-slate-800 pt-4">
+                <h3 className="font-bold mb-2">التعليقات</h3>
+                <div className="space-y-2 max-h-36 overflow-y-auto">
+                  {(selected.comments || []).map((comment) => (
+                    <div key={comment.id} className="text-xs bg-slate-800/60 rounded-lg p-2">
+                      <div className="text-slate-300">{personName(comment.user)}</div>
+                      <div className="text-slate-500 mt-1">{comment.comment_text}</div>
+                    </div>
+                  ))}
+                  {(!selected.comments || selected.comments.length === 0) && <p className="text-xs text-slate-500">لا توجد تعليقات</p>}
+                </div>
+              </div>
+
+              <div className="border-t border-slate-800 pt-4">
+                <h3 className="font-bold mb-2">سجل الإجراءات</h3>
+                <div className="space-y-2 max-h-36 overflow-y-auto">
+                  {(selected.logs || []).map((log) => (
+                    <div key={log.id} className="text-xs bg-slate-800/60 rounded-lg p-2">
+                      <div className="text-slate-300">{log.action} {log.new_status ? `- ${log.new_status}` : ""}</div>
+                      {log.note && <div className="text-slate-500 mt-1">{log.note}</div>}
+                    </div>
+                  ))}
+                  {(!selected.logs || selected.logs.length === 0) && <p className="text-xs text-slate-500">لا يوجد سجل بعد</p>}
+                </div>
+              </div>
             </div>
-          ) : <p className="text-slate-500 text-sm text-center py-12">اختر بلاغاً لعرض التفاصيل</p>}
-        </div>
+          )}
+        </section>
       </div>
     </div>
   );

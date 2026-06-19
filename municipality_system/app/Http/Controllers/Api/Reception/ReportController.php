@@ -45,6 +45,19 @@ class ReportController extends Controller
         return response()->json($reports);
     }
 
+    public function categories(Request $request): JsonResponse
+    {
+        $categories = Category::with('department')
+            ->where('is_active', true)
+            ->when($request->filled('search'), fn ($query) => $query->where('category_name', 'like', '%'.$request->string('search')->toString().'%'))
+            ->orderBy('category_name')
+            ->get();
+
+        return response()->json([
+            'categories' => $categories,
+        ]);
+    }
+
     public function show(Request $request, Report $report): JsonResponse
     {
         if ($report->status === 'new') {

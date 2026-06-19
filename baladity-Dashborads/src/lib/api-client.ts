@@ -16,10 +16,11 @@ class ApiClient {
   getToken() { return this.token; }
 
   private async request<T>(method: string, path: string, body?: unknown): Promise<T> {
+    const isFormData = typeof FormData !== "undefined" && body instanceof FormData;
     const headers: Record<string, string> = {
       Accept: "application/json",
-      "Content-Type": "application/json",
     };
+    if (!isFormData) headers["Content-Type"] = "application/json";
     if (this.token) headers["Authorization"] = `Bearer ${this.token}`;
 
     const normalizedPath = path.startsWith("/api/")
@@ -29,7 +30,9 @@ class ApiClient {
         : `/${path}`;
 
     const res = await fetch(`${API_BASE}${normalizedPath}`, {
-      method, headers, body: body ? JSON.stringify(body) : undefined,
+      method,
+      headers,
+      body: body ? (isFormData ? body : JSON.stringify(body)) : undefined,
     });
 
     if (!res.ok) {
@@ -47,7 +50,7 @@ class ApiClient {
   post<T>(path: string, body?: unknown) { return this.request<T>("POST", path, body); }
   put<T>(path: string, body?: unknown) { return this.request<T>("PUT", path, body); }
   patch<T>(path: string, body?: unknown) { return this.request<T>("PATCH", path, body); }
-  delete<T>(path: string) { return this.request<T>("DELETE", path); }
+  delete<T>(path: string, body?: unknown) { return this.request<T>("DELETE", path, body); }
 }
 
 export const api = new ApiClient();
