@@ -373,6 +373,24 @@ class _AddReportPageState extends ConsumerState<AddReportPage> {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 const Text(
+                  'إرفاق صورة',
+                  style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+                ),
+                const SizedBox(height: 10),
+                _ImageUploadPlaceholder(
+                  primaryColor: primaryGreen,
+                  imageFile: _imageFile,
+                  isClassifying: isClassifyingImage,
+                  onTap: isSubmitting || isClassifyingImage
+                      ? () {}
+                      : _showPickerOptions,
+                ),
+                if (imageClassification != null) ...[
+                  const SizedBox(height: 10),
+                  _ClassificationHint(classification: imageClassification),
+                ],
+                const SizedBox(height: 24),
+                const Text(
                   'تصنيف المشكلة',
                   style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
                 ),
@@ -429,24 +447,6 @@ class _AddReportPageState extends ConsumerState<AddReportPage> {
                       ? 'يرجى كتابة الوصف'
                       : null,
                 ),
-                const SizedBox(height: 24),
-                const Text(
-                  'إرفاق صورة',
-                  style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
-                ),
-                const SizedBox(height: 10),
-                _ImageUploadPlaceholder(
-                  primaryColor: primaryGreen,
-                  imageFile: _imageFile,
-                  isClassifying: isClassifyingImage,
-                  onTap: isSubmitting || isClassifyingImage
-                      ? () {}
-                      : _showPickerOptions,
-                ),
-                if (imageClassification != null) ...[
-                  const SizedBox(height: 10),
-                  _ClassificationHint(classification: imageClassification),
-                ],
                 const SizedBox(height: 24),
                 const Text(
                   'تحديد الموقع',
