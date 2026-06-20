@@ -324,10 +324,11 @@ class _AddReportPageState extends ConsumerState<AddReportPage> {
     if (!mounted) return;
     if (success) {
       ref.read(reportsControllerProvider.notifier).clearImageClassification();
+      final messenger = ScaffoldMessenger.of(context);
       Navigator.pop(context);
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(const SnackBar(content: Text('تم إرسال البلاغ بنجاح ✓')));
+      messenger.showSnackBar(
+        const SnackBar(content: Text('تم إرسال البلاغ بنجاح ✓')),
+      );
     }
   }
 

@@ -5,8 +5,11 @@ import '../../domain/entities/report_image_classification_entity.dart';
 class ReportsState {
   final bool isLoading;
   final bool isSubmitting;
+  final bool isLoadingDetails;
+  final bool isSubmittingComment;
   final bool isClassifyingImage;
   final List<ReportEntity> reports;
+  final ReportEntity? selectedReport;
   final List<ReportCategoryEntity> categories;
   final ReportImageClassificationEntity? imageClassification;
   final String? errorMessage;
@@ -16,8 +19,11 @@ class ReportsState {
   const ReportsState({
     this.isLoading = false,
     this.isSubmitting = false,
+    this.isLoadingDetails = false,
+    this.isSubmittingComment = false,
     this.isClassifyingImage = false,
     this.reports = const [],
+    this.selectedReport,
     this.categories = const [],
     this.imageClassification,
     this.errorMessage,
@@ -28,8 +34,11 @@ class ReportsState {
   ReportsState copyWith({
     bool? isLoading,
     bool? isSubmitting,
+    bool? isLoadingDetails,
+    bool? isSubmittingComment,
     bool? isClassifyingImage,
     List<ReportEntity>? reports,
+    ReportEntity? selectedReport,
     List<ReportCategoryEntity>? categories,
     ReportImageClassificationEntity? imageClassification,
     bool clearImageClassification = false,
@@ -41,8 +50,11 @@ class ReportsState {
     return ReportsState(
       isLoading: isLoading ?? this.isLoading,
       isSubmitting: isSubmitting ?? this.isSubmitting,
+      isLoadingDetails: isLoadingDetails ?? this.isLoadingDetails,
+      isSubmittingComment: isSubmittingComment ?? this.isSubmittingComment,
       isClassifyingImage: isClassifyingImage ?? this.isClassifyingImage,
       reports: reports ?? this.reports,
+      selectedReport: selectedReport ?? this.selectedReport,
       categories: categories ?? this.categories,
       imageClassification: clearImageClassification
           ? null

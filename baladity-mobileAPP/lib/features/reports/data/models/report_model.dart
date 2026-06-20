@@ -1,4 +1,5 @@
 import '../../domain/entities/report_entity.dart';
+import 'report_comment_model.dart';
 
 class ReportModel extends ReportEntity {
   const ReportModel({
@@ -11,6 +12,7 @@ class ReportModel extends ReportEntity {
     super.imageUrl,
     super.status,
     super.createdAt,
+    super.comments,
   });
 
   factory ReportModel.fromJson(Map<String, dynamic> json) {
@@ -20,6 +22,7 @@ class ReportModel extends ReportEntity {
         imagesJson is List && imagesJson.isNotEmpty && imagesJson.first is Map
         ? (imagesJson.first as Map)['image_url']?.toString()
         : null;
+    final comments = _commentsFromJson(json['comments']);
 
     return ReportModel(
       id: _intOrNull(json['id']),
@@ -36,6 +39,7 @@ class ReportModel extends ReportEntity {
       createdAt: json['created_at'] != null
           ? DateTime.tryParse(json['created_at'].toString())
           : null,
+      comments: comments,
     );
   }
 
@@ -49,6 +53,26 @@ class ReportModel extends ReportEntity {
     if (imageUrl != null) 'image_url': imageUrl,
     'status': status,
   };
+
+  static List<ReportCommentModel> _commentsFromJson(dynamic value) {
+    if (value is! List) return const [];
+
+    final comments = value
+        .whereType<Map>()
+        .map((e) => ReportCommentModel.fromJson(Map<String, dynamic>.from(e)))
+        .toList();
+
+    comments.sort((a, b) {
+      final aDate = a.createdAt;
+      final bDate = b.createdAt;
+      if (aDate == null && bDate == null) return 0;
+      if (aDate == null) return -1;
+      if (bDate == null) return 1;
+      return aDate.compareTo(bDate);
+    });
+
+    return comments;
+  }
 
   static int? _intOrNull(dynamic value) {
     if (value == null) return null;

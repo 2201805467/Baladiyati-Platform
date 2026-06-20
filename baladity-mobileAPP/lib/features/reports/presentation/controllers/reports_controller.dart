@@ -2,6 +2,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../../features/auth/presentation/controllers/auth_controller.dart';
 import '../../data/datasources/reports_remote_datasource.dart';
 import '../../data/repositories_impl/reports_repository_impl.dart';
+import '../../domain/entities/report_entity.dart';
 import '../../domain/repositories/reports_repository.dart';
 import '../../domain/entities/report_image_classification_entity.dart';
 import '../../domain/usecases/create_report_usecase.dart';
@@ -74,6 +75,69 @@ class ReportsController extends Notifier<ReportsState> {
       state = state.copyWith(isLoading: false, categories: categories);
     } catch (e) {
       state = state.copyWith(isLoading: false, errorMessage: e.toString());
+    }
+  }
+
+  Future<void> fetchReportDetails(int reportId) async {
+    state = state.copyWith(isLoadingDetails: true, clearError: true);
+    try {
+      final report = await _repository.getReport(reportId);
+      state = state.copyWith(
+        isLoadingDetails: false,
+        selectedReport: report,
+        reports: state.reports
+            .map((item) => item.id == report.id ? report : item)
+            .toList(),
+      );
+    } catch (e) {
+      state = state.copyWith(
+        isLoadingDetails: false,
+        errorMessage: e.toString(),
+      );
+    }
+  }
+
+  Future<bool> addComment({required int reportId, required String text}) async {
+    final trimmed = text.trim();
+    if (trimmed.isEmpty) return false;
+
+    state = state.copyWith(isSubmittingComment: true, clearError: true);
+    try {
+      final comment = await _repository.addComment(
+        reportId: reportId,
+        text: trimmed,
+      );
+      final current = state.selectedReport;
+      if (current != null && current.id == reportId) {
+        final updatedReport = ReportEntity(
+          id: current.id,
+          category: current.category,
+          description: current.description,
+          latitude: current.latitude,
+          longitude: current.longitude,
+          locationAddress: current.locationAddress,
+          imageUrl: current.imageUrl,
+          status: current.status,
+          createdAt: current.createdAt,
+          comments: [...current.comments, comment],
+        );
+        state = state.copyWith(
+          isSubmittingComment: false,
+          selectedReport: updatedReport,
+          reports: state.reports
+              .map((item) => item.id == updatedReport.id ? updatedReport : item)
+              .toList(),
+        );
+      } else {
+        state = state.copyWith(isSubmittingComment: false);
+      }
+      return true;
+    } catch (e) {
+      state = state.copyWith(
+        isSubmittingComment: false,
+        errorMessage: e.toString(),
+      );
+      return false;
     }
   }
 

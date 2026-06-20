@@ -2,11 +2,13 @@ import 'package:dio/dio.dart';
 import '../../../../core/error/exceptions.dart';
 import '../../../../core/network/api_constants.dart';
 import '../models/report_category_model.dart';
+import '../models/report_comment_model.dart';
 import '../models/report_image_classification_model.dart';
 import '../models/report_model.dart';
 
 abstract class ReportsRemoteDataSource {
   Future<List<ReportModel>> getReports({int page = 1});
+  Future<ReportModel> getReport(int reportId);
   Future<List<ReportCategoryModel>> getCategories();
   Future<ReportImageClassificationModel> classifyImage({
     required String imagePath,
@@ -18,6 +20,10 @@ abstract class ReportsRemoteDataSource {
     double? longitude,
     String? locationAddress,
     String? imagePath,
+  });
+  Future<ReportCommentModel> addComment({
+    required int reportId,
+    required String text,
   });
 }
 
@@ -36,6 +42,17 @@ class ReportsRemoteDataSourceImpl implements ReportsRemoteDataSource {
       return (list as List)
           .map((e) => ReportModel.fromJson(e as Map<String, dynamic>))
           .toList();
+    } on DioException catch (e) {
+      throw _extract(e);
+    }
+  }
+
+  @override
+  Future<ReportModel> getReport(int reportId) async {
+    try {
+      final res = await _dio.get('${ApiConstants.reports}/$reportId');
+      final data = res.data['report'] ?? res.data['data'] ?? res.data;
+      return ReportModel.fromJson(data as Map<String, dynamic>);
     } on DioException catch (e) {
       throw _extract(e);
     }
@@ -92,8 +109,10 @@ class ReportsRemoteDataSourceImpl implements ReportsRemoteDataSource {
         'title': description.isNotEmpty ? description : category,
         'description': description,
         'category_id': categoryId,
-        'latitude': ?latitude?.toString(),
-        'longitude': ?longitude?.toString(),
+        if (latitude != null) 'latitude': latitude.toString(),
+        if (longitude != null) 'longitude': longitude.toString(),
+        if (locationAddress != null && locationAddress.isNotEmpty)
+          'location_address': locationAddress,
         if (imagePath case final String p?)
           'images[]': await MultipartFile.fromFile(p, filename: 'report.jpg'),
       });
@@ -101,6 +120,23 @@ class ReportsRemoteDataSourceImpl implements ReportsRemoteDataSource {
       final res = await _dio.post(ApiConstants.reports, data: formData);
       final data = res.data['report'] ?? res.data['data'] ?? res.data;
       return ReportModel.fromJson(data as Map<String, dynamic>);
+    } on DioException catch (e) {
+      throw _extract(e);
+    }
+  }
+
+  @override
+  Future<ReportCommentModel> addComment({
+    required int reportId,
+    required String text,
+  }) async {
+    try {
+      final res = await _dio.post(
+        '${ApiConstants.reports}/$reportId/comments',
+        data: {'comment_text': text},
+      );
+      final data = res.data['comment'] ?? res.data['data'] ?? res.data;
+      return ReportCommentModel.fromJson(data as Map<String, dynamic>);
     } on DioException catch (e) {
       throw _extract(e);
     }

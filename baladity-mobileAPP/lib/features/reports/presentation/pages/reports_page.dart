@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../domain/entities/report_entity.dart';
 import '../controllers/reports_controller.dart';
 import '../controllers/reports_state.dart';
+import 'report_details_page.dart';
 
 class ReportsPage extends ConsumerStatefulWidget {
   const ReportsPage({super.key});
@@ -71,6 +72,7 @@ class _ReportsPageState extends ConsumerState<ReportsPage> {
             Text(
               'لا توجد بلاغات مسجلة بعد',
               style: TextStyle(fontSize: 18, color: mutedColor),
+              textAlign: TextAlign.center,
             ),
             const SizedBox(height: 16),
             ElevatedButton.icon(
@@ -109,7 +111,17 @@ class _ReportsPageState extends ConsumerState<ReportsPage> {
               ),
             );
           }
-          return _ReportCard(report: state.reports[index]);
+          return _ReportCard(
+            report: state.reports[index],
+            onTap: () {
+              Navigator.of(context).push(
+                MaterialPageRoute(
+                  builder: (_) =>
+                      ReportDetailsPage(report: state.reports[index]),
+                ),
+              );
+            },
+          );
         },
       ),
     );
@@ -118,7 +130,8 @@ class _ReportsPageState extends ConsumerState<ReportsPage> {
 
 class _ReportCard extends StatelessWidget {
   final ReportEntity report;
-  const _ReportCard({required this.report});
+  final VoidCallback onTap;
+  const _ReportCard({required this.report, required this.onTap});
 
   Color _statusColor(String status) {
     return switch (status) {
@@ -136,70 +149,77 @@ class _ReportCard extends StatelessWidget {
     return Card(
       elevation: 2,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-      child: Padding(
-        padding: const EdgeInsets.all(16.0),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Text(
-                  report.id != null ? '#${report.id}' : 'بلاغ جديد',
-                  style: TextStyle(
-                    fontWeight: FontWeight.bold,
-                    color: mutedColor,
+      clipBehavior: Clip.antiAlias,
+      child: InkWell(
+        onTap: onTap,
+        child: Padding(
+          padding: const EdgeInsets.all(16.0),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Text(
+                    report.id != null ? '#${report.id}' : 'بلاغ جديد',
+                    style: TextStyle(
+                      fontWeight: FontWeight.bold,
+                      color: mutedColor,
+                    ),
                   ),
+                  _StatusBadge(label: report.status, color: color),
+                ],
+              ),
+              const SizedBox(height: 12),
+              Text(
+                report.description,
+                maxLines: 2,
+                overflow: TextOverflow.ellipsis,
+                style: const TextStyle(
+                  fontSize: 15,
+                  fontWeight: FontWeight.bold,
                 ),
-                _StatusBadge(label: report.status, color: color),
-              ],
-            ),
-            const SizedBox(height: 12),
-            Text(
-              report.description,
-              maxLines: 2,
-              overflow: TextOverflow.ellipsis,
-              style: const TextStyle(fontSize: 15, fontWeight: FontWeight.bold),
-            ),
-            const SizedBox(height: 8),
-            Row(
-              children: [
-                const Icon(
-                  Icons.category_outlined,
-                  size: 16,
-                  color: Colors.grey,
-                ),
-                const SizedBox(width: 4),
-                Text(
-                  report.category,
-                  style: TextStyle(color: mutedColor, fontSize: 13),
-                ),
-                if (report.locationAddress != null) ...[
-                  const SizedBox(width: 16),
+              ),
+              const SizedBox(height: 8),
+              Row(
+                children: [
                   const Icon(
-                    Icons.location_on_outlined,
+                    Icons.category_outlined,
                     size: 16,
                     color: Colors.grey,
                   ),
                   const SizedBox(width: 4),
-                  Expanded(
-                    child: Text(
-                      report.locationAddress!,
-                      style: TextStyle(color: mutedColor, fontSize: 13),
-                      overflow: TextOverflow.ellipsis,
-                    ),
+                  Text(
+                    report.category,
+                    style: TextStyle(color: mutedColor, fontSize: 13),
                   ),
+                  if (report.locationAddress != null) ...[
+                    const SizedBox(width: 16),
+                    const Icon(
+                      Icons.location_on_outlined,
+                      size: 16,
+                      color: Colors.grey,
+                    ),
+                    const SizedBox(width: 4),
+                    Expanded(
+                      child: Text(
+                        report.locationAddress!,
+                        style: TextStyle(color: mutedColor, fontSize: 13),
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ),
+                  ],
                 ],
-              ],
-            ),
-            if (report.createdAt != null) ...[
-              const Divider(height: 24),
-              Text(
-                'بتاريخ: ${report.createdAt!.toLocal().toString().split(' ')[0]}',
-                style: TextStyle(fontSize: 12, color: mutedColor),
               ),
+              if (report.createdAt != null) ...[
+                const Divider(height: 24),
+                Text(
+                  'بتاريخ: ${report.createdAt!.toLocal().toString().split(' ')[0]}',
+                  style: TextStyle(fontSize: 12, color: mutedColor),
+                ),
+              ],
             ],
-          ],
+          ),
         ),
       ),
     );

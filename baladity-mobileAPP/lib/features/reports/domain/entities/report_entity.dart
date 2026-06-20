@@ -1,3 +1,5 @@
+import 'report_comment_entity.dart';
+
 class ReportEntity {
   final int? id;
   final String category;
@@ -8,6 +10,7 @@ class ReportEntity {
   final String? imageUrl;
   final String status;
   final DateTime? createdAt;
+  final List<ReportCommentEntity> comments;
 
   const ReportEntity({
     this.id,
@@ -19,5 +22,6 @@ class ReportEntity {
     this.imageUrl,
     this.status = 'قيد الانتظار',
     this.createdAt,
+    this.comments = const [],
   });
 }
