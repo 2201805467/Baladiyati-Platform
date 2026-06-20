@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Api\Admin;
 
 use App\Http\Controllers\Controller;
 use App\Mail\EmployeeCredentialsMail;
+use App\Mail\EmployeeUpdatedMail;
 use App\Models\Role;
 use App\Models\User;
 use Illuminate\Http\JsonResponse;
@@ -74,6 +75,12 @@ class UserController extends Controller
 
     public function update(Request $request, User $user): JsonResponse
     {
+        if ($user->loadMissing('role')->role?->role_name === 'citizen') {
+            return response()->json([
+                'message' => 'Citizen accounts cannot be edited from admin users management.',
+            ], 422);
+        }
+
         $data = $request->validate([
             'full_name' => ['sometimes', 'required', 'string', 'max:100'],
             'email' => ['sometimes', 'required', 'email', 'max:100', Rule::unique('users', 'email')->ignore($user->id)],
@@ -94,6 +101,8 @@ class UserController extends Controller
             : $user->employee_number;
         $this->validateEmployeeNumber($role, $employeeNumber);
 
+        $plainPassword = $data['password'] ?? null;
+
         if (! empty($data['password'])) {
             $data['password'] = Hash::make($data['password']);
         } else {
@@ -101,10 +110,14 @@ class UserController extends Controller
         }
 
         $user->update($data);
+        $updatedUser = $user->fresh()->load(['role', 'department']);
+
+        Mail::to($updatedUser->email)->send(new EmployeeUpdatedMail($updatedUser, $plainPassword));
 
         return response()->json([
             'message' => 'User updated successfully.',
-            'user' => $user->fresh()->load(['role', 'department']),
+            'user' => $updatedUser,
+            'credentials_sent' => true,
         ]);
     }
 
@@ -127,6 +140,12 @@ class UserController extends Controller
         if ($request->user()->id === $user->id) {
             return response()->json([
                 'message' => 'You cannot delete your own account.',
+            ], 422);
+        }
+
+        if ($user->loadMissing('role')->role?->role_name === 'admin') {
+            return response()->json([
+                'message' => 'Admin accounts cannot be deleted.',
             ], 422);
         }
 

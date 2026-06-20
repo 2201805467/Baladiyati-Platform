@@ -117,7 +117,8 @@ const severityClasses: Record<string, string> = {
 const assetUrl = (url?: string | null) => {
   if (!url) return "";
   if (url.startsWith("http")) return url;
-  return `http://127.0.0.1:8000${url.startsWith("/") ? url : `/${url}`}`;
+  const apiOrigin = (import.meta.env.VITE_API_BASE_URL || "http://127.0.0.1:8000/api").replace(/\/api\/?$/, "");
+  return `${apiOrigin}${url.startsWith("/") ? url : `/${url}`}`;
 };
 
 const personName = (person?: { full_name?: string; name?: string } | null) => person?.full_name || person?.name || "-";
@@ -199,8 +200,8 @@ export default function ReceptionPage() {
 
   const loadDepartments = async () => {
     try {
-      const response = await api.get<any>("/admin/departments?per_page=100");
-      setDepartments(response.data || []);
+      const response = await api.get<{ departments: Department[] }>("/reception/departments");
+      setDepartments(response.departments || []);
     } catch (error) {
       console.error("loadDepartments", error);
     }

@@ -19,6 +19,8 @@ const roleName = (user: StaffUser) => {
 const rawRoleName = (user: StaffUser) => typeof user.role === "object" ? user.role.role_name : user.role || "";
 const departmentName = (user: StaffUser) => user.department?.dept_name || user.department?.name || "-";
 const isActive = (user: StaffUser) => Boolean(user.is_active ?? user.isActive);
+const canDeleteUser = (user: StaffUser) => rawRoleName(user) !== "admin";
+const canEditUser = (user: StaffUser) => rawRoleName(user) !== "citizen";
 
 export default function UsersPage() {
   const { user, isLoading } = useAuth();
@@ -26,7 +28,7 @@ export default function UsersPage() {
   const [staff, setStaff] = useState<StaffUser[]>([]);
   const [roles, setRoles] = useState<Role[]>([]);
   const [departments, setDepartments] = useState<Department[]>([]);
-  const [statusFilter, setStatusFilter] = useState<"all" | "active" | "inactive">("all");
+  const [statusFilter, setStatusFilter] = useState<"citizens" | "staff" | "active" | "inactive">("staff");
   const [showForm, setShowForm] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<StaffUser | null>(null);
@@ -60,6 +62,9 @@ export default function UsersPage() {
 
   const filteredStaff = useMemo(() => {
     return staff.filter((staffUser) => {
+      const role = rawRoleName(staffUser);
+      if (statusFilter === "citizens") return role === "citizen";
+      if (statusFilter === "staff") return role !== "citizen";
       if (statusFilter === "active") return isActive(staffUser);
       if (statusFilter === "inactive") return !isActive(staffUser);
       return true;
@@ -144,7 +149,7 @@ export default function UsersPage() {
 
   const handleUpdate = async (id: string) => {
     try {
-      await api.put(`/admin/users/${id}`, {
+      const response = await api.put<{ credentials_sent?: boolean; message?: string }>(`/admin/users/${id}`, {
         full_name: editName,
         email: editEmail,
         phone: editPhone,
@@ -153,6 +158,9 @@ export default function UsersPage() {
       });
       cancelEdit();
       loadStaff();
+      if (response.credentials_sent) {
+        alert("تم تحديث بيانات الموظف وإرسالها إلى بريده الإلكتروني.");
+      }
     } catch (error: any) {
       alert(error.message);
     }
@@ -195,7 +203,8 @@ export default function UsersPage() {
 
       <div className="flex flex-wrap items-center gap-2">
         <select value={statusFilter} onChange={(event) => setStatusFilter(event.target.value as any)} className="px-3 py-2 bg-slate-800 border border-slate-700 rounded-lg text-sm text-white">
-          <option value="all">جميع الموظفين</option>
+          <option value="citizens">المواطنون</option>
+          <option value="staff">جميع الموظفين</option>
           <option value="active">النشطون</option>
           <option value="inactive">الموقوفون</option>
         </select>
@@ -288,11 +297,19 @@ export default function UsersPage() {
                         </td>
                         <td className="p-3">
                           <div className="flex flex-wrap gap-1">
-                            <button onClick={() => startEdit(staffUser)} className="px-2 py-1 bg-amber-600/20 text-amber-400 rounded text-xs">تعديل</button>
+                            {canEditUser(staffUser) ? (
+                              <button onClick={() => startEdit(staffUser)} className="px-2 py-1 bg-amber-600/20 text-amber-400 rounded text-xs">تعديل</button>
+                            ) : (
+                              <span className="px-2 py-1 bg-slate-800 text-slate-500 rounded text-xs">لا يمكن تعديل المواطن</span>
+                            )}
                             {isActive(staffUser) && (
                               <button onClick={() => handleDeactivate(staffUser.id)} className="px-2 py-1 bg-red-600/20 text-red-400 rounded text-xs">إيقاف</button>
                             )}
-                            <button onClick={() => { setDeleteTarget(staffUser); setDeleteConfirmation(""); }} className="px-2 py-1 bg-red-700/30 text-red-300 rounded text-xs">حذف نهائي</button>
+                            {canDeleteUser(staffUser) ? (
+                              <button onClick={() => { setDeleteTarget(staffUser); setDeleteConfirmation(""); }} className="px-2 py-1 bg-red-700/30 text-red-300 rounded text-xs">حذف نهائي</button>
+                            ) : (
+                              <span className="px-2 py-1 bg-slate-800 text-slate-500 rounded text-xs">لا يمكن حذف الأدمن</span>
+                            )}
                           </div>
                         </td>
                       </>

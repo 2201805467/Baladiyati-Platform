@@ -110,6 +110,17 @@ export default function CategoriesPage() {
     }
   };
 
+  const handleDelete = async (category: Category) => {
+    if (!confirm(`هل تريد حذف التصنيف "${category.category_name}" نهائياً؟`)) return;
+
+    try {
+      await api.delete(`/admin/categories/${category.id}`, { confirm: true });
+      loadCategories();
+    } catch (error: any) {
+      alert(error.message);
+    }
+  };
+
   if (isLoading) return <div className="animate-pulse text-emerald-400">جاري التحميل...</div>;
 
   return (
@@ -170,6 +181,7 @@ export default function CategoriesPage() {
                     <td className="p-3 flex gap-1">
                       <button onClick={() => startEdit(category)} className="px-2 py-1 bg-amber-600/20 text-amber-400 rounded text-xs">تعديل</button>
                       <button onClick={() => handleToggle(category)} className="px-2 py-1 bg-slate-700 rounded text-xs">{category.is_active !== false ? "إيقاف" : "تفعيل"}</button>
+                      <button onClick={() => handleDelete(category)} disabled={(category.reports_count || 0) > 0} className="px-2 py-1 bg-red-700/30 text-red-300 disabled:opacity-40 rounded text-xs">حذف</button>
                     </td>
                   </>
                 )}

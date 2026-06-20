@@ -1,7 +1,10 @@
 import { useEffect, useState } from "react";
+import { DivIcon, LatLngExpression } from "leaflet";
+import { MapContainer, Marker, TileLayer, useMapEvents } from "react-leaflet";
 import { useNavigate } from "react-router-dom";
 import { api } from "../lib/api-client";
 import { useAuth } from "../lib/auth";
+import "leaflet/dist/leaflet.css";
 
 type Tab = "projects" | "facilities" | "contacts";
 
@@ -48,6 +51,66 @@ const projectStatusLabels: Record<string, string> = {
 const facilityTypes = ["park", "clinic", "mosque", "market", "parking", "restroom", "office", "other"];
 const contactCategories = ["ambulance", "fire", "police", "electricity", "water", "municipality", "maintenance", "other"];
 
+const selectedFacilityIcon = new DivIcon({
+  className: "",
+  html: `<div style="width:24px;height:24px;background:#10b981;border:3px solid white;border-radius:50%;box-shadow:0 2px 8px rgba(0,0,0,0.45)"></div>`,
+  iconSize: [24, 24],
+  iconAnchor: [12, 12],
+});
+
+const numberValue = (value: string) => {
+  if (!value.trim()) return null;
+  const parsed = Number(value);
+  return Number.isFinite(parsed) ? parsed : null;
+};
+
+function FacilityLocationPicker({
+  latitude,
+  longitude,
+  onChange,
+}: {
+  latitude: string;
+  longitude: string;
+  onChange: (latitude: string, longitude: string) => void;
+}) {
+  const selectedLat = numberValue(latitude);
+  const selectedLng = numberValue(longitude);
+  const selectedPosition = selectedLat !== null && selectedLng !== null
+    ? [selectedLat, selectedLng] as LatLngExpression
+    : null;
+  const center: LatLngExpression = selectedPosition || [32.8872, 13.1913];
+
+  function ClickHandler() {
+    useMapEvents({
+      click(event) {
+        onChange(event.latlng.lat.toFixed(6), event.latlng.lng.toFixed(6));
+      },
+    });
+
+    return null;
+  }
+
+  return (
+    <div className="space-y-2">
+      <div className="h-64 overflow-hidden rounded-lg border border-slate-700">
+        <MapContainer center={center} zoom={13} className="w-full h-full" scrollWheelZoom>
+          <TileLayer attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>' url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" />
+          <ClickHandler />
+          {selectedPosition && <Marker position={selectedPosition} icon={selectedFacilityIcon} />}
+        </MapContainer>
+      </div>
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-2 text-xs">
+        <div className="rounded-lg border border-slate-800 bg-slate-800/60 px-3 py-2 text-slate-300">
+          خط العرض: <span dir="ltr">{latitude || "-"}</span>
+        </div>
+        <div className="rounded-lg border border-slate-800 bg-slate-800/60 px-3 py-2 text-slate-300">
+          خط الطول: <span dir="ltr">{longitude || "-"}</span>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export default function ContentPage() {
   const { user, isLoading } = useAuth();
   const navigate = useNavigate();
@@ -84,25 +147,27 @@ export default function ContentPage() {
 
   useEffect(() => {
     loadAll();
-  }, []);
+  }, [user?.role]);
+
+  const contentBasePath = user?.role === "reception" ? "/reception/content" : "/admin";
 
   const pagedData = <T,>(response: any): T[] => Array.isArray(response) ? response : response.data || [];
 
   const loadAll = async () => {
     try {
-      const response = await api.get<any>("/admin/projects?per_page=100");
+      const response = await api.get<any>(`${contentBasePath}/projects?per_page=100`);
       setProjects(pagedData<Project>(response));
     } catch (error) {
       console.error("loadProjects", error);
     }
     try {
-      const response = await api.get<any>("/admin/facilities?per_page=100");
+      const response = await api.get<any>(`${contentBasePath}/facilities?per_page=100`);
       setFacilities(pagedData<Facility>(response));
     } catch (error) {
       console.error("loadFacilities", error);
     }
     try {
-      const response = await api.get<any>("/admin/emergency-contacts?per_page=100");
+      const response = await api.get<any>(`${contentBasePath}/emergency-contacts?per_page=100`);
       setContacts(pagedData<EmergencyContact>(response));
     } catch (error) {
       console.error("loadContacts", error);
@@ -133,7 +198,7 @@ export default function ContentPage() {
   const handleCreateProject = async (event: React.FormEvent) => {
     event.preventDefault();
     try {
-      await api.post("/admin/projects", {
+      await api.post(`${contentBasePath}/projects`, {
         name: projectName,
         description: projectDescription || null,
         contractor: projectContractor || null,
@@ -152,8 +217,13 @@ export default function ContentPage() {
 
   const handleCreateFacility = async (event: React.FormEvent) => {
     event.preventDefault();
+    if (!facilityLat || !facilityLng) {
+      alert("يرجى تحديد موقع المرفق على الخريطة.");
+      return;
+    }
+
     try {
-      await api.post("/admin/facilities", {
+      await api.post(`${contentBasePath}/facilities`, {
         name: facilityName,
         facility_type: facilityType,
         latitude: Number(facilityLat),
@@ -172,7 +242,7 @@ export default function ContentPage() {
   const handleCreateContact = async (event: React.FormEvent) => {
     event.preventDefault();
     try {
-      await api.post("/admin/emergency-contacts", {
+      await api.post(`${contentBasePath}/emergency-contacts`, {
         name: contactName,
         phone: contactPhone,
         alt_phone: contactAltPhone || null,
@@ -189,7 +259,7 @@ export default function ContentPage() {
 
   const updateProject = async (project: Project, changes: Partial<Project>) => {
     try {
-      await api.put(`/admin/projects/${project.id}`, changes);
+      await api.put(`${contentBasePath}/projects/${project.id}`, changes);
       loadAll();
     } catch (error: any) {
       alert(error.message);
@@ -198,7 +268,7 @@ export default function ContentPage() {
 
   const toggleFacility = async (facility: Facility) => {
     try {
-      await api.put(`/admin/facilities/${facility.id}`, { is_active: !facility.is_active });
+      await api.put(`${contentBasePath}/facilities/${facility.id}`, { is_active: !facility.is_active });
       loadAll();
     } catch (error: any) {
       alert(error.message);
@@ -207,7 +277,7 @@ export default function ContentPage() {
 
   const toggleContact = async (contact: EmergencyContact) => {
     try {
-      await api.put(`/admin/emergency-contacts/${contact.id}`, { is_active: !contact.is_active });
+      await api.put(`${contentBasePath}/emergency-contacts/${contact.id}`, { is_active: !contact.is_active });
       loadAll();
     } catch (error: any) {
       alert(error.message);
@@ -288,13 +358,19 @@ export default function ContentPage() {
           {showForm && (
             <form onSubmit={handleCreateFacility} className="bg-slate-900 rounded-xl p-4 border border-slate-800 space-y-3">
               <input value={facilityName} onChange={(event) => setFacilityName(event.target.value)} placeholder="اسم المرفق" className="w-full px-3 py-2 bg-slate-800 border border-slate-700 rounded-lg text-sm" required />
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+              <div className="grid grid-cols-1 md:grid-cols-1 gap-3">
                 <select value={facilityType} onChange={(event) => setFacilityType(event.target.value)} className="px-3 py-2 bg-slate-800 border border-slate-700 rounded-lg text-sm" required>
                   {facilityTypes.map((type) => <option key={type} value={type}>{type}</option>)}
                 </select>
-                <input value={facilityLat} onChange={(event) => setFacilityLat(event.target.value)} placeholder="خط العرض" type="number" step="any" className="px-3 py-2 bg-slate-800 border border-slate-700 rounded-lg text-sm" required />
-                <input value={facilityLng} onChange={(event) => setFacilityLng(event.target.value)} placeholder="خط الطول" type="number" step="any" className="px-3 py-2 bg-slate-800 border border-slate-700 rounded-lg text-sm" required />
               </div>
+              <FacilityLocationPicker
+                latitude={facilityLat}
+                longitude={facilityLng}
+                onChange={(latitude, longitude) => {
+                  setFacilityLat(latitude);
+                  setFacilityLng(longitude);
+                }}
+              />
               <input value={facilityHours} onChange={(event) => setFacilityHours(event.target.value)} placeholder="ساعات العمل" className="w-full px-3 py-2 bg-slate-800 border border-slate-700 rounded-lg text-sm" />
               <textarea value={facilityServices} onChange={(event) => setFacilityServices(event.target.value)} placeholder="الخدمات" className="w-full px-3 py-2 bg-slate-800 border border-slate-700 rounded-lg text-sm h-20" />
               <button type="submit" className="px-4 py-2 bg-emerald-600 rounded-lg text-sm">إنشاء مرفق</button>

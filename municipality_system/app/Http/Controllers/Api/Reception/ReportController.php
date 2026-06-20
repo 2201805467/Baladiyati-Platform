@@ -59,6 +59,19 @@ class ReportController extends Controller
         ]);
     }
 
+    public function departments(Request $request): JsonResponse
+    {
+        $departments = Department::query()
+            ->where('is_active', true)
+            ->when($request->filled('search'), fn ($query) => $query->where('dept_name', 'like', '%'.$request->string('search')->toString().'%'))
+            ->orderBy('dept_name')
+            ->get(['id', 'dept_name', 'description', 'is_active']);
+
+        return response()->json([
+            'departments' => $departments,
+        ]);
+    }
+
     public function show(Request $request, Report $report): JsonResponse
     {
         if ($report->status === 'new') {

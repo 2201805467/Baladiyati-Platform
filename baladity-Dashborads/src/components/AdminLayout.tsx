@@ -13,7 +13,7 @@ const navItems = [
   { path: "/admin/security", label: "الصلاحيات والسجلات", icon: "🔐", roles: ["admin"] },
   { path: "/admin/notifications", label: "الإشعارات", icon: "🔔", roles: ["reception", "department", "admin"] },
   { path: "/admin/map", label: "الخريطة", icon: "🗺️", roles: ["reception", "department", "admin"] },
-  { path: "/admin/content", label: "المحتوى", icon: "📦", roles: ["admin"] },
+  { path: "/admin/content", label: "المحتوى", icon: "📦", roles: ["admin", "reception"] },
 ];
 
 export default function AdminLayout() {
@@ -77,10 +77,8 @@ export default function AdminLayout() {
         password: newPassword,
         password_confirmation: confirmPassword,
       });
-      setPasswordMessage(response.message || "تم تغيير كلمة المرور بنجاح.");
-      setCurrentPassword("");
-      setNewPassword("");
-      setConfirmPassword("");
+      resetPasswordForm();
+      setShowPasswordModal(false);
     } catch (error: any) {
       setPasswordError(error.message || "تعذر تغيير كلمة المرور.");
     } finally {
