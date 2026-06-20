@@ -3,8 +3,10 @@
 namespace App\Http\Controllers\Api\Citizen;
 
 use App\Http\Controllers\Controller;
+use App\Models\Notification;
 use App\Models\Suggestion;
 use App\Models\SuggestionVote;
+use App\Models\User;
 use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -51,6 +53,14 @@ class SuggestionController extends Controller
             'category' => $data['category'] ?? null,
             'status' => 'under_review',
         ]);
+
+        $this->notifyReceptionUsers(
+            'New citizen suggestion',
+            'A new suggestion "'.$suggestion->title.'" was submitted and is waiting for review.',
+            'new_suggestion_submitted',
+            $suggestion->id,
+            Suggestion::class
+        );
 
         return response()->json([
             'message' => 'Suggestion submitted successfully.',
@@ -146,5 +156,21 @@ class SuggestionController extends Controller
         if ($suggestion->status !== 'under_review') {
             abort(422, 'Only suggestions under review can be edited or deleted.');
         }
+    }
+
+    private function notifyReceptionUsers(string $title, string $body, string $type, int $relatedId, string $relatedType): void
+    {
+        User::whereHas('role', fn ($query) => $query->where('role_name', 'reception'))
+            ->where('is_active', true)
+            ->each(function (User $user) use ($title, $body, $type, $relatedId, $relatedType) {
+                Notification::create([
+                    'user_id' => $user->id,
+                    'title' => $title,
+                    'body' => $body,
+                    'type' => $type,
+                    'related_id' => $relatedId,
+                    'related_type' => $relatedType,
+                ]);
+            });
     }
 }

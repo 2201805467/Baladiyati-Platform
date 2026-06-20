@@ -166,6 +166,14 @@ class ReportController extends Controller
             return $report;
         });
 
+        $this->notifyReceptionUsers(
+            'New citizen report',
+            'A new report '.$report->report_number.' was submitted and is waiting for reception review.',
+            'new_report_submitted',
+            $report->id,
+            Report::class
+        );
+
         return response()->json([
             'message' => $report->is_duplicate
                 ? 'Report joined to a similar report successfully.'
@@ -207,16 +215,26 @@ class ReportController extends Controller
             'comment_text' => $data['comment_text'],
         ]);
 
-        $isClosedComment = $report->status === 'closed';
+        if (in_array($report->status, ['new', 'under_review'], true)) {
+            $this->notifyReceptionUsers(
+                'Citizen commented on a report under review',
+                'The citizen replied to report '.$report->report_number.' before it was transferred.',
+                'citizen_report_comment_reception',
+                $report->id,
+                Report::class
+            );
+        } else {
+            $isClosedComment = $report->status === 'closed';
 
-        $this->notifyDepartmentUsers(
-            $report,
-            $isClosedComment ? 'Citizen commented on a closed report' : 'Citizen replied to report',
-            $isClosedComment
-                ? 'The citizen commented on closed report '.$report->report_number.'. Please review possible dissatisfaction.'
-                : 'The citizen replied to report '.$report->report_number.'.',
-            $isClosedComment ? 'closed_report_citizen_comment' : 'citizen_report_comment'
-        );
+            $this->notifyDepartmentUsers(
+                $report,
+                $isClosedComment ? 'Citizen commented on a closed report' : 'Citizen replied to report',
+                $isClosedComment
+                    ? 'The citizen commented on closed report '.$report->report_number.'. Please review possible dissatisfaction.'
+                    : 'The citizen replied to report '.$report->report_number.'.',
+                $isClosedComment ? 'closed_report_citizen_comment' : 'citizen_report_comment'
+            );
+        }
 
         return response()->json([
             'message' => 'Comment added successfully.',
@@ -283,6 +301,22 @@ class ReportController extends Controller
                 'related_type' => Report::class,
             ]);
         });
+    }
+
+    private function notifyReceptionUsers(string $title, string $body, string $type, int $relatedId, string $relatedType): void
+    {
+        User::whereHas('role', fn ($query) => $query->where('role_name', 'reception'))
+            ->where('is_active', true)
+            ->each(function (User $user) use ($title, $body, $type, $relatedId, $relatedType) {
+                Notification::create([
+                    'user_id' => $user->id,
+                    'title' => $title,
+                    'body' => $body,
+                    'type' => $type,
+                    'related_id' => $relatedId,
+                    'related_type' => $relatedType,
+                ]);
+            });
     }
 
     private function findSimilarReports(int $categoryId, float $latitude, float $longitude): \Illuminate\Support\Collection

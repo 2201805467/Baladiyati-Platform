@@ -15,6 +15,8 @@ interface NotificationsResponse {
 const isUnread = (notification: Notification) => notification.is_read === false || notification.isRead === false;
 const createdAt = (notification: Notification) => notification.created_at || notification.createdAt || "";
 const isClosedReportComment = (notification: Notification) => notification.type === "closed_report_citizen_comment";
+const isSlaOverdue = (notification: Notification) => notification.type === "report_sla_overdue" || notification.type === "report_sla_overdue_department";
+const isSlaWarning = (notification: Notification) => notification.type === "report_sla_warning";
 
 const formatDateTime = (value: string) => {
   if (!value) return "";
@@ -32,10 +34,33 @@ const notificationLabel = (type: string) => {
     report_status: "حالة بلاغ",
     report_rejected: "رفض بلاغ",
     department_report_assigned: "بلاغ محول",
+    report_sla_warning: "تحذير SLA",
+    report_sla_overdue: "تجاوز SLA",
+    report_sla_overdue_department: "تجاوز SLA",
+    new_report_submitted: "بلاغ جديد",
+    new_suggestion_submitted: "مقترح جديد",
+    citizen_report_comment_reception: "تعليق مواطن",
     suggestion_status: "حالة مقترح",
+    suggestion_implementation: "تنفيذ مقترح",
   };
 
   return labels[type] || type;
+};
+
+const relatedPath = (notification: Notification, role?: string | null) => {
+  const relatedType = notification.related_type || "";
+
+  if (relatedType.includes("Report")) {
+    if (role === "department") return "/admin/technical";
+    if (role === "reception") return "/admin/reception";
+    return "/admin/notifications";
+  }
+
+  if (relatedType.includes("Suggestion")) {
+    return role === "reception" ? "/admin/reception" : "/admin/notifications";
+  }
+
+  return "/admin/notifications";
 };
 
 export default function NotificationsPage() {
@@ -56,7 +81,7 @@ export default function NotificationsPage() {
   }, [page]);
 
   const urgentCount = useMemo(
-    () => notifications.filter((notification) => isClosedReportComment(notification) && isUnread(notification)).length,
+    () => notifications.filter((notification) => (isClosedReportComment(notification) || isSlaOverdue(notification)) && isUnread(notification)).length,
     [notifications]
   );
 
@@ -75,13 +100,15 @@ export default function NotificationsPage() {
   };
 
   const handleMarkAsRead = async (notification: Notification) => {
-    if (!isUnread(notification)) return;
     try {
-      await api.patch(`/notifications/${notification.id}/read`);
-      setNotifications((current) => current.map((item) => (
-        item.id === notification.id ? { ...item, is_read: true, isRead: true } : item
-      )));
-      setUnreadCount((current) => Math.max(0, current - 1));
+      if (isUnread(notification)) {
+        await api.patch(`/notifications/${notification.id}/read`);
+        setNotifications((current) => current.map((item) => (
+          item.id === notification.id ? { ...item, is_read: true, isRead: true } : item
+        )));
+        setUnreadCount((current) => Math.max(0, current - 1));
+      }
+      navigate(relatedPath(notification, user?.role));
     } catch (error) {
       console.error("markAsRead", error);
     }
@@ -122,8 +149,8 @@ export default function NotificationsPage() {
 
       {urgentCount > 0 && (
         <div className="rounded-lg border border-rose-500/40 bg-rose-500/10 p-4 text-rose-100">
-          <div className="font-bold">يوجد اعتراض من مواطن على بلاغ مغلق</div>
-          <p className="text-sm text-rose-200 mt-1">راجع البلاغات المميزة أدناه، فقد يحتاج القسم الفني إلى إعادة تقييم جودة الإنجاز.</p>
+          <div className="font-bold">توجد إشعارات حرجة تحتاج متابعة</div>
+          <p className="text-sm text-rose-200 mt-1">راجع التنبيهات المميزة أدناه، مثل اعتراض مواطن على بلاغ مغلق أو تجاوز SLA.</p>
         </div>
       )}
 
@@ -140,7 +167,8 @@ export default function NotificationsPage() {
         <div className="space-y-2">
           {notifications.map((notification) => {
             const unread = isUnread(notification);
-            const urgent = isClosedReportComment(notification);
+            const urgent = isClosedReportComment(notification) || isSlaOverdue(notification);
+            const warning = isSlaWarning(notification);
 
             return (
               <button
@@ -149,6 +177,8 @@ export default function NotificationsPage() {
                 className={`w-full text-right rounded-lg p-4 border transition-colors ${
                   urgent
                     ? "bg-rose-500/10 border-rose-500/40 hover:bg-rose-500/15"
+                    : warning
+                      ? "bg-amber-500/10 border-amber-500/40 hover:bg-amber-500/15"
                     : unread
                       ? "bg-emerald-600/5 border-emerald-600/30 hover:bg-emerald-600/10"
                       : "bg-slate-900 border-slate-800 hover:border-slate-700"
@@ -159,7 +189,11 @@ export default function NotificationsPage() {
                     <div className="flex flex-wrap items-center gap-2">
                       <span className="font-medium text-sm text-slate-100">{notification.title}</span>
                       <span className={`px-2 py-0.5 rounded text-xs ${
-                        urgent ? "bg-rose-500/20 text-rose-200" : "bg-slate-800 text-slate-300"
+                        urgent
+                          ? "bg-rose-500/20 text-rose-200"
+                          : warning
+                            ? "bg-amber-500/20 text-amber-200"
+                            : "bg-slate-800 text-slate-300"
                       }`}>
                         {notificationLabel(notification.type)}
                       </span>
