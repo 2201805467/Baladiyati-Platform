@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useLocation, useNavigate } from "react-router-dom";
 import { api } from "../lib/api-client";
 import { useAuth } from "../lib/auth";
 
@@ -91,6 +91,7 @@ const formatDateTime = (value?: string | null) => {
 export default function TechnicalPage() {
   const { user, isLoading } = useAuth();
   const navigate = useNavigate();
+  const location = useLocation();
   const departmentTitle = user?.department?.dept_name ? `لوحة موظف قسم ${user.department.dept_name}` : "لوحة موظف القسم";
   const [reports, setReports] = useState<Report[]>([]);
   const [selected, setSelected] = useState<Report | null>(null);
@@ -110,6 +111,13 @@ export default function TechnicalPage() {
     loadReports();
   }, [statusFilter, severityFilter]);
 
+  useEffect(() => {
+    const reportId = new URLSearchParams(location.search).get("reportId");
+    if (!reportId) return;
+
+    openReport(reportId);
+  }, [location.search]);
+
   const loadReports = async () => {
     try {
       const params = new URLSearchParams();
@@ -128,6 +136,9 @@ export default function TechnicalPage() {
     try {
       const response = await api.get<{ report: Report }>(`/department/reports/${reportId}`);
       setSelected(response.report);
+      setReports((current) => current.some((report) => report.id === response.report.id)
+        ? current.map((report) => report.id === response.report.id ? response.report : report)
+        : [response.report, ...current]);
       setStatusNote("");
       setCommentText("");
       setCompletionReport("");

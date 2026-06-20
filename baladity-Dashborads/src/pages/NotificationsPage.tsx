@@ -49,10 +49,12 @@ const notificationLabel = (type: string) => {
 
 const relatedPath = (notification: Notification, role?: string | null) => {
   const relatedType = notification.related_type || "";
+  const relatedId = notification.related_id ? String(notification.related_id) : "";
 
   if (relatedType.includes("Report")) {
-    if (role === "department") return "/admin/technical";
-    if (role === "reception") return "/admin/reception";
+    const query = relatedId ? `?reportId=${encodeURIComponent(relatedId)}` : "";
+    if (role === "department") return `/admin/technical${query}`;
+    if (role === "reception") return `/admin/reception${query}`;
     return "/admin/notifications";
   }
 

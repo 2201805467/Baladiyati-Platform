@@ -71,7 +71,7 @@ class _HomePageState extends ConsumerState<HomePage> {
     }
   }
 
-  Future<void> _markAllNotificationsAsRead() async {
+  Future<void> _markAllNotificationsAsRead({bool showError = true}) async {
     try {
       final dio = ref.read(dioProvider);
       await dio.patch('${ApiConstants.notifications}/read-all');
@@ -83,9 +83,14 @@ class _HomePageState extends ConsumerState<HomePage> {
       });
     } catch (e) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(e.toString()), backgroundColor: Colors.red[700]),
-      );
+      if (showError) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(e.toString()),
+            backgroundColor: Colors.red[700],
+          ),
+        );
+      }
     }
   }
 
@@ -93,7 +98,7 @@ class _HomePageState extends ConsumerState<HomePage> {
     await _fetchNotifications();
     if (!mounted) return;
 
-    showModalBottomSheet(
+    await showModalBottomSheet(
       context: context,
       showDragHandle: true,
       isScrollControlled: true,
@@ -119,7 +124,12 @@ class _HomePageState extends ConsumerState<HomePage> {
                       ),
                       TextButton(
                         onPressed: _notifications.any((n) => !n.isRead)
-                            ? _markAllNotificationsAsRead
+                            ? () async {
+                                await _markAllNotificationsAsRead();
+                                if (context.mounted) {
+                                  Navigator.of(context).pop();
+                                }
+                              }
                             : null,
                         child: const Text('تحديد الكل كمقروء'),
                       ),
@@ -193,6 +203,11 @@ class _HomePageState extends ConsumerState<HomePage> {
         ),
       ),
     );
+
+    if (!mounted) return;
+    if (_notifications.any((notification) => !notification.isRead)) {
+      await _markAllNotificationsAsRead(showError: false);
+    }
   }
 
   String _relativeTime(DateTime createdAt) {

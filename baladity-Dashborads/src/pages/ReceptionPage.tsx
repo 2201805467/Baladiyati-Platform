@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useLocation, useNavigate } from "react-router-dom";
 import { api } from "../lib/api-client";
 import { useAuth } from "../lib/auth";
 import type { Department } from "../types";
@@ -141,6 +141,7 @@ const formatDateTime = (value?: string | null) => {
 export default function ReceptionPage() {
   const { user, isLoading } = useAuth();
   const navigate = useNavigate();
+  const location = useLocation();
   const [tab, setTab] = useState<"reports" | "suggestions">("reports");
 
   const [reports, setReports] = useState<Report[]>([]);
@@ -184,6 +185,14 @@ export default function ReceptionPage() {
     loadCategories();
   }, []);
 
+  useEffect(() => {
+    const reportId = new URLSearchParams(location.search).get("reportId");
+    if (!reportId) return;
+
+    setTab("reports");
+    openReport(reportId);
+  }, [location.search]);
+
   const loadReports = async () => {
     try {
       const params = new URLSearchParams();
@@ -221,12 +230,14 @@ export default function ReceptionPage() {
     try {
       const response = await api.get<{ report: Report }>(`/reception/reports/${reportId}`);
       setSelectedReport(response.report);
+      setReports((current) => current.some((report) => report.id === response.report.id)
+        ? current.map((report) => report.id === response.report.id ? response.report : report)
+        : [response.report, ...current]);
       setCategoryId(String(response.report.category_id || response.report.category?.id || ""));
       setDepartmentId(String(response.report.dept_id || response.report.department?.id || ""));
       setNote("");
       setRejectReason("");
       setCommentText("");
-      loadReports();
     } catch (error: any) {
       alert(error.message);
     } finally {
