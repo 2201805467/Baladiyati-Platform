@@ -7,6 +7,7 @@ use App\Mail\EmployeeCredentialsMail;
 use App\Mail\EmployeeUpdatedMail;
 use App\Models\Role;
 use App\Models\User;
+use App\Support\SecurityLogger;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
@@ -64,6 +65,7 @@ class UserController extends Controller
         if ($role->role_name !== 'citizen') {
             Mail::to($user->email)->send(new EmployeeCredentialsMail($user->load('role', 'department'), $plainPassword));
         }
+        SecurityLogger::log($request, $request->user(), 'admin.users.created:'.$user->id, 'success');
 
         return response()->json([
             'message' => 'User created successfully.',
@@ -113,6 +115,7 @@ class UserController extends Controller
         $updatedUser = $user->fresh()->load(['role', 'department']);
 
         Mail::to($updatedUser->email)->send(new EmployeeUpdatedMail($updatedUser, $plainPassword));
+        SecurityLogger::log($request, $request->user(), 'admin.users.updated:'.$updatedUser->id, 'success');
 
         return response()->json([
             'message' => 'User updated successfully.',
@@ -121,9 +124,10 @@ class UserController extends Controller
         ]);
     }
 
-    public function deactivate(User $user): JsonResponse
+    public function deactivate(Request $request, User $user): JsonResponse
     {
         $user->update(['is_active' => false]);
+        SecurityLogger::log($request, $request->user(), 'admin.users.deactivated:'.$user->id, 'success');
 
         return response()->json([
             'message' => 'User deactivated successfully.',
@@ -138,18 +142,24 @@ class UserController extends Controller
         ]);
 
         if ($request->user()->id === $user->id) {
+            SecurityLogger::log($request, $request->user(), 'admin.users.delete_denied_self:'.$user->id, 'denied');
+
             return response()->json([
                 'message' => 'You cannot delete your own account.',
             ], 422);
         }
 
         if ($user->loadMissing('role')->role?->role_name === 'admin') {
+            SecurityLogger::log($request, $request->user(), 'admin.users.delete_denied_admin:'.$user->id, 'denied');
+
             return response()->json([
                 'message' => 'Admin accounts cannot be deleted.',
             ], 422);
         }
 
+        $deletedUserId = $user->id;
         $user->delete();
+        SecurityLogger::log($request, $request->user(), 'admin.users.deleted:'.$deletedUserId, 'success');
 
         return response()->json([
             'message' => 'User deleted permanently.',

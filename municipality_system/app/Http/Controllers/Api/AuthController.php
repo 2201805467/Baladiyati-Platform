@@ -7,6 +7,7 @@ use App\Http\Controllers\Controller;
 use App\Models\PendingRegistration;
 use App\Models\Role;
 use App\Models\User;
+use App\Support\SecurityLogger;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -105,12 +106,16 @@ class AuthController extends Controller
             ->first();
 
         if (! $user || ! Hash::check($credentials['password'], $user->password)) {
+            SecurityLogger::log($request, $user, 'auth.login.failed', 'failed');
+
             throw ValidationException::withMessages([
                 'login' => ['The provided credentials are incorrect.'],
             ]);
         }
 
         if (! $user->is_active) {
+            SecurityLogger::log($request, $user, 'auth.login.inactive_account', 'denied');
+
             return response()->json([
                 'message' => $user->otp_purpose === 'registration'
                     ? 'This account is not verified yet.'
@@ -121,6 +126,7 @@ class AuthController extends Controller
         $roleName = $user->role?->role_name;
         $deviceName = $credentials['device_name'] ?? 'api-client';
         $token = $user->createToken($deviceName, [$roleName])->plainTextToken;
+        SecurityLogger::log($request, $user, 'auth.login.success', 'success');
 
         return response()->json([
             'token_type' => 'Bearer',
@@ -257,6 +263,7 @@ class AuthController extends Controller
         ]);
 
         $user->tokens()->delete();
+        SecurityLogger::log($request, $user, 'auth.password.reset', 'success');
 
         return response()->json([
             'message' => 'Password reset successfully.',
@@ -272,7 +279,9 @@ class AuthController extends Controller
 
     public function logout(Request $request): JsonResponse
     {
-        $request->user()->currentAccessToken()?->delete();
+        $user = $request->user();
+        SecurityLogger::log($request, $user, 'auth.logout.success', 'success');
+        $user->currentAccessToken()?->delete();
 
         return response()->json([
             'message' => 'Logged out successfully.',
@@ -319,6 +328,7 @@ class AuthController extends Controller
         $user->update([
             'password' => Hash::make($data['password']),
         ]);
+        SecurityLogger::log($request, $user, 'auth.password.changed', 'success');
 
         return response()->json([
             'message' => 'Password changed successfully.',

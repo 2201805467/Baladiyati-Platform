@@ -44,6 +44,28 @@ const statusClasses: Record<string, string> = {
   failed: "bg-red-500/20 text-red-400",
 };
 
+const actionLabels: Record<string, string> = {
+  "auth.login.success": "تسجيل دخول ناجح",
+  "auth.login.failed": "محاولة تسجيل دخول فاشلة",
+  "auth.login.inactive_account": "محاولة دخول لحساب غير نشط",
+  "auth.logout.success": "تسجيل خروج",
+  "auth.password.changed": "تغيير كلمة المرور",
+  "auth.password.reset": "استعادة كلمة المرور",
+};
+
+const formatAction = (action: string) => {
+  if (actionLabels[action]) return actionLabels[action];
+  if (action.startsWith("permission_denied:")) return `رفض صلاحية: ${action.replace("permission_denied:", "")}`;
+  if (action.startsWith("admin.users.created:")) return `إنشاء مستخدم #${action.replace("admin.users.created:", "")}`;
+  if (action.startsWith("admin.users.updated:")) return `تعديل مستخدم #${action.replace("admin.users.updated:", "")}`;
+  if (action.startsWith("admin.users.deactivated:")) return `إيقاف مستخدم #${action.replace("admin.users.deactivated:", "")}`;
+  if (action.startsWith("admin.users.deleted:")) return `حذف مستخدم #${action.replace("admin.users.deleted:", "")}`;
+  if (action.startsWith("admin.users.delete_denied_admin:")) return `رفض حذف أدمن #${action.replace("admin.users.delete_denied_admin:", "")}`;
+  if (action.startsWith("admin.users.delete_denied_self:")) return "رفض حذف الحساب الحالي";
+  if (action.startsWith("admin.permissions.updated:")) return `تعديل صلاحيات دور ${action.replace("admin.permissions.updated:", "")}`;
+  return action;
+};
+
 export default function PermissionsSecurityPage() {
   const { user, isLoading } = useAuth();
   const navigate = useNavigate();
@@ -238,7 +260,10 @@ export default function PermissionsSecurityPage() {
                       <div>{log.user?.full_name || "غير معروف"}</div>
                       <div className="text-xs text-slate-500">{log.user?.email || "-"}</div>
                     </td>
-                    <td className="p-3 text-slate-300">{log.action}</td>
+                    <td className="p-3 text-slate-300">
+                      <div>{formatAction(log.action)}</div>
+                      <div className="text-xs text-slate-500" dir="ltr">{log.action}</div>
+                    </td>
                     <td className="p-3 text-slate-400" dir="ltr">{log.ip_address || "-"}</td>
                     <td className="p-3">
                       <span className={`px-2 py-0.5 rounded text-xs ${statusClasses[log.status] || "bg-slate-500/20 text-slate-400"}`}>{log.status}</span>

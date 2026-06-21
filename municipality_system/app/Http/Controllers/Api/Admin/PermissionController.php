@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Api\Admin;
 use App\Http\Controllers\Controller;
 use App\Models\Permission;
 use App\Models\Role;
+use App\Support\SecurityLogger;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 
@@ -34,6 +35,7 @@ class PermissionController extends Controller
         ]);
 
         $role->permissions()->sync($data['permission_ids']);
+        SecurityLogger::log($request, $request->user(), 'admin.permissions.updated:'.$role->role_name, 'success');
 
         return response()->json([
             'message' => 'Role permissions updated successfully.',
