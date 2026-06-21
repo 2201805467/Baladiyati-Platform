@@ -139,6 +139,14 @@ class _LoginPageState extends ConsumerState<LoginPage> {
                       TextFormField(
                         controller: _emailController,
                         keyboardType: TextInputType.emailAddress,
+                        textDirection: TextDirection.ltr,
+                        textAlign: TextAlign.left,
+                        style: const TextStyle(
+                          color: Colors.black87,
+                          fontSize: 16,
+                          fontWeight: FontWeight.w600,
+                        ),
+                        cursorColor: primaryGreen,
                         decoration: _inputDecoration(
                           labelText: 'البريد الإلكتروني',
                           prefixIcon: Icons.email_outlined,
@@ -161,6 +169,14 @@ class _LoginPageState extends ConsumerState<LoginPage> {
                       TextFormField(
                         controller: _passwordController,
                         obscureText: !_isPasswordVisible,
+                        textDirection: TextDirection.ltr,
+                        textAlign: TextAlign.left,
+                        style: const TextStyle(
+                          color: Colors.black87,
+                          fontSize: 16,
+                          fontWeight: FontWeight.w600,
+                        ),
+                        cursorColor: primaryGreen,
                         decoration: _inputDecoration(
                           labelText: 'كلمة المرور',
                           prefixIcon: Icons.lock_outline,
@@ -288,14 +304,21 @@ class _LoginPageState extends ConsumerState<LoginPage> {
       prefixIcon: prefixIcon != null ? Icon(prefixIcon) : null,
       suffixIcon: suffixIcon,
       filled: true,
-      fillColor: const Color(0xFFEEEEEE),
+      fillColor: Colors.white,
+      labelStyle: const TextStyle(color: Colors.black54),
+      floatingLabelStyle: const TextStyle(
+        color: Color(0xFF2E7D32),
+        fontWeight: FontWeight.w600,
+      ),
+      prefixIconColor: Colors.black54,
+      suffixIconColor: Colors.black54,
       border: OutlineInputBorder(
         borderRadius: BorderRadius.circular(8),
-        borderSide: BorderSide.none,
+        borderSide: const BorderSide(color: Color(0xFFE0E0E0)),
       ),
       enabledBorder: OutlineInputBorder(
         borderRadius: BorderRadius.circular(8),
-        borderSide: BorderSide.none,
+        borderSide: const BorderSide(color: Color(0xFFE0E0E0)),
       ),
       focusedBorder: OutlineInputBorder(
         borderRadius: BorderRadius.circular(8),

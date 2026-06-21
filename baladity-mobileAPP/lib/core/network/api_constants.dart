@@ -6,9 +6,10 @@ import 'package:flutter/foundation.dart';
 ///   flutter run --dart-define=API_BASE_URL=https://your-domain.com/api
 abstract class ApiConstants {
   // ─── Base URL ────────────────────────────────────────────────────────────────
-  // Android emulator  → http://10.0.2.2:8000/api
-  // iOS simulator     → http://localhost:8000/api
-  // Physical device   → http://<your-machine-ip>:8000/api
+  // Android USB       -> run: adb reverse tcp:8000 tcp:8000, then use http://127.0.0.1:8000/api
+  // Android emulator  -> http://10.0.2.2:8000/api, or also adb reverse + 127.0.0.1
+  // iOS simulator     -> http://localhost:8000/api
+  // Physical Wi-Fi    -> flutter run --dart-define=API_BASE_URL=http://<your-machine-ip>:8000/api
   static const String _configuredBaseUrl = String.fromEnvironment(
     'API_BASE_URL',
   );
@@ -17,9 +18,7 @@ abstract class ApiConstants {
     if (_configuredBaseUrl.isNotEmpty) return _configuredBaseUrl;
     if (kIsWeb) return 'http://127.0.0.1:8000/api';
 
-    return defaultTargetPlatform == TargetPlatform.android
-        ? 'http://10.0.2.2:8000/api'
-        : 'http://127.0.0.1:8000/api';
+    return 'http://127.0.0.1:8000/api';
   }
 
   static const Duration connectTimeout = Duration(seconds: 30);
