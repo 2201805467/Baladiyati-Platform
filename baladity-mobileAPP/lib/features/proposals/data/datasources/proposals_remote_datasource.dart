@@ -4,7 +4,7 @@ import '../models/proposal_model.dart';
 
 abstract class ProposalsRemoteDataSource {
   Future<List<ProposalModel>> getProposals({int page = 1});
-  Future<ProposalModel> vote(String proposalId);
+  Future<ProposalModel> vote(String proposalId, {required String voteType});
   Future<ProposalModel> unvote(String proposalId);
   Future<void> suggestProposal({
     required String title,
@@ -30,9 +30,12 @@ class ProposalsRemoteDataSourceImpl implements ProposalsRemoteDataSource {
   }
 
   @override
-  Future<ProposalModel> vote(String proposalId) async {
+  Future<ProposalModel> vote(
+    String proposalId, {
+    required String voteType,
+  }) async {
     final endpoint = ApiConstants.proposalVote.replaceFirst('{id}', proposalId);
-    await _dio.post(endpoint, data: {'vote_type': 'support'});
+    await _dio.post(endpoint, data: {'vote_type': voteType});
     return _placeholder(proposalId);
   }
 

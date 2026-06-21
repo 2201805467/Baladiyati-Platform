@@ -11,8 +11,8 @@ class ProposalsRepositoryImpl implements ProposalsRepository {
       _dataSource.getProposals(page: page);
 
   @override
-  Future<ProposalEntity> vote(String proposalId) =>
-      _dataSource.vote(proposalId);
+  Future<ProposalEntity> vote(String proposalId, {required String voteType}) =>
+      _dataSource.vote(proposalId, voteType: voteType);
 
   @override
   Future<ProposalEntity> unvote(String proposalId) =>
@@ -23,10 +23,9 @@ class ProposalsRepositoryImpl implements ProposalsRepository {
     required String title,
     required String category,
     required String description,
-  }) =>
-      _dataSource.suggestProposal(
-        title: title,
-        category: category,
-        description: description,
-      );
+  }) => _dataSource.suggestProposal(
+    title: title,
+    category: category,
+    description: description,
+  );
 }

@@ -5,8 +5,11 @@ class VoteProposalUseCase {
   final ProposalsRepository _repository;
   VoteProposalUseCase(this._repository);
 
-  Future<ProposalEntity> call(String proposalId, {required bool currentlyVoted}) =>
-      currentlyVoted
-          ? _repository.unvote(proposalId)
-          : _repository.vote(proposalId);
+  Future<ProposalEntity> call(
+    String proposalId, {
+    required String voteType,
+    required String? currentVoteType,
+  }) => currentVoteType == voteType
+      ? _repository.unvote(proposalId)
+      : _repository.vote(proposalId, voteType: voteType);
 }

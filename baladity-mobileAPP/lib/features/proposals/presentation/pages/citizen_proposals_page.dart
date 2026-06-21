@@ -248,53 +248,88 @@ class _CitizenProposalsPageState extends ConsumerState<CitizenProposalsPage> {
                 Row(
                   children: [
                     Icon(
-                      Icons.how_to_vote,
-                      size: 20,
-                      color: proposal.isVoted ? primaryColor : Colors.grey,
+                      Icons.thumb_up_alt_outlined,
+                      size: 18,
+                      color: proposal.isSupported ? primaryColor : Colors.grey,
                     ),
-                    const SizedBox(width: 8),
-                    Text(
-                      '${proposal.votes} أصوات',
-                      style: TextStyle(
-                        fontWeight: FontWeight.bold,
-                        color: proposal.isVoted ? primaryColor : null,
+                    const SizedBox(width: 4),
+                    Text('${proposal.votes}'),
+                    const SizedBox(width: 12),
+                    Icon(
+                      Icons.thumb_down_alt_outlined,
+                      size: 18,
+                      color: proposal.isOpposed ? Colors.red : Colors.grey,
+                    ),
+                    const SizedBox(width: 4),
+                    Text('${proposal.opposeVotes}'),
+                  ],
+                ),
+                Row(
+                  children: [
+                    TextButton.icon(
+                      onPressed: canVote
+                          ? () => ref
+                                .read(proposalsControllerProvider.notifier)
+                                .toggleVote(proposal.id, voteType: 'support')
+                          : null,
+                      icon: Icon(
+                        proposal.isSupported
+                            ? Icons.thumb_up_alt
+                            : Icons.thumb_up_off_alt,
+                        size: 18,
+                      ),
+                      label: Text(
+                        isMine
+                            ? 'مقترحك'
+                            : proposal.isSupported
+                            ? 'إلغاء'
+                            : 'إعجاب',
+                      ),
+                      style: TextButton.styleFrom(
+                        foregroundColor: proposal.isSupported
+                            ? primaryColor
+                            : Colors.grey[600],
+                        backgroundColor: proposal.isSupported
+                            ? primaryColor.withValues(alpha: 0.1)
+                            : Colors.transparent,
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 4),
+                    TextButton.icon(
+                      onPressed: canVote
+                          ? () => ref
+                                .read(proposalsControllerProvider.notifier)
+                                .toggleVote(proposal.id, voteType: 'oppose')
+                          : null,
+                      icon: Icon(
+                        proposal.isOpposed
+                            ? Icons.thumb_down_alt
+                            : Icons.thumb_down_off_alt,
+                        size: 18,
+                      ),
+                      label: Text(
+                        isMine
+                            ? 'مقترحك'
+                            : proposal.isOpposed
+                            ? 'إلغاء'
+                            : 'لا يعجبني',
+                      ),
+                      style: TextButton.styleFrom(
+                        foregroundColor: proposal.isOpposed
+                            ? Colors.red
+                            : Colors.grey[600],
+                        backgroundColor: proposal.isOpposed
+                            ? Colors.red.withValues(alpha: 0.1)
+                            : Colors.transparent,
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
                       ),
                     ),
                   ],
-                ),
-                TextButton.icon(
-                  onPressed: canVote
-                      ? () => ref
-                            .read(proposalsControllerProvider.notifier)
-                            .toggleVote(
-                              proposal.id,
-                              currentlyVoted: proposal.isVoted,
-                            )
-                      : null,
-                  icon: Icon(
-                    proposal.isVoted
-                        ? Icons.thumb_up_alt
-                        : Icons.thumb_up_off_alt,
-                    size: 18,
-                  ),
-                  label: Text(
-                    isMine
-                        ? 'مقترحك'
-                        : proposal.isVoted
-                        ? 'إلغاء التصويت'
-                        : 'تصويت',
-                  ),
-                  style: TextButton.styleFrom(
-                    foregroundColor: proposal.isVoted
-                        ? primaryColor
-                        : Colors.grey[600],
-                    backgroundColor: proposal.isVoted
-                        ? primaryColor.withValues(alpha: 0.1)
-                        : Colors.transparent,
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                  ),
                 ),
               ],
             ),

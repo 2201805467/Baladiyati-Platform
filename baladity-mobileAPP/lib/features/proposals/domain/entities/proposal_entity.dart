@@ -7,7 +7,9 @@ class ProposalEntity {
   final String description;
   final String status;
   final int votes;
+  final int opposeVotes;
   final bool isVoted;
+  final String? myVoteType;
   final DateTime expiryDate;
 
   const ProposalEntity({
@@ -19,7 +21,9 @@ class ProposalEntity {
     required this.description,
     this.status = 'accepted',
     this.votes = 0,
+    this.opposeVotes = 0,
     this.isVoted = false,
+    this.myVoteType,
     required this.expiryDate,
   });
 
@@ -27,7 +31,16 @@ class ProposalEntity {
   bool get isAccepted => status == 'accepted';
   bool get isUnderReview => status == 'under_review';
 
-  ProposalEntity copyWith({int? votes, bool? isVoted}) {
+  bool get isSupported => myVoteType == 'support';
+  bool get isOpposed => myVoteType == 'oppose';
+
+  ProposalEntity copyWith({
+    int? votes,
+    int? opposeVotes,
+    bool? isVoted,
+    String? myVoteType,
+    bool clearMyVoteType = false,
+  }) {
     return ProposalEntity(
       id: id,
       authorId: authorId,
@@ -37,7 +50,9 @@ class ProposalEntity {
       description: description,
       status: status,
       votes: votes ?? this.votes,
+      opposeVotes: opposeVotes ?? this.opposeVotes,
       isVoted: isVoted ?? this.isVoted,
+      myVoteType: clearMyVoteType ? null : (myVoteType ?? this.myVoteType),
       expiryDate: expiryDate,
     );
   }

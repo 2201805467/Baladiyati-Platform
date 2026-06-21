@@ -10,13 +10,18 @@ class ProposalModel extends ProposalEntity {
     required super.description,
     super.status = 'accepted',
     super.votes = 0,
+    super.opposeVotes = 0,
     super.isVoted = false,
+    super.myVoteType,
     required super.expiryDate,
   });
 
   factory ProposalModel.fromJson(Map<String, dynamic> json) {
     final citizen = json['citizen'];
     final userVotes = json['votes'] is List ? json['votes'] as List : const [];
+    final myVoteType = userVotes.isNotEmpty && userVotes.first is Map
+        ? (userVotes.first as Map)['vote_type']?.toString()
+        : json['my_vote_type']?.toString();
     final createdAt = DateTime.tryParse(json['created_at']?.toString() ?? '');
     final fallbackExpiry =
         createdAt?.add(const Duration(days: 30)) ??
@@ -38,7 +43,9 @@ class ProposalModel extends ProposalEntity {
           _intOrNull(json['support_votes_count']) ??
           _intOrNull(json['votes']) ??
           0,
-      isVoted: (json['is_voted'] as bool?) ?? userVotes.isNotEmpty,
+      opposeVotes: _intOrNull(json['oppose_votes_count']) ?? 0,
+      isVoted: (json['is_voted'] as bool?) ?? myVoteType != null,
+      myVoteType: myVoteType,
       expiryDate: json['expiry_date'] != null
           ? DateTime.parse(json['expiry_date'].toString())
           : fallbackExpiry,
@@ -54,7 +61,9 @@ class ProposalModel extends ProposalEntity {
     'description': description,
     'status': status,
     'votes': votes,
+    'oppose_votes_count': opposeVotes,
     'is_voted': isVoted,
+    if (myVoteType != null) 'my_vote_type': myVoteType,
     'expiry_date': expiryDate.toIso8601String(),
   };
 

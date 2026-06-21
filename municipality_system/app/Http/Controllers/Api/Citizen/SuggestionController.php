@@ -102,7 +102,7 @@ class SuggestionController extends Controller
     public function vote(Request $request, Suggestion $suggestion): JsonResponse
     {
         $data = $request->validate([
-            'vote_type' => ['nullable', Rule::in(['support'])],
+            'vote_type' => ['nullable', Rule::in(['support', 'oppose'])],
         ]);
 
         if ($suggestion->status !== 'accepted') {

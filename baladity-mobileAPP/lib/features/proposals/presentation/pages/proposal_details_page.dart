@@ -1,7 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import '../../domain/entities/proposal_entity.dart';
+
 import '../../../profile/presentation/controllers/profile_controller.dart';
+import '../../domain/entities/proposal_entity.dart';
 import '../controllers/proposals_controller.dart';
 
 class ProposalDetailsPage extends ConsumerWidget {
@@ -17,7 +18,6 @@ class ProposalDetailsPage extends ConsumerWidget {
     final currentUserId = currentUser?.id;
     final currentUserName = currentUser?.name.trim() ?? '';
 
-    // Always read the latest state for this proposal from the provider
     final latest = ref.watch(
       proposalsControllerProvider.select(
         (s) =>
@@ -110,10 +110,12 @@ class ProposalDetailsPage extends ConsumerWidget {
                   child: Row(
                     mainAxisAlignment: MainAxisAlignment.spaceAround,
                     children: [
+                      _buildStatItem('إعجاب', '${latest.votes}', primaryGreen),
+                      const VerticalDivider(),
                       _buildStatItem(
-                        'عدد الأصوات',
-                        '${latest.votes}',
-                        primaryGreen,
+                        'عدم إعجاب',
+                        '${latest.opposeVotes}',
+                        Colors.red,
                       ),
                       const VerticalDivider(),
                       _buildStatItem(
@@ -122,6 +124,10 @@ class ProposalDetailsPage extends ConsumerWidget {
                             ? 'مغلق'
                             : isMine
                             ? 'مقترحك'
+                            : latest.isSupported
+                            ? 'معجب'
+                            : latest.isOpposed
+                            ? 'غير معجب'
                             : 'نشط',
                         latest.isExpired
                             ? Colors.red
@@ -135,42 +141,78 @@ class ProposalDetailsPage extends ConsumerWidget {
               ),
               const SizedBox(height: 24),
               if (!latest.isExpired)
-                SizedBox(
-                  width: double.infinity,
-                  child: ElevatedButton.icon(
-                    onPressed: canVote
-                        ? () => ref
-                              .read(proposalsControllerProvider.notifier)
-                              .toggleVote(
-                                latest.id,
-                                currentlyVoted: latest.isVoted,
-                              )
-                        : null,
-                    icon: Icon(
-                      latest.isVoted
-                          ? Icons.thumb_up_alt
-                          : Icons.thumb_up_off_alt,
-                    ),
-                    label: Text(
-                      isMine
-                          ? 'لا يمكنك التصويت على مقترحك'
-                          : latest.isVoted
-                          ? 'إلغاء التصويت'
-                          : 'تصويت لهذا المقترح',
-                    ),
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: latest.isVoted
-                          ? (isDark ? Colors.grey[800] : Colors.grey[300])
-                          : primaryGreen,
-                      foregroundColor: latest.isVoted
-                          ? (isDark ? Colors.white : Colors.black87)
-                          : Colors.white,
-                      padding: const EdgeInsets.symmetric(vertical: 14),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(12),
+                Row(
+                  children: [
+                    Expanded(
+                      child: ElevatedButton.icon(
+                        onPressed: canVote
+                            ? () => ref
+                                  .read(proposalsControllerProvider.notifier)
+                                  .toggleVote(latest.id, voteType: 'support')
+                            : null,
+                        icon: Icon(
+                          latest.isSupported
+                              ? Icons.thumb_up_alt
+                              : Icons.thumb_up_off_alt,
+                        ),
+                        label: Text(
+                          isMine
+                              ? 'مقترحك'
+                              : latest.isSupported
+                              ? 'إلغاء الإعجاب'
+                              : 'إعجاب',
+                        ),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: latest.isSupported
+                              ? (isDark ? Colors.grey[800] : Colors.grey[300])
+                              : primaryGreen,
+                          foregroundColor: latest.isSupported
+                              ? (isDark ? Colors.white : Colors.black87)
+                              : Colors.white,
+                          padding: const EdgeInsets.symmetric(vertical: 14),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                        ),
                       ),
                     ),
-                  ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: OutlinedButton.icon(
+                        onPressed: canVote
+                            ? () => ref
+                                  .read(proposalsControllerProvider.notifier)
+                                  .toggleVote(latest.id, voteType: 'oppose')
+                            : null,
+                        icon: Icon(
+                          latest.isOpposed
+                              ? Icons.thumb_down_alt
+                              : Icons.thumb_down_off_alt,
+                        ),
+                        label: Text(
+                          isMine
+                              ? 'مقترحك'
+                              : latest.isOpposed
+                              ? 'إلغاء عدم الإعجاب'
+                              : 'لا يعجبني',
+                        ),
+                        style: OutlinedButton.styleFrom(
+                          foregroundColor: latest.isOpposed
+                              ? Colors.red
+                              : Colors.grey[700],
+                          side: BorderSide(
+                            color: latest.isOpposed
+                                ? Colors.red
+                                : Colors.grey.withValues(alpha: 0.5),
+                          ),
+                          padding: const EdgeInsets.symmetric(vertical: 14),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                        ),
+                      ),
+                    ),
+                  ],
                 ),
             ],
           ),
@@ -180,19 +222,21 @@ class ProposalDetailsPage extends ConsumerWidget {
   }
 
   Widget _buildStatItem(String label, String value, Color color) {
-    return Column(
-      children: [
-        Text(label, style: const TextStyle(fontSize: 12)),
-        const SizedBox(height: 8),
-        Text(
-          value,
-          style: TextStyle(
-            fontSize: 20,
-            fontWeight: FontWeight.bold,
-            color: color,
+    return Expanded(
+      child: Column(
+        children: [
+          Text(label, style: const TextStyle(fontSize: 12)),
+          const SizedBox(height: 8),
+          Text(
+            value,
+            style: TextStyle(
+              fontSize: 20,
+              fontWeight: FontWeight.bold,
+              color: color,
+            ),
           ),
-        ),
-      ],
+        ],
+      ),
     );
   }
 }

@@ -22,7 +22,11 @@ class FacilitiesRemoteDataSourceImpl implements FacilitiesRemoteDataSource {
   }) async {
     final res = await _dio.get(
       ApiConstants.facilities,
-      queryParameters: {'facility_type': ?type, 'page': page},
+      queryParameters: {
+        if (type != null && type.trim().isNotEmpty) 'facility_type': type,
+        'page': page,
+        'per_page': 100,
+      },
     );
     final List data = (res.data['data'] ?? res.data) as List;
     return data

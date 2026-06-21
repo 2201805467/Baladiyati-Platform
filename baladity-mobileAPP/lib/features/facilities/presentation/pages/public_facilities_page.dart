@@ -1,9 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:url_launcher/url_launcher.dart';
+
+import '../../domain/entities/facility_entity.dart';
 import '../controllers/facilities_controller.dart';
 import '../controllers/facilities_state.dart';
-import '../../domain/entities/facility_entity.dart';
 
 class PublicFacilitiesPage extends ConsumerStatefulWidget {
   const PublicFacilitiesPage({super.key});
@@ -14,58 +15,45 @@ class PublicFacilitiesPage extends ConsumerStatefulWidget {
 }
 
 class _PublicFacilitiesPageState extends ConsumerState<PublicFacilitiesPage> {
-  String? _selectedMunicipalityName;
-  int? _selectedMunicipalityId;
-  String _selectedFacilityType = 'الكل';
-
-  final List<String> _facilityTypes = [
-    'الكل',
-    'مستشفى',
-    'حديقة',
-    'مدرسة',
-    'مركز شرطة',
-    'مكتب بريد',
-  ];
-
-  final List<Map<String, dynamic>> _municipalities = [
-    {'id': 1, 'name': 'بلدية طرابلس المركز'},
-    {'id': 2, 'name': 'بلدية بنغازي'},
-    {'id': 3, 'name': 'بلدية مصراتة'},
-    {'id': 4, 'name': 'بلدية سبها'},
-  ];
+  String? _selectedFacilityType;
 
   @override
   void initState() {
     super.initState();
-    _selectedMunicipalityName = _municipalities.first['name'] as String;
-    _selectedMunicipalityId = _municipalities.first['id'] as int;
     Future.microtask(() => _load(refresh: true));
   }
 
   void _load({bool refresh = false}) {
     ref
         .read(facilitiesControllerProvider.notifier)
-        .fetchFacilities(
-          type: _selectedFacilityType,
-          municipalityId: _selectedMunicipalityId,
-          refresh: refresh,
-        );
+        .fetchFacilities(refresh: refresh);
   }
 
-  Future<void> _openInOpenStreetMap(double lat, double lng) async {
-    final uri = Uri.parse(
-      'https://www.openstreetmap.org/?mlat=$lat&mlon=$lng#map=17/$lat/$lng',
-    );
+  Future<void> _openInOpenStreetMap(FacilityEntity facility) async {
+    final lat = facility.latitude;
+    final lng = facility.longitude;
+    final uri = Uri.https('www.openstreetmap.org', '/', {
+      'mlat': lat.toString(),
+      'mlon': lng.toString(),
+    }).replace(fragment: 'map=18/$lat/$lng');
 
-    if (await canLaunchUrl(uri)) {
-      await launchUrl(uri, mode: LaunchMode.externalApplication);
-      return;
+    try {
+      final opened = await launchUrl(uri, mode: LaunchMode.externalApplication);
+      if (opened) return;
+
+      final fallbackOpened = await launchUrl(
+        uri,
+        mode: LaunchMode.platformDefault,
+      );
+      if (fallbackOpened) return;
+    } catch (_) {
+      // Show the user-facing error below.
     }
 
     if (!mounted) return;
     ScaffoldMessenger.of(
       context,
-    ).showSnackBar(const SnackBar(content: Text('تعذر فتح OpenStreetMap')));
+    ).showSnackBar(const SnackBar(content: Text('تعذر فتح الخريطة')));
   }
 
   @override
@@ -73,6 +61,20 @@ class _PublicFacilitiesPageState extends ConsumerState<PublicFacilitiesPage> {
     const primaryGreen = Color(0xFF2E7D32);
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final facilitiesState = ref.watch(facilitiesControllerProvider);
+    final facilityTypes =
+        facilitiesState.facilities
+            .map((facility) => facility.facilityType.trim())
+            .where((type) => type.isNotEmpty)
+            .toSet()
+            .toList()
+          ..sort();
+    final visibleFacilities = _selectedFacilityType == null
+        ? facilitiesState.facilities
+        : facilitiesState.facilities
+              .where(
+                (facility) => facility.facilityType == _selectedFacilityType,
+              )
+              .toList();
 
     ref.listen<FacilitiesState>(facilitiesControllerProvider, (_, next) {
       if (next.errorMessage != null) {
@@ -90,79 +92,42 @@ class _PublicFacilitiesPageState extends ConsumerState<PublicFacilitiesPage> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Padding(
-            padding: const EdgeInsets.all(16.0),
-            child: Row(
-              children: [
-                Expanded(
-                  child: DropdownButtonFormField<String>(
-                    decoration: InputDecoration(
-                      labelText: 'البلدية',
-                      filled: true,
-                      fillColor: isDark ? Colors.grey[850] : Colors.grey[100],
-                      border: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(12),
-                        borderSide: BorderSide.none,
-                      ),
-                    ),
-                    initialValue: _selectedMunicipalityName,
-                    items: _municipalities
-                        .map(
-                          (m) => DropdownMenuItem<String>(
-                            value: m['name'] as String,
-                            child: Text(m['name'] as String),
-                          ),
-                        )
-                        .toList(),
-                    onChanged: (newValue) {
-                      setState(() {
-                        _selectedMunicipalityName = newValue;
-                        _selectedMunicipalityId =
-                            _municipalities.firstWhere(
-                                  (m) => m['name'] == newValue,
-                                )['id']
-                                as int?;
-                      });
-                      _load(refresh: true);
-                    },
+          if (facilityTypes.isNotEmpty)
+            Padding(
+              padding: const EdgeInsets.all(16.0),
+              child: DropdownButtonFormField<String?>(
+                decoration: InputDecoration(
+                  labelText: 'نوع المرفق',
+                  filled: true,
+                  fillColor: isDark ? Colors.grey[850] : Colors.grey[100],
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(12),
+                    borderSide: BorderSide.none,
                   ),
                 ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: DropdownButtonFormField<String>(
-                    decoration: InputDecoration(
-                      labelText: 'نوع المرفق',
-                      filled: true,
-                      fillColor: isDark ? Colors.grey[850] : Colors.grey[100],
-                      border: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(12),
-                        borderSide: BorderSide.none,
-                      ),
-                    ),
-                    initialValue: _selectedFacilityType,
-                    items: _facilityTypes
-                        .map(
-                          (t) => DropdownMenuItem<String>(
-                            value: t,
-                            child: Text(t),
-                          ),
-                        )
-                        .toList(),
-                    onChanged: (newValue) {
-                      if (newValue == null) return;
-                      setState(() => _selectedFacilityType = newValue);
-                      _load(refresh: true);
-                    },
+                initialValue: _selectedFacilityType,
+                items: [
+                  const DropdownMenuItem<String?>(
+                    value: null,
+                    child: Text('كل المرافق'),
                   ),
-                ),
-              ],
+                  ...facilityTypes.map(
+                    (type) => DropdownMenuItem<String?>(
+                      value: type,
+                      child: Text(type),
+                    ),
+                  ),
+                ],
+                onChanged: (value) {
+                  setState(() => _selectedFacilityType = value);
+                },
+              ),
             ),
-          ),
           Expanded(
             child:
                 facilitiesState.isLoading && facilitiesState.facilities.isEmpty
                 ? const Center(child: CircularProgressIndicator())
-                : facilitiesState.facilities.isEmpty
+                : visibleFacilities.isEmpty
                 ? Center(
                     child: Column(
                       mainAxisAlignment: MainAxisAlignment.center,
@@ -174,15 +139,16 @@ class _PublicFacilitiesPageState extends ConsumerState<PublicFacilitiesPage> {
                         ),
                         const SizedBox(height: 16),
                         Text(
-                          _selectedFacilityType == 'الكل'
-                              ? 'لا توجد مرافق لـ "$_selectedMunicipalityName"'
-                              : 'لا توجد مرافق من نوع "$_selectedFacilityType" في "$_selectedMunicipalityName"',
+                          _selectedFacilityType == null
+                              ? 'لا توجد مرافق حالياً'
+                              : 'لا توجد مرافق من نوع "$_selectedFacilityType"',
                           style: TextStyle(
                             fontSize: 18,
                             color: Theme.of(
                               context,
                             ).textTheme.bodyMedium?.color,
                           ),
+                          textAlign: TextAlign.center,
                         ),
                       ],
                     ),
@@ -191,25 +157,10 @@ class _PublicFacilitiesPageState extends ConsumerState<PublicFacilitiesPage> {
                     onRefresh: () async => _load(refresh: true),
                     child: ListView.builder(
                       padding: const EdgeInsets.symmetric(horizontal: 16),
-                      itemCount:
-                          facilitiesState.facilities.length +
-                          (facilitiesState.hasMore ? 1 : 0),
+                      itemCount: visibleFacilities.length,
                       itemBuilder: (context, index) {
-                        if (index == facilitiesState.facilities.length) {
-                          return Padding(
-                            padding: const EdgeInsets.symmetric(vertical: 16),
-                            child: Center(
-                              child: facilitiesState.isLoading
-                                  ? const CircularProgressIndicator()
-                                  : TextButton(
-                                      onPressed: _load,
-                                      child: const Text('تحميل المزيد'),
-                                    ),
-                            ),
-                          );
-                        }
                         return _buildFacilityCard(
-                          facilitiesState.facilities[index],
+                          visibleFacilities[index],
                           primaryGreen,
                           isDark,
                         );
@@ -276,27 +227,22 @@ class _PublicFacilitiesPageState extends ConsumerState<PublicFacilitiesPage> {
               facility.name,
               style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
             ),
-            const SizedBox(height: 4),
-            Text(
-              facility.description,
-              style: const TextStyle(fontSize: 13, color: Colors.grey),
-              maxLines: 2,
-              overflow: TextOverflow.ellipsis,
-            ),
+            if (facility.description.trim().isNotEmpty) ...[
+              const SizedBox(height: 4),
+              Text(
+                facility.description,
+                style: const TextStyle(fontSize: 13, color: Colors.grey),
+                maxLines: 2,
+                overflow: TextOverflow.ellipsis,
+              ),
+            ],
             const Divider(height: 20),
-            _buildDetailRow(
-              Icons.location_on_outlined,
-              facility.address,
-              isDark,
-            ),
             _buildDetailRow(Icons.access_time, facility.openingHours, isDark),
-            _buildDetailRow(Icons.phone, facility.phone, isDark),
             const SizedBox(height: 12),
             SizedBox(
               width: double.infinity,
               child: OutlinedButton.icon(
-                onPressed: () =>
-                    _openInOpenStreetMap(facility.latitude, facility.longitude),
+                onPressed: () => _openInOpenStreetMap(facility),
                 icon: const Icon(Icons.map_outlined, size: 18),
                 label: const Text(
                   'عرض على OpenStreetMap',
@@ -319,6 +265,8 @@ class _PublicFacilitiesPageState extends ConsumerState<PublicFacilitiesPage> {
   }
 
   Widget _buildDetailRow(IconData icon, String text, bool isDark) {
+    if (text.trim().isEmpty) return const SizedBox.shrink();
+
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 4.0),
       child: Row(

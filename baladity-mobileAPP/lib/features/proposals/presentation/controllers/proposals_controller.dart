@@ -67,10 +67,7 @@ class ProposalsController extends Notifier<ProposalsState> {
     }
   }
 
-  Future<void> toggleVote(
-    String proposalId, {
-    required bool currentlyVoted,
-  }) async {
+  Future<void> toggleVote(String proposalId, {required String voteType}) async {
     try {
       final current = state.proposals
           .where((proposal) => proposal.id == proposalId)
@@ -78,14 +75,53 @@ class ProposalsController extends Notifier<ProposalsState> {
 
       if (current == null) return;
 
-      await _voteProposal(proposalId, currentlyVoted: currentlyVoted);
+      final previousVoteType = current.myVoteType;
+      await _voteProposal(
+        proposalId,
+        voteType: voteType,
+        currentVoteType: previousVoteType,
+      );
 
-      final nextVotes = currentlyVoted
-          ? (current.votes > 0 ? current.votes - 1 : 0)
-          : current.votes + 1;
+      var nextSupportVotes = current.votes;
+      var nextOpposeVotes = current.opposeVotes;
+      String? nextVoteType;
+      var nextIsVoted = true;
+      var clearMyVoteType = false;
+
+      if (previousVoteType == voteType) {
+        if (voteType == 'support') {
+          nextSupportVotes = current.votes > 0 ? current.votes - 1 : 0;
+        } else {
+          nextOpposeVotes = current.opposeVotes > 0
+              ? current.opposeVotes - 1
+              : 0;
+        }
+        nextIsVoted = false;
+        clearMyVoteType = true;
+      } else {
+        if (previousVoteType == 'support') {
+          nextSupportVotes = current.votes > 0 ? current.votes - 1 : 0;
+        }
+        if (previousVoteType == 'oppose') {
+          nextOpposeVotes = current.opposeVotes > 0
+              ? current.opposeVotes - 1
+              : 0;
+        }
+
+        if (voteType == 'support') {
+          nextSupportVotes += 1;
+        } else {
+          nextOpposeVotes += 1;
+        }
+        nextVoteType = voteType;
+      }
+
       final updated = current.copyWith(
-        votes: nextVotes,
-        isVoted: !currentlyVoted,
+        votes: nextSupportVotes,
+        opposeVotes: nextOpposeVotes,
+        isVoted: nextIsVoted,
+        myVoteType: nextVoteType,
+        clearMyVoteType: clearMyVoteType,
       );
 
       state = state.copyWith(
