@@ -11,6 +11,8 @@ class ReportEntity {
   final String status;
   final DateTime? createdAt;
   final List<ReportCommentEntity> comments;
+  final int? ratingStars;
+  final String? ratingComment;
 
   const ReportEntity({
     this.id,
@@ -23,5 +25,7 @@ class ReportEntity {
     this.status = 'قيد الانتظار',
     this.createdAt,
     this.comments = const [],
+    this.ratingStars,
+    this.ratingComment,
   });
 }

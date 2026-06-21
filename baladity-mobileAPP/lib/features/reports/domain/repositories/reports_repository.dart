@@ -23,4 +23,9 @@ abstract class ReportsRepository {
     required int reportId,
     required String text,
   });
+  Future<void> rateReport({
+    required int reportId,
+    required int stars,
+    String? comment,
+  });
 }

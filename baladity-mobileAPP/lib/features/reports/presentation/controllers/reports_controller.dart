@@ -120,6 +120,8 @@ class ReportsController extends Notifier<ReportsState> {
           status: current.status,
           createdAt: current.createdAt,
           comments: [...current.comments, comment],
+          ratingStars: current.ratingStars,
+          ratingComment: current.ratingComment,
         );
         state = state.copyWith(
           isSubmittingComment: false,
@@ -135,6 +137,56 @@ class ReportsController extends Notifier<ReportsState> {
     } catch (e) {
       state = state.copyWith(
         isSubmittingComment: false,
+        errorMessage: e.toString(),
+      );
+      return false;
+    }
+  }
+
+  Future<bool> submitRating({
+    required int reportId,
+    required int stars,
+    String? comment,
+  }) async {
+    state = state.copyWith(isSubmittingRating: true, clearError: true);
+    try {
+      await _repository.rateReport(
+        reportId: reportId,
+        stars: stars,
+        comment: comment,
+      );
+      final current = state.selectedReport;
+      if (current != null && current.id == reportId) {
+        final updatedReport = ReportEntity(
+          id: current.id,
+          category: current.category,
+          description: current.description,
+          latitude: current.latitude,
+          longitude: current.longitude,
+          locationAddress: current.locationAddress,
+          imageUrl: current.imageUrl,
+          status: current.status,
+          createdAt: current.createdAt,
+          comments: current.comments,
+          ratingStars: stars,
+          ratingComment: comment?.trim().isEmpty == true
+              ? null
+              : comment?.trim(),
+        );
+        state = state.copyWith(
+          isSubmittingRating: false,
+          selectedReport: updatedReport,
+          reports: state.reports
+              .map((item) => item.id == updatedReport.id ? updatedReport : item)
+              .toList(),
+        );
+      } else {
+        state = state.copyWith(isSubmittingRating: false);
+      }
+      return true;
+    } catch (e) {
+      state = state.copyWith(
+        isSubmittingRating: false,
         errorMessage: e.toString(),
       );
       return false;

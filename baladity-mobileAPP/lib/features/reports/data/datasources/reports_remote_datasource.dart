@@ -25,6 +25,11 @@ abstract class ReportsRemoteDataSource {
     required int reportId,
     required String text,
   });
+  Future<void> rateReport({
+    required int reportId,
+    required int stars,
+    String? comment,
+  });
 }
 
 class ReportsRemoteDataSourceImpl implements ReportsRemoteDataSource {
@@ -137,6 +142,26 @@ class ReportsRemoteDataSourceImpl implements ReportsRemoteDataSource {
       );
       final data = res.data['comment'] ?? res.data['data'] ?? res.data;
       return ReportCommentModel.fromJson(data as Map<String, dynamic>);
+    } on DioException catch (e) {
+      throw _extract(e);
+    }
+  }
+
+  @override
+  Future<void> rateReport({
+    required int reportId,
+    required int stars,
+    String? comment,
+  }) async {
+    try {
+      await _dio.post(
+        '${ApiConstants.reports}/$reportId/rating',
+        data: {
+          'stars': stars,
+          if (comment != null && comment.trim().isNotEmpty)
+            'comment': comment.trim(),
+        },
+      );
     } on DioException catch (e) {
       throw _extract(e);
     }

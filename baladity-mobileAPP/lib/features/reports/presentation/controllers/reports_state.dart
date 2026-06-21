@@ -7,6 +7,7 @@ class ReportsState {
   final bool isSubmitting;
   final bool isLoadingDetails;
   final bool isSubmittingComment;
+  final bool isSubmittingRating;
   final bool isClassifyingImage;
   final List<ReportEntity> reports;
   final ReportEntity? selectedReport;
@@ -21,6 +22,7 @@ class ReportsState {
     this.isSubmitting = false,
     this.isLoadingDetails = false,
     this.isSubmittingComment = false,
+    this.isSubmittingRating = false,
     this.isClassifyingImage = false,
     this.reports = const [],
     this.selectedReport,
@@ -36,6 +38,7 @@ class ReportsState {
     bool? isSubmitting,
     bool? isLoadingDetails,
     bool? isSubmittingComment,
+    bool? isSubmittingRating,
     bool? isClassifyingImage,
     List<ReportEntity>? reports,
     ReportEntity? selectedReport,
@@ -52,6 +55,7 @@ class ReportsState {
       isSubmitting: isSubmitting ?? this.isSubmitting,
       isLoadingDetails: isLoadingDetails ?? this.isLoadingDetails,
       isSubmittingComment: isSubmittingComment ?? this.isSubmittingComment,
+      isSubmittingRating: isSubmittingRating ?? this.isSubmittingRating,
       isClassifyingImage: isClassifyingImage ?? this.isClassifyingImage,
       reports: reports ?? this.reports,
       selectedReport: selectedReport ?? this.selectedReport,

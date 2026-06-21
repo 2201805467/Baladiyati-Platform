@@ -48,4 +48,15 @@ class ReportsRepositoryImpl implements ReportsRepository {
     required int reportId,
     required String text,
   }) => _dataSource.addComment(reportId: reportId, text: text);
+
+  @override
+  Future<void> rateReport({
+    required int reportId,
+    required int stars,
+    String? comment,
+  }) => _dataSource.rateReport(
+    reportId: reportId,
+    stars: stars,
+    comment: comment,
+  );
 }

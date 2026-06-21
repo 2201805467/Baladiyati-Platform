@@ -18,6 +18,8 @@ class ReportDetailsPage extends ConsumerStatefulWidget {
 
 class _ReportDetailsPageState extends ConsumerState<ReportDetailsPage> {
   final _commentController = TextEditingController();
+  final _ratingCommentController = TextEditingController();
+  int? _selectedRating;
 
   @override
   void initState() {
@@ -33,6 +35,7 @@ class _ReportDetailsPageState extends ConsumerState<ReportDetailsPage> {
   @override
   void dispose() {
     _commentController.dispose();
+    _ratingCommentController.dispose();
     super.dispose();
   }
 
@@ -53,6 +56,27 @@ class _ReportDetailsPageState extends ConsumerState<ReportDetailsPage> {
       ScaffoldMessenger.of(
         context,
       ).showSnackBar(const SnackBar(content: Text('تم إرسال التعليق بنجاح')));
+    }
+  }
+
+  Future<void> _submitRating(ReportEntity report) async {
+    final id = report.id;
+    final stars = _selectedRating ?? report.ratingStars;
+    if (id == null || stars == null) return;
+
+    final success = await ref
+        .read(reportsControllerProvider.notifier)
+        .submitRating(
+          reportId: id,
+          stars: stars,
+          comment: _ratingCommentController.text,
+        );
+
+    if (!mounted) return;
+    if (success) {
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('تم حفظ تقييمك بنجاح')));
     }
   }
 
@@ -93,6 +117,22 @@ class _ReportDetailsPageState extends ConsumerState<ReportDetailsPage> {
                   padding: const EdgeInsets.all(16),
                   children: [
                     _ReportSummary(report: report),
+                    if (_isClosed(report.status)) ...[
+                      const SizedBox(height: 16),
+                      _RatingSection(
+                        currentStars: _selectedRating ?? report.ratingStars,
+                        existingComment: report.ratingComment,
+                        controller: _ratingCommentController,
+                        isSubmitting: state.isSubmittingRating,
+                        onStarSelected: (stars) {
+                          setState(() => _selectedRating = stars);
+                        },
+                        onSubmit:
+                            (_selectedRating ?? report.ratingStars) == null
+                            ? null
+                            : () => _submitRating(report),
+                      ),
+                    ],
                     const SizedBox(height: 16),
                     _CommentsSection(
                       comments: report.comments,
@@ -105,6 +145,13 @@ class _ReportDetailsPageState extends ConsumerState<ReportDetailsPage> {
               ),
       ),
     );
+  }
+
+  bool _isClosed(String status) {
+    final normalized = status.toLowerCase();
+    return normalized == 'closed' ||
+        normalized.contains('مغلق') ||
+        normalized.contains('تم الحل');
   }
 }
 
@@ -188,6 +235,99 @@ class _ReportSummary extends StatelessWidget {
 
     final base = ApiConstants.baseUrl.replaceFirst(RegExp(r'/api/?$'), '');
     return value.startsWith('/') ? '$base$value' : '$base/$value';
+  }
+}
+
+class _RatingSection extends StatelessWidget {
+  const _RatingSection({
+    required this.currentStars,
+    required this.existingComment,
+    required this.controller,
+    required this.isSubmitting,
+    required this.onStarSelected,
+    required this.onSubmit,
+  });
+
+  final int? currentStars;
+  final String? existingComment;
+  final TextEditingController controller;
+  final bool isSubmitting;
+  final ValueChanged<int> onStarSelected;
+  final VoidCallback? onSubmit;
+
+  @override
+  Widget build(BuildContext context) {
+    if (controller.text.isEmpty && existingComment?.isNotEmpty == true) {
+      controller.text = existingComment!;
+    }
+
+    return Card(
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text(
+              'تقييم الخدمة',
+              style: TextStyle(fontSize: 17, fontWeight: FontWeight.bold),
+            ),
+            const SizedBox(height: 8),
+            Text(
+              currentStars == null
+                  ? 'اختر عدد النجوم لتقييم جودة معالجة البلاغ'
+                  : 'تقييمك الحالي: $currentStars من 5',
+              style: TextStyle(
+                color: Theme.of(context).textTheme.bodySmall?.color,
+              ),
+            ),
+            const SizedBox(height: 12),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: List.generate(5, (index) {
+                final star = index + 1;
+                final selected = currentStars != null && star <= currentStars!;
+                return IconButton(
+                  onPressed: isSubmitting ? null : () => onStarSelected(star),
+                  icon: Icon(
+                    selected ? Icons.star : Icons.star_border,
+                    color: selected ? Colors.amber : Colors.grey,
+                    size: 34,
+                  ),
+                  tooltip: '$star نجوم',
+                );
+              }),
+            ),
+            const SizedBox(height: 10),
+            TextField(
+              controller: controller,
+              enabled: !isSubmitting,
+              minLines: 2,
+              maxLines: 4,
+              decoration: const InputDecoration(
+                hintText: 'تعليق اختياري حول جودة الخدمة...',
+                border: OutlineInputBorder(),
+              ),
+            ),
+            const SizedBox(height: 10),
+            SizedBox(
+              width: double.infinity,
+              child: ElevatedButton.icon(
+                onPressed: isSubmitting ? null : onSubmit,
+                icon: isSubmitting
+                    ? const SizedBox(
+                        width: 18,
+                        height: 18,
+                        child: CircularProgressIndicator(strokeWidth: 2),
+                      )
+                    : const Icon(Icons.star_rate),
+                label: const Text('حفظ التقييم'),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
   }
 }
 

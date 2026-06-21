@@ -13,6 +13,8 @@ class ReportModel extends ReportEntity {
     super.status,
     super.createdAt,
     super.comments,
+    super.ratingStars,
+    super.ratingComment,
   });
 
   factory ReportModel.fromJson(Map<String, dynamic> json) {
@@ -23,6 +25,7 @@ class ReportModel extends ReportEntity {
         ? (imagesJson.first as Map)['image_url']?.toString()
         : null;
     final comments = _commentsFromJson(json['comments']);
+    final ratingJson = json['rating'];
 
     return ReportModel(
       id: _intOrNull(json['id']),
@@ -40,6 +43,10 @@ class ReportModel extends ReportEntity {
           ? DateTime.tryParse(json['created_at'].toString())
           : null,
       comments: comments,
+      ratingStars: ratingJson is Map ? _intOrNull(ratingJson['stars']) : null,
+      ratingComment: ratingJson is Map
+          ? ratingJson['comment']?.toString()
+          : null,
     );
   }
 
@@ -52,6 +59,8 @@ class ReportModel extends ReportEntity {
     if (locationAddress != null) 'location_address': locationAddress,
     if (imageUrl != null) 'image_url': imageUrl,
     'status': status,
+    if (ratingStars != null) 'rating_stars': ratingStars,
+    if (ratingComment != null) 'rating_comment': ratingComment,
   };
 
   static List<ReportCommentModel> _commentsFromJson(dynamic value) {
