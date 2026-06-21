@@ -8,6 +8,10 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 class ReportLog extends Model
 {
     protected $fillable = ['report_id', 'action_by', 'action', 'old_status', 'new_status', 'note'];
+
+    protected $casts = [
+        'created_at' => 'datetime',
+    ];
     
     public $timestamps = false;
 

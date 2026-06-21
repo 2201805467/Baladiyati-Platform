@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\Department;
 use App\Models\Rating;
 use App\Models\Report;
+use Carbon\CarbonPeriod;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -50,14 +51,21 @@ class AnalyticsController extends Controller
 
     public function departments(Request $request): JsonResponse|\Symfony\Component\HttpFoundation\StreamedResponse
     {
+        $allReportsQuery = $this->reportDateFilter(Report::query(), $request);
+        $allReportIds = (clone $allReportsQuery)->pluck('id');
+        $totalCityReports = (clone $allReportsQuery)->count();
+        $closedCityReports = (clone $allReportsQuery)->where('status', 'closed')->count();
+
         $departments = Department::query()
             ->orderBy('dept_name')
             ->get()
             ->map(function (Department $department) use ($request) {
                 $query = $this->reportDateFilter($department->reports(), $request);
-                $total = (clone $query)->count();
-                $closed = (clone $query)->where('status', 'closed')->count();
+                $reports = (clone $query)->with('logs')->get();
+                $total = $reports->count();
+                $closed = $reports->where('status', 'closed')->count();
                 $open = (clone $query)->whereNotIn('status', ['closed', 'resolved'])->count();
+                $avgResponse = $this->averageFirstResponseSeconds($reports);
 
                 return [
                     'id' => $department->id,
@@ -66,47 +74,70 @@ class AnalyticsController extends Controller
                     'closed_reports_count' => $closed,
                     'open_reports_count' => $open,
                     'completion_rate' => $total > 0 ? round(($closed / $total) * 100, 2) : 0,
+                    'average_first_response_seconds' => $avgResponse,
                 ];
             })
-            ->sortByDesc('completion_rate')
+            ->values();
+
+        $leaderboard = $departments
+            ->sort(function (array $a, array $b) {
+                if ($a['completion_rate'] !== $b['completion_rate']) {
+                    return $b['completion_rate'] <=> $a['completion_rate'];
+                }
+
+                $aResponse = $a['average_first_response_seconds'] ?? PHP_INT_MAX;
+                $bResponse = $b['average_first_response_seconds'] ?? PHP_INT_MAX;
+
+                return $aResponse <=> $bResponse;
+            })
             ->values();
 
         if ($request->string('format')->toString() === 'csv') {
             return $this->csv('departments-comparison.csv', [
-                ['department', 'total_reports', 'closed_reports', 'open_reports', 'completion_rate'],
+                ['department', 'total_reports', 'closed_reports', 'open_reports', 'completion_rate', 'average_first_response_seconds'],
                 ...$departments->map(fn (array $department) => [
                     $department['dept_name'],
                     $department['reports_count'],
                     $department['closed_reports_count'],
                     $department['open_reports_count'],
                     $department['completion_rate'],
+                    $department['average_first_response_seconds'],
                 ])->all(),
             ]);
         }
 
         return response()->json([
             'departments' => $departments,
+            'bar_chart' => $departments->map(fn (array $department) => [
+                'department' => $department['dept_name'],
+                'received' => $department['reports_count'],
+                'closed' => $department['closed_reports_count'],
+            ])->values(),
+            'pie_chart' => $departments->map(fn (array $department) => [
+                'department' => $department['dept_name'],
+                'total' => $department['reports_count'],
+                'percentage' => $totalCityReports > 0
+                    ? round(($department['reports_count'] / $totalCityReports) * 100, 2)
+                    : 0,
+            ])->values(),
+            'leaderboard' => $leaderboard,
+            'summary' => [
+                'total_city_reports' => $totalCityReports,
+                'closed_city_reports' => $closedCityReports,
+                'city_completion_rate' => $totalCityReports > 0 ? round(($closedCityReports / $totalCityReports) * 100, 2) : 0,
+                'average_closure_seconds' => $this->averageClosureSeconds((clone $allReportsQuery)->where('status', 'closed')->get()),
+                'average_satisfaction' => round((float) Rating::whereIn('report_id', $allReportIds)->avg('stars'), 2),
+            ],
         ]);
     }
 
     public function departmentPerformance(Request $request, Department $department): JsonResponse|\Symfony\Component\HttpFoundation\StreamedResponse
     {
         $query = $this->reportDateFilter($department->reports(), $request);
-        $reports = (clone $query)->get();
+        $reports = (clone $query)->with('logs')->get();
         $total = $reports->count();
         $closed = $reports->where('status', 'closed')->count();
-        $firstResponseSeconds = $reports
-            ->map(function (Report $report) {
-                $firstAction = $report->logs()
-                    ->whereIn('action', ['opened_for_review', 'transferred', 'status_updated'])
-                    ->orderBy('created_at')
-                    ->first();
-
-                return $firstAction
-                    ? $report->created_at->diffInSeconds($firstAction->created_at)
-                    : null;
-            })
-            ->filter();
+        $dailyChart = $this->dailyReportChart($reports, $request);
 
         $payload = [
             'department' => [
@@ -117,17 +148,12 @@ class AnalyticsController extends Controller
             'closed_reports' => $closed,
             'open_reports' => $reports->whereNotIn('status', ['closed', 'resolved'])->count(),
             'completion_rate' => $total > 0 ? round(($closed / $total) * 100, 2) : 0,
-            'average_first_response_seconds' => $firstResponseSeconds->isNotEmpty()
-                ? round($firstResponseSeconds->avg(), 2)
-                : null,
+            'average_first_response_seconds' => $this->averageFirstResponseSeconds($reports),
             'by_status' => $reports
                 ->groupBy('status')
                 ->map(fn ($items, string $status) => ['status' => $status, 'total' => $items->count()])
                 ->values(),
-            'chart_daily_reports' => $reports
-                ->groupBy(fn (Report $report) => $report->created_at->toDateString())
-                ->map(fn ($items, string $date) => ['date' => $date, 'total' => $items->count()])
-                ->values(),
+            'chart_daily_reports' => $dailyChart,
         ];
 
         if ($request->string('format')->toString() === 'csv') {
@@ -150,6 +176,68 @@ class AnalyticsController extends Controller
         return $query
             ->when($request->filled('date_from'), fn ($query) => $query->whereDate('created_at', '>=', $request->date('date_from')))
             ->when($request->filled('date_to'), fn ($query) => $query->whereDate('created_at', '<=', $request->date('date_to')));
+    }
+
+    private function averageFirstResponseSeconds($reports): ?float
+    {
+        $seconds = $reports
+            ->map(function (Report $report) {
+                $firstAction = $report->logs
+                    ->whereIn('action', ['opened_for_review', 'transferred', 'status_updated', 'comment_added'])
+                    ->sortBy('created_at')
+                    ->first();
+
+                return $firstAction && $report->created_at && $firstAction->created_at
+                    ? $report->created_at->diffInSeconds($firstAction->created_at)
+                    : null;
+            })
+            ->filter(fn ($value) => $value !== null);
+
+        return $seconds->isNotEmpty() ? round($seconds->avg(), 2) : null;
+    }
+
+    private function averageClosureSeconds($reports): ?float
+    {
+        $seconds = $reports
+            ->map(fn (Report $report) => $report->closed_at && $report->created_at
+                ? $report->created_at->diffInSeconds($report->closed_at)
+                : null)
+            ->filter(fn ($value) => $value !== null);
+
+        return $seconds->isNotEmpty() ? round($seconds->avg(), 2) : null;
+    }
+
+    private function dailyReportChart($reports, Request $request)
+    {
+        $oldestReport = $reports->sortBy('created_at')->first();
+        $newestReport = $reports->sortByDesc('created_at')->first();
+        $dateFrom = $request->filled('date_from')
+            ? $request->date('date_from')->toDateString()
+            : $oldestReport?->created_at?->toDateString();
+        $dateTo = $request->filled('date_to')
+            ? $request->date('date_to')->toDateString()
+            : $newestReport?->created_at?->toDateString();
+
+        if (! $dateFrom || ! $dateTo) {
+            return collect();
+        }
+
+        $receivedByDate = $reports->groupBy(fn (Report $report) => $report->created_at->toDateString());
+        $closedByDate = $reports
+            ->filter(fn (Report $report) => $report->status === 'closed' && $report->closed_at)
+            ->groupBy(fn (Report $report) => $report->closed_at->toDateString());
+
+        return collect(CarbonPeriod::create($dateFrom, $dateTo))
+            ->map(function ($date) use ($receivedByDate, $closedByDate) {
+                $key = $date->toDateString();
+
+                return [
+                    'date' => $key,
+                    'received' => $receivedByDate->get($key, collect())->count(),
+                    'closed' => $closedByDate->get($key, collect())->count(),
+                ];
+            })
+            ->values();
     }
 
     private function csv(string $filename, array $rows): \Symfony\Component\HttpFoundation\StreamedResponse
