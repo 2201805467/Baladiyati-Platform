@@ -1,7 +1,7 @@
 import { createContext, useContext, useState, useEffect, useCallback, ReactNode } from "react";
 import { api } from "./api-client";
 
-const SESSION_TIMEOUT_MS = 15 * 60 * 1000;
+const SESSION_TIMEOUT_MS = 30 * 60 * 1000;
 
 interface User {
   id: number | string;
@@ -29,6 +29,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [isLoading, setIsLoading] = useState(true);
 
   const logout = useCallback(() => {
+    const currentToken = api.getToken();
+    if (currentToken) {
+      api.post("/auth/logout", {}).catch(() => {
+        // The local session must still end even if the server is unreachable.
+      });
+    }
+
     api.setToken(null); setToken(null); setUser(null);
     localStorage.removeItem("token");
   }, []);
