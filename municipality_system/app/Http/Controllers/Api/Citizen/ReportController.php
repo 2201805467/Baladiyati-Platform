@@ -101,15 +101,6 @@ class ReportController extends Controller
         );
         $parentReport = null;
 
-        if ($similarReports->isNotEmpty() && empty($data['duplicate_action'])) {
-            return response()->json([
-                'message' => 'Similar reports were found nearby. Choose whether to join an existing report or submit independently.',
-                'has_similar' => true,
-                'radius_meters' => self::DUPLICATE_RADIUS_METERS,
-                'similar_reports' => $similarReports->values(),
-            ], 409);
-        }
-
         if (($data['duplicate_action'] ?? null) === 'join') {
             $parentReport = Report::findOrFail((int) $data['parent_report_id']);
 
@@ -118,6 +109,13 @@ class ReportController extends Controller
                     'message' => 'The selected parent report is not similar enough to join.',
                 ], 422);
             }
+        } elseif (($data['duplicate_action'] ?? null) !== 'independent' && $similarReports->isNotEmpty()) {
+            return response()->json([
+                'message' => 'يوجد بلاغ مشابه في النظام.',
+                'has_similar' => true,
+                'radius_meters' => self::DUPLICATE_RADIUS_METERS,
+                'similar_reports' => $similarReports->values(),
+            ], 409);
         }
 
         $report = DB::transaction(function () use ($data, $user, $category, $request, $parentReport) {
