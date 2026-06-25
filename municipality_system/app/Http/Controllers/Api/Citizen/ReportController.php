@@ -84,7 +84,6 @@ class ReportController extends Controller
             'area_id' => ['nullable', 'exists:areas,id'],
             'latitude' => ['required', 'numeric', 'between:-90,90'],
             'longitude' => ['required', 'numeric', 'between:-180,180'],
-            'severity' => ['nullable', 'string', 'max:50'],
             'ai_suggested_category' => ['nullable', 'string', 'max:100'],
             'duplicate_action' => ['nullable', Rule::in(['join', 'independent'])],
             'parent_report_id' => ['required_if:duplicate_action,join', 'nullable', 'exists:reports,id'],
@@ -131,12 +130,11 @@ class ReportController extends Controller
                 'description' => $data['description'] ?? null,
                 'latitude' => $data['latitude'],
                 'longitude' => $data['longitude'],
-                'severity' => $data['severity'] ?? 'medium',
                 'status' => 'new',
                 'ai_suggested_category' => $data['ai_suggested_category'] ?? null,
                 'is_duplicate' => $isDuplicate,
                 'parent_report_id' => $parentReport?->id,
-                'sla_due_at' => $this->calculateSlaDueAt($data['severity'] ?? 'medium'),
+                'sla_due_at' => $this->calculateSlaDueAt(),
             ]);
 
             foreach ($request->file('images', []) as $image) {
@@ -389,12 +387,8 @@ class ReportController extends Controller
         return $number;
     }
 
-    private function calculateSlaDueAt(string $severity): \Illuminate\Support\Carbon
+    private function calculateSlaDueAt(): \Illuminate\Support\Carbon
     {
-        return match ($severity) {
-            'high' => now()->addDay(),
-            'low' => now()->addDays(5),
-            default => now()->addDays(3),
-        };
+        return now()->addDays(3);
     }
 }

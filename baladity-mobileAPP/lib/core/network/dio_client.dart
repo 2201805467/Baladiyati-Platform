@@ -1,4 +1,3 @@
-import 'dart:io';
 import 'package:dio/dio.dart';
 import 'package:flutter/foundation.dart';
 import '../error/exceptions.dart';
@@ -46,27 +45,6 @@ class _ConnectivityInterceptor extends Interceptor {
     RequestOptions options,
     RequestInterceptorHandler handler,
   ) async {
-    try {
-      final result = await InternetAddress.lookup('google.com')
-          .timeout(const Duration(seconds: 5));
-      if (result.isEmpty || result.first.rawAddress.isEmpty) {
-        return handler.reject(
-          DioException(
-            requestOptions: options,
-            error: const NetworkException(),
-            type: DioExceptionType.unknown,
-          ),
-        );
-      }
-    } catch (_) {
-      return handler.reject(
-        DioException(
-          requestOptions: options,
-          error: const NetworkException(),
-          type: DioExceptionType.unknown,
-        ),
-      );
-    }
     handler.next(options);
   }
 }

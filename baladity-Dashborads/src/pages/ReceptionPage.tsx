@@ -38,7 +38,6 @@ interface Report {
   description?: string | null;
   latitude?: string | number | null;
   longitude?: string | number | null;
-  severity?: string | null;
   status: string;
   sla_status?: string | null;
   category_id?: string | null;
@@ -108,12 +107,6 @@ const implementationLabels: Record<string, string> = {
   cancelled: "ملغي",
 };
 
-const severityClasses: Record<string, string> = {
-  low: "bg-slate-500/20 text-slate-300",
-  medium: "bg-amber-500/20 text-amber-400",
-  high: "bg-red-500/20 text-red-400",
-};
-
 const assetUrl = (url?: string | null) => {
   if (!url) return "";
   if (url.startsWith("http")) return url;
@@ -151,7 +144,6 @@ export default function ReceptionPage() {
   const [loadingDetails, setLoadingDetails] = useState(false);
   const [reportSearch, setReportSearch] = useState("");
   const [reportStatus, setReportStatus] = useState("");
-  const [severity, setSeverity] = useState("");
   const [categoryId, setCategoryId] = useState("");
   const [departmentId, setDepartmentId] = useState("");
   const [note, setNote] = useState("");
@@ -174,7 +166,7 @@ export default function ReceptionPage() {
 
   useEffect(() => {
     loadReports();
-  }, [reportStatus, severity]);
+  }, [reportStatus]);
 
   useEffect(() => {
     loadSuggestions();
@@ -197,7 +189,6 @@ export default function ReceptionPage() {
     try {
       const params = new URLSearchParams();
       if (reportStatus) params.set("status", reportStatus);
-      if (severity) params.set("severity", severity);
       if (reportSearch) params.set("search", reportSearch);
       params.set("per_page", "30");
       const response = await api.get<any>(`/reception/reports?${params.toString()}`);
@@ -399,12 +390,6 @@ export default function ReceptionPage() {
                 <option value="transferred">محولة</option>
                 <option value="new">جديدة</option>
               </select>
-              <select value={severity} onChange={(event) => setSeverity(event.target.value)} className="px-3 py-2 bg-slate-800 border border-slate-700 rounded-lg text-sm">
-                <option value="">كل الخطورة</option>
-                <option value="low">منخفضة</option>
-                <option value="medium">متوسطة</option>
-                <option value="high">عالية</option>
-              </select>
               <button onClick={loadReports} className="px-3 py-2 bg-emerald-600 rounded-lg text-sm">بحث</button>
             </div>
 
@@ -423,7 +408,6 @@ export default function ReceptionPage() {
                     </div>
                     <div className="flex flex-col gap-1 items-end">
                       <span className={`px-2 py-0.5 rounded text-xs ${reportStatusClasses[report.status] || "bg-slate-500/20 text-slate-400"}`}>{reportStatusLabels[report.status] || report.status}</span>
-                      <span className={`px-2 py-0.5 rounded text-xs ${severityClasses[report.severity || ""] || "bg-slate-500/20 text-slate-400"}`}>{report.severity || "-"}</span>
                     </div>
                   </div>
                 </button>
@@ -444,7 +428,6 @@ export default function ReceptionPage() {
                 </div>
                 <div className="flex flex-wrap gap-2">
                   <span className={`px-2 py-1 rounded text-xs ${reportStatusClasses[selectedReport.status] || "bg-slate-500/20 text-slate-400"}`}>{reportStatusLabels[selectedReport.status] || selectedReport.status}</span>
-                  <span className={`px-2 py-1 rounded text-xs ${severityClasses[selectedReport.severity || ""] || "bg-slate-500/20 text-slate-400"}`}>{selectedReport.severity || "-"}</span>
                   {selectedReport.sla_status && <span className="px-2 py-1 rounded text-xs bg-slate-800 text-slate-300">SLA: {selectedReport.sla_status}</span>}
                 </div>
 

@@ -397,6 +397,7 @@ class _AddReportPageState extends ConsumerState<AddReportPage> {
                 ),
                 const SizedBox(height: 10),
                 DropdownButtonFormField<String>(
+                  isExpanded: true,
                   decoration: InputDecoration(
                     filled: true,
                     fillColor: isDark ? Colors.grey[850] : Colors.grey[100],
@@ -415,6 +416,8 @@ class _AddReportPageState extends ConsumerState<AddReportPage> {
                             c.departmentName == null
                                 ? c.name
                                 : '${c.name} - ${c.departmentName}',
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
                           ),
                         ),
                       )

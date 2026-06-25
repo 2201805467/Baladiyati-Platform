@@ -13,7 +13,6 @@ class ReportMapController extends Controller
     {
         $reports = Report::with(['citizen', 'category', 'department', 'area', 'images'])
             ->when($request->filled('status'), fn ($query) => $query->where('status', $request->string('status')))
-            ->when($request->filled('severity'), fn ($query) => $query->where('severity', $request->string('severity')))
             ->when($request->filled('search'), function ($query) use ($request) {
                 $search = '%'.$request->string('search')->toString().'%';
 

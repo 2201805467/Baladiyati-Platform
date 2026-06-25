@@ -26,7 +26,6 @@ interface Report {
   description?: string | null;
   latitude?: string | number | null;
   longitude?: string | number | null;
-  severity?: string | null;
   status: string;
   sla_status?: string | null;
   category?: { category_name?: string } | null;
@@ -66,12 +65,6 @@ const statusLabels: Record<string, string> = {
   rejected: "مرفوض",
 };
 
-const severityLabels: Record<string, string> = {
-  low: "منخفضة",
-  medium: "متوسطة",
-  high: "عالية",
-};
-
 const makeReportIcon = (color: string) => new DivIcon({
   className: "",
   html: `<div style="width:24px;height:24px;background:${color};border:3px solid white;border-radius:50%;box-shadow:0 2px 8px rgba(0,0,0,0.45)"></div>`,
@@ -108,7 +101,6 @@ export default function ReportsMapPage() {
   const [facilities, setFacilities] = useState<Facility[]>([]);
   const [selected, setSelected] = useState<Report | null>(null);
   const [statusFilter, setStatusFilter] = useState("");
-  const [severityFilter, setSeverityFilter] = useState("");
   const [search, setSearch] = useState("");
   const [loadingDetails, setLoadingDetails] = useState(false);
 
@@ -118,7 +110,7 @@ export default function ReportsMapPage() {
 
   useEffect(() => {
     if (user?.role) loadReports();
-  }, [user?.role, statusFilter, severityFilter]);
+  }, [user?.role, statusFilter]);
 
   useEffect(() => {
     if (user?.role === "admin") loadFacilities();
@@ -146,7 +138,6 @@ export default function ReportsMapPage() {
       const params = new URLSearchParams();
       params.set("per_page", "200");
       if (statusFilter) params.set("status", statusFilter);
-      if (severityFilter) params.set("severity", severityFilter);
       if (search) params.set("search", search);
       const response = await api.get<any>(`${endpoint}?${params.toString()}`);
       setReports(response.data || []);
@@ -216,12 +207,6 @@ export default function ReportsMapPage() {
           <option value="pending">معلق</option>
           <option value="closed">مغلق</option>
         </select>
-        <select value={severityFilter} onChange={(event) => setSeverityFilter(event.target.value)} className="px-3 py-2 bg-slate-800 border border-slate-700 rounded-lg text-sm">
-          <option value="">كل الخطورة</option>
-          <option value="low">منخفضة</option>
-          <option value="medium">متوسطة</option>
-          <option value="high">عالية</option>
-        </select>
         <button onClick={loadReports} className="px-3 py-2 bg-emerald-600 rounded-lg text-sm">بحث</button>
       </div>
 
@@ -240,7 +225,6 @@ export default function ReportsMapPage() {
                       <p style={{ margin: "6px 0", color: "#475569" }}>{report.title || report.description || "بلاغ بدون عنوان"}</p>
                       <p style={{ margin: "4px 0" }}><span style={{ color }}>●</span> {statusLabels[report.status] || report.status}</p>
                       <p style={{ margin: "4px 0", color: "#64748b" }}>النوع: {report.category?.category_name || "-"}</p>
-                      <p style={{ margin: "4px 0", color: "#64748b" }}>الخطورة: {severityLabels[report.severity || ""] || report.severity || "-"}</p>
                       <button onClick={() => openReport(report.id)} style={{ marginTop: 8, width: "100%", padding: "7px 10px", background: "#059669", color: "white", border: 0, borderRadius: 8, cursor: "pointer" }}>
                         عرض التفاصيل
                       </button>
@@ -288,7 +272,6 @@ export default function ReportsMapPage() {
                 <p><strong>المواطن:</strong> {personName(selected.citizen)} {selected.citizen?.phone ? `- ${selected.citizen.phone}` : ""}</p>
                 <p><strong>التصنيف:</strong> {selected.category?.category_name || "-"}</p>
                 <p><strong>القسم:</strong> {departmentName(selected.department)}</p>
-                <p><strong>الخطورة:</strong> {severityLabels[selected.severity || ""] || selected.severity || "-"}</p>
                 <p><strong>الموقع:</strong> {selected.latitude || "-"}, {selected.longitude || "-"}</p>
                 {selected.sla_status && <p><strong>SLA:</strong> {selected.sla_status}</p>}
               </div>

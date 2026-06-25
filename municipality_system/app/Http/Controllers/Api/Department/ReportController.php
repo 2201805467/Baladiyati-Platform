@@ -29,7 +29,6 @@ class ReportController extends Controller
                 fn ($query) => $query->whereIn('status', ['transferred', 'in_progress', 'pending'])
             )
             ->when($request->filled('area_id'), fn ($query) => $query->where('area_id', $request->integer('area_id')))
-            ->when($request->filled('severity'), fn ($query) => $query->where('severity', $request->string('severity')))
             ->when($request->filled('date_from'), fn ($query) => $query->whereDate('created_at', '>=', $request->date('date_from')))
             ->when($request->filled('date_to'), fn ($query) => $query->whereDate('created_at', '<=', $request->date('date_to')))
             ->when($request->filled('search'), function ($query) use ($request) {

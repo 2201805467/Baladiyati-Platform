@@ -30,7 +30,6 @@ interface Report {
   description?: string | null;
   latitude?: string | number | null;
   longitude?: string | number | null;
-  severity?: string | null;
   status: string;
   sla_status?: string | null;
   sla_color?: string | null;
@@ -57,12 +56,6 @@ const statusClasses: Record<string, string> = {
   in_progress: "bg-cyan-500/20 text-cyan-400",
   pending: "bg-orange-500/20 text-orange-400",
   closed: "bg-emerald-500/20 text-emerald-400",
-};
-
-const severityClasses: Record<string, string> = {
-  low: "bg-slate-500/20 text-slate-300",
-  medium: "bg-amber-500/20 text-amber-400",
-  high: "bg-red-500/20 text-red-400",
 };
 
 const assetUrl = (url?: string | null) => {
@@ -96,7 +89,6 @@ export default function TechnicalPage() {
   const [reports, setReports] = useState<Report[]>([]);
   const [selected, setSelected] = useState<Report | null>(null);
   const [statusFilter, setStatusFilter] = useState("");
-  const [severityFilter, setSeverityFilter] = useState("");
   const [search, setSearch] = useState("");
   const [statusNote, setStatusNote] = useState("");
   const [commentText, setCommentText] = useState("");
@@ -109,7 +101,7 @@ export default function TechnicalPage() {
 
   useEffect(() => {
     loadReports();
-  }, [statusFilter, severityFilter]);
+  }, [statusFilter]);
 
   useEffect(() => {
     const reportId = new URLSearchParams(location.search).get("reportId");
@@ -122,7 +114,6 @@ export default function TechnicalPage() {
     try {
       const params = new URLSearchParams();
       if (statusFilter) params.set("status", statusFilter);
-      if (severityFilter) params.set("severity", severityFilter);
       if (search) params.set("search", search);
       params.set("per_page", "30");
       const response = await api.get<any>(`/department/reports?${params.toString()}`);
@@ -232,12 +223,6 @@ export default function TechnicalPage() {
               <option value="pending">معلقة</option>
               <option value="closed">مغلقة</option>
             </select>
-            <select value={severityFilter} onChange={(event) => setSeverityFilter(event.target.value)} className="px-3 py-2 bg-slate-800 border border-slate-700 rounded-lg text-sm">
-              <option value="">كل الخطورة</option>
-              <option value="low">منخفضة</option>
-              <option value="medium">متوسطة</option>
-              <option value="high">عالية</option>
-            </select>
             <button onClick={loadReports} className="px-3 py-2 bg-emerald-600 rounded-lg text-sm">بحث</button>
           </div>
 
@@ -252,7 +237,6 @@ export default function TechnicalPage() {
                   </div>
                   <div className="flex flex-col gap-1 items-end">
                     <span className={`px-2 py-0.5 rounded text-xs ${statusClasses[report.status] || "bg-slate-500/20 text-slate-400"}`}>{statusLabels[report.status] || report.status}</span>
-                    <span className={`px-2 py-0.5 rounded text-xs ${severityClasses[report.severity || ""] || "bg-slate-500/20 text-slate-400"}`}>{report.severity || "-"}</span>
                   </div>
                 </div>
               </button>
@@ -272,7 +256,6 @@ export default function TechnicalPage() {
               </div>
               <div className="flex flex-wrap gap-2">
                 <span className={`px-2 py-1 rounded text-xs ${statusClasses[selected.status] || "bg-slate-500/20 text-slate-400"}`}>{statusLabels[selected.status] || selected.status}</span>
-                <span className={`px-2 py-1 rounded text-xs ${severityClasses[selected.severity || ""] || "bg-slate-500/20 text-slate-400"}`}>{selected.severity || "-"}</span>
                 {selected.sla_status && <span className="px-2 py-1 rounded text-xs bg-slate-800 text-slate-300">SLA: {selected.sla_status}</span>}
               </div>
 
