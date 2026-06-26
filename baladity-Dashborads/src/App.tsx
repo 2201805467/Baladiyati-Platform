@@ -43,7 +43,7 @@ export default function App() {
         <Route path="departments" element={<ProtectedRoute roles={["admin"]}><DepartmentsPage /></ProtectedRoute>} />
         <Route path="categories" element={<ProtectedRoute roles={["admin"]}><CategoriesPage /></ProtectedRoute>} />
         <Route path="security" element={<ProtectedRoute roles={["admin"]}><PermissionsSecurityPage /></ProtectedRoute>} />
-        <Route path="notifications" element={<ProtectedRoute roles={["reception", "department", "admin"]}><NotificationsPage /></ProtectedRoute>} />
+        <Route path="notifications" element={<ProtectedRoute roles={["reception", "department"]}><NotificationsPage /></ProtectedRoute>} />
         <Route path="map" element={<ProtectedRoute roles={["reception", "department", "admin"]}><ReportsMapPage /></ProtectedRoute>} />
         <Route path="content" element={<ProtectedRoute roles={["admin", "reception"]}><ContentPage /></ProtectedRoute>} />
       </Route>

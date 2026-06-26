@@ -11,7 +11,7 @@ const navItems = [
   { path: "/admin/departments", label: "الأقسام", icon: "🏛️", roles: ["admin"] },
   { path: "/admin/categories", label: "التصنيفات", icon: "📋", roles: ["admin"] },
   { path: "/admin/security", label: "الصلاحيات والسجلات", icon: "🔐", roles: ["admin"] },
-  { path: "/admin/notifications", label: "الإشعارات", icon: "🔔", roles: ["reception", "department", "admin"] },
+  { path: "/admin/notifications", label: "الإشعارات", icon: "🔔", roles: ["reception", "department"] },
   { path: "/admin/map", label: "الخريطة", icon: "🗺️", roles: ["reception", "department", "admin"] },
   { path: "/admin/content", label: "المحتوى", icon: "📦", roles: ["admin", "reception"] },
 ];
@@ -32,6 +32,12 @@ export default function AdminLayout() {
   const unreadRef = useRef(0);
 
   useEffect(() => {
+    if (user?.role === "admin") {
+      unreadRef.current = 0;
+      setUnreadCount(0);
+      return;
+    }
+
     const fetchCount = async () => {
       try {
         const response = await api.get<{ data: any[]; unreadCount?: number; unread_count?: number }>("/notifications?limit=1");
@@ -44,10 +50,11 @@ export default function AdminLayout() {
         console.error("pollUnread", error);
       }
     };
+
     fetchCount();
     const interval = setInterval(fetchCount, 30000);
     return () => clearInterval(interval);
-  }, []);
+  }, [user?.role]);
 
   const allowed = navItems.filter((item) => user?.role && item.roles.includes(user.role));
   const canChangePassword = user?.role === "reception" || user?.role === "department";
@@ -72,7 +79,7 @@ export default function AdminLayout() {
 
     setPasswordLoading(true);
     try {
-      const response = await api.put<{ message: string }>("/auth/change-password", {
+      await api.put<{ message: string }>("/auth/change-password", {
         current_password: currentPassword,
         password: newPassword,
         password_confirmation: confirmPassword,
