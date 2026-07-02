@@ -1,10 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import '../../domain/entities/proposal_entity.dart';
 import '../controllers/proposals_controller.dart';
 import '../controllers/proposals_state.dart';
 
 class SuggestServicePage extends ConsumerStatefulWidget {
-  const SuggestServicePage({super.key});
+  final ProposalEntity? proposal;
+
+  const SuggestServicePage({super.key, this.proposal});
 
   @override
   ConsumerState<SuggestServicePage> createState() => _SuggestServicePageState();
@@ -15,6 +18,8 @@ class _SuggestServicePageState extends ConsumerState<SuggestServicePage> {
   final _titleController = TextEditingController();
   final _descriptionController = TextEditingController();
   String? _selectedCategory;
+
+  bool get _isEditing => widget.proposal != null;
 
   final List<String> _categories = [
     'مرافق ترفيهية',
@@ -27,6 +32,17 @@ class _SuggestServicePageState extends ConsumerState<SuggestServicePage> {
   ];
 
   @override
+  void initState() {
+    super.initState();
+    final proposal = widget.proposal;
+    if (proposal != null) {
+      _titleController.text = proposal.title;
+      _descriptionController.text = proposal.description;
+      _selectedCategory = proposal.category.isEmpty ? null : proposal.category;
+    }
+  }
+
+  @override
   void dispose() {
     _titleController.dispose();
     _descriptionController.dispose();
@@ -35,20 +51,34 @@ class _SuggestServicePageState extends ConsumerState<SuggestServicePage> {
 
   Future<void> _submit() async {
     if (!_formKey.currentState!.validate()) return;
-    final success = await ref
-        .read(proposalsControllerProvider.notifier)
-        .submitSuggestion(
-          title: _titleController.text.trim(),
-          category: _selectedCategory!,
-          description: _descriptionController.text.trim(),
-        );
+
+    final controller = ref.read(proposalsControllerProvider.notifier);
+    final success = _isEditing
+        ? await controller.updateSuggestion(
+            proposalId: widget.proposal!.id,
+            title: _titleController.text.trim(),
+            category: _selectedCategory!,
+            description: _descriptionController.text.trim(),
+          )
+        : await controller.submitSuggestion(
+            title: _titleController.text.trim(),
+            category: _selectedCategory!,
+            description: _descriptionController.text.trim(),
+          );
+
     if (!mounted) return;
     if (success) {
-      Navigator.pop(context);
+      if (!_isEditing) {
+        await controller.fetchProposals(refresh: true);
+      }
+      if (!mounted) return;
+      Navigator.pop(context, true);
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
+        SnackBar(
           content: Text(
-            'تم إرسال المقترح بنجاح، وسيظهر للمواطنين بعد قبوله من البلدية.',
+            _isEditing
+                ? 'تم تحديث المقترح بنجاح.'
+                : 'تم إرسال المقترح بنجاح، ويمكنك متابعته من قسم مقترحاتي.',
           ),
         ),
       );
@@ -78,14 +108,14 @@ class _SuggestServicePageState extends ConsumerState<SuggestServicePage> {
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('اقتراح مشروع'),
+        title: Text(_isEditing ? 'تعديل المقترح' : 'اقتراح مشروع'),
         centerTitle: true,
         elevation: 0,
       ),
       body: Directionality(
         textDirection: TextDirection.rtl,
         child: SingleChildScrollView(
-          padding: const EdgeInsets.all(20.0),
+          padding: const EdgeInsets.all(20),
           child: Form(
             key: _formKey,
             child: Column(
@@ -103,8 +133,10 @@ class _SuggestServicePageState extends ConsumerState<SuggestServicePage> {
                     hintText: 'أدخل عنوان المقترح...',
                     isDark: isDark,
                   ),
-                  validator: (v) =>
-                      (v == null || v.isEmpty) ? 'يرجى إدخال العنوان' : null,
+                  validator: (value) =>
+                      value == null || value.trim().isEmpty
+                          ? 'يرجى إدخال العنوان'
+                          : null,
                 ),
                 const SizedBox(height: 24),
                 const Text(
@@ -113,23 +145,23 @@ class _SuggestServicePageState extends ConsumerState<SuggestServicePage> {
                 ),
                 const SizedBox(height: 10),
                 DropdownButtonFormField<String>(
-                  decoration: InputDecoration(
-                    filled: true,
-                    fillColor: isDark ? Colors.grey[850] : Colors.grey[100],
-                    border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(12),
-                      borderSide: BorderSide.none,
-                    ),
+                  decoration: _inputDecoration(
+                    hintText: '',
+                    isDark: isDark,
                   ),
                   hint: const Text('اختر التصنيف'),
                   initialValue: _selectedCategory,
                   items: _categories
-                      .map((c) => DropdownMenuItem(value: c, child: Text(c)))
+                      .map((category) => DropdownMenuItem(
+                            value: category,
+                            child: Text(category),
+                          ))
                       .toList(),
                   onChanged: isSubmitting
                       ? null
-                      : (v) => setState(() => _selectedCategory = v),
-                  validator: (v) => v == null ? 'يرجى اختيار التصنيف' : null,
+                      : (value) => setState(() => _selectedCategory = value),
+                  validator: (value) =>
+                      value == null ? 'يرجى اختيار التصنيف' : null,
                 ),
                 const SizedBox(height: 24),
                 const Text(
@@ -145,9 +177,10 @@ class _SuggestServicePageState extends ConsumerState<SuggestServicePage> {
                     hintText: 'اشرح مقترحك بالتفصيل...',
                     isDark: isDark,
                   ),
-                  validator: (v) => (v == null || v.length < 20)
-                      ? 'يرجى كتابة وصف لا يقل عن 20 حرفاً'
-                      : null,
+                  validator: (value) =>
+                      value == null || value.trim().length < 20
+                          ? 'يرجى كتابة وصف لا يقل عن 20 حرفاً'
+                          : null,
                 ),
                 const SizedBox(height: 40),
                 SizedBox(
@@ -172,9 +205,9 @@ class _SuggestServicePageState extends ConsumerState<SuggestServicePage> {
                               strokeWidth: 2,
                             ),
                           )
-                        : const Text(
-                            'إرسال المقترح',
-                            style: TextStyle(
+                        : Text(
+                            _isEditing ? 'حفظ التعديلات' : 'إرسال المقترح',
+                            style: const TextStyle(
                               fontSize: 16,
                               fontWeight: FontWeight.bold,
                             ),
@@ -194,7 +227,7 @@ class _SuggestServicePageState extends ConsumerState<SuggestServicePage> {
     required bool isDark,
   }) {
     return InputDecoration(
-      hintText: hintText,
+      hintText: hintText.isEmpty ? null : hintText,
       filled: true,
       fillColor: isDark ? Colors.grey[850] : Colors.grey[100],
       border: OutlineInputBorder(

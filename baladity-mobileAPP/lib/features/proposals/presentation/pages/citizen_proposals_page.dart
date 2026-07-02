@@ -5,6 +5,7 @@ import '../../../profile/presentation/controllers/profile_controller.dart';
 import '../controllers/proposals_controller.dart';
 import '../controllers/proposals_state.dart';
 import 'proposal_details_page.dart';
+import 'suggest_service_page.dart';
 
 class CitizenProposalsPage extends ConsumerStatefulWidget {
   const CitizenProposalsPage({super.key});
@@ -47,6 +48,16 @@ class _CitizenProposalsPageState extends ConsumerState<CitizenProposalsPage> {
     final currentUserId = currentUser?.id;
     final currentUserName = currentUser?.name.trim() ?? '';
 
+    final myProposals = state.proposals
+        .where((proposal) => _isMine(proposal, currentUserId, currentUserName))
+        .toList();
+    final publicProposals = state.proposals
+        .where((proposal) =>
+            !_isMine(proposal, currentUserId, currentUserName) &&
+            proposal.isAccepted)
+        .toList()
+      ..sort((a, b) => b.votes.compareTo(a.votes));
+
     if (state.isLoading && state.proposals.isEmpty) {
       return const Center(child: CircularProgressIndicator());
     }
@@ -60,7 +71,7 @@ class _CitizenProposalsPageState extends ConsumerState<CitizenProposalsPage> {
             Icon(Icons.lightbulb_outline, size: 80, color: Colors.grey[400]),
             const SizedBox(height: 16),
             Text(
-              'لا توجد مقترحات مقبولة حالياً',
+              'لا توجد مقترحات حالياً',
               style: TextStyle(fontSize: 18, color: emptyTextColor),
             ),
             const SizedBox(height: 16),
@@ -75,15 +86,6 @@ class _CitizenProposalsPageState extends ConsumerState<CitizenProposalsPage> {
         ),
       );
     }
-
-    final myProposals = state.proposals
-        .where((p) => _isMine(p, currentUserId, currentUserName))
-        .toList();
-    final allSorted =
-        state.proposals
-            .where((p) => !_isMine(p, currentUserId, currentUserName))
-            .toList()
-          ..sort((a, b) => b.votes.compareTo(a.votes));
 
     return RefreshIndicator(
       onRefresh: () => ref
@@ -100,8 +102,8 @@ class _CitizenProposalsPageState extends ConsumerState<CitizenProposalsPage> {
             ),
             const SizedBox(height: 12),
             ...myProposals.map(
-              (p) => _buildProposalCard(
-                p,
+              (proposal) => _buildProposalCard(
+                proposal,
                 primaryGreen,
                 isDark,
                 context,
@@ -111,16 +113,16 @@ class _CitizenProposalsPageState extends ConsumerState<CitizenProposalsPage> {
             ),
             const SizedBox(height: 24),
           ],
-          if (allSorted.isNotEmpty) ...[
+          if (publicProposals.isNotEmpty) ...[
             _buildSectionHeader(
-              'كل مقترحات المواطنين',
+              'المقترحات المقبولة',
               Icons.campaign_outlined,
               primaryGreen,
             ),
             const SizedBox(height: 12),
-            ...allSorted.map(
-              (p) => _buildProposalCard(
-                p,
+            ...publicProposals.map(
+              (proposal) => _buildProposalCard(
+                proposal,
                 primaryGreen,
                 isDark,
                 context,
@@ -174,6 +176,7 @@ class _CitizenProposalsPageState extends ConsumerState<CitizenProposalsPage> {
   ) {
     final isMine = _isMine(proposal, currentUserId, currentUserName);
     final canVote = proposal.isAccepted && !isMine && !proposal.isExpired;
+    final canEditOrDelete = isMine && proposal.isUnderReview;
 
     return Card(
       margin: const EdgeInsets.only(bottom: 12),
@@ -190,22 +193,14 @@ class _CitizenProposalsPageState extends ConsumerState<CitizenProposalsPage> {
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                Container(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 10,
-                    vertical: 4,
-                  ),
-                  decoration: BoxDecoration(
-                    color: primaryColor.withValues(alpha: 0.1),
-                    borderRadius: BorderRadius.circular(20),
-                  ),
-                  child: Text(
-                    proposal.category,
-                    style: TextStyle(
-                      color: primaryColor,
-                      fontSize: 11,
-                      fontWeight: FontWeight.bold,
-                    ),
+                Flexible(
+                  child: Wrap(
+                    spacing: 8,
+                    runSpacing: 8,
+                    children: [
+                      _chip(proposal.category, primaryColor),
+                      _statusChip(proposal.status),
+                    ],
                   ),
                 ),
                 Text(
@@ -223,24 +218,34 @@ class _CitizenProposalsPageState extends ConsumerState<CitizenProposalsPage> {
               style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
             ),
             const SizedBox(height: 8),
-            Row(
-              children: [
-                const Icon(
-                  Icons.timer_outlined,
-                  size: 14,
-                  color: Colors.orange,
-                ),
-                const SizedBox(width: 4),
-                Text(
-                  _getRemainingTime(proposal.expiryDate),
-                  style: TextStyle(
-                    fontSize: 12,
-                    color: proposal.isExpired ? Colors.red : Colors.orange[800],
-                    fontWeight: FontWeight.w500,
-                  ),
-                ),
-              ],
+            Text(
+              proposal.description,
+              maxLines: 2,
+              overflow: TextOverflow.ellipsis,
+              style: TextStyle(
+                color: Theme.of(context).textTheme.bodyMedium?.color,
+                height: 1.5,
+              ),
             ),
+            if (proposal.isAccepted) ...[
+              const SizedBox(height: 12),
+              Row(
+                children: [
+                  const Icon(Icons.timer_outlined, size: 14, color: Colors.orange),
+                  const SizedBox(width: 4),
+                  Text(
+                    _getRemainingTime(proposal.expiryDate),
+                    style: TextStyle(
+                      fontSize: 12,
+                      color: proposal.isExpired
+                          ? Colors.red
+                          : Colors.orange[800],
+                      fontWeight: FontWeight.w500,
+                    ),
+                  ),
+                ],
+              ),
+            ],
             const SizedBox(height: 16),
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -264,73 +269,92 @@ class _CitizenProposalsPageState extends ConsumerState<CitizenProposalsPage> {
                     Text('${proposal.opposeVotes}'),
                   ],
                 ),
-                Row(
-                  children: [
-                    TextButton.icon(
-                      onPressed: canVote
-                          ? () => ref
-                                .read(proposalsControllerProvider.notifier)
-                                .toggleVote(proposal.id, voteType: 'support')
-                          : null,
-                      icon: Icon(
-                        proposal.isSupported
-                            ? Icons.thumb_up_alt
-                            : Icons.thumb_up_off_alt,
-                        size: 18,
+                if (canEditOrDelete)
+                  Row(
+                    children: [
+                      TextButton.icon(
+                        onPressed: () => _openEditPage(context, proposal),
+                        icon: const Icon(Icons.edit_outlined, size: 18),
+                        label: const Text('تعديل'),
                       ),
-                      label: Text(
-                        isMine
-                            ? 'مقترحك'
-                            : proposal.isSupported
-                            ? 'إلغاء'
-                            : 'إعجاب',
-                      ),
-                      style: TextButton.styleFrom(
-                        foregroundColor: proposal.isSupported
-                            ? primaryColor
-                            : Colors.grey[600],
-                        backgroundColor: proposal.isSupported
-                            ? primaryColor.withValues(alpha: 0.1)
-                            : Colors.transparent,
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(12),
+                      TextButton.icon(
+                        onPressed: () => _confirmDelete(context, proposal),
+                        icon: const Icon(Icons.delete_outline, size: 18),
+                        label: const Text('حذف'),
+                        style: TextButton.styleFrom(
+                          foregroundColor: Colors.red,
                         ),
                       ),
-                    ),
-                    const SizedBox(width: 4),
-                    TextButton.icon(
-                      onPressed: canVote
-                          ? () => ref
-                                .read(proposalsControllerProvider.notifier)
-                                .toggleVote(proposal.id, voteType: 'oppose')
-                          : null,
-                      icon: Icon(
-                        proposal.isOpposed
-                            ? Icons.thumb_down_alt
-                            : Icons.thumb_down_off_alt,
-                        size: 18,
-                      ),
-                      label: Text(
-                        isMine
-                            ? 'مقترحك'
-                            : proposal.isOpposed
-                            ? 'إلغاء'
-                            : 'لا يعجبني',
-                      ),
-                      style: TextButton.styleFrom(
-                        foregroundColor: proposal.isOpposed
-                            ? Colors.red
-                            : Colors.grey[600],
-                        backgroundColor: proposal.isOpposed
-                            ? Colors.red.withValues(alpha: 0.1)
-                            : Colors.transparent,
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(12),
+                    ],
+                  )
+                else
+                  Row(
+                    children: [
+                      TextButton.icon(
+                        onPressed: canVote
+                            ? () => ref
+                                  .read(proposalsControllerProvider.notifier)
+                                  .toggleVote(proposal.id, voteType: 'support')
+                            : null,
+                        icon: Icon(
+                          proposal.isSupported
+                              ? Icons.thumb_up_alt
+                              : Icons.thumb_up_off_alt,
+                          size: 18,
+                        ),
+                        label: Text(
+                          isMine
+                              ? 'مقترحك'
+                              : proposal.isSupported
+                                  ? 'إلغاء'
+                                  : 'إعجاب',
+                        ),
+                        style: TextButton.styleFrom(
+                          foregroundColor: proposal.isSupported
+                              ? primaryColor
+                              : Colors.grey[600],
+                          backgroundColor: proposal.isSupported
+                              ? primaryColor.withValues(alpha: 0.1)
+                              : Colors.transparent,
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12),
+                          ),
                         ),
                       ),
-                    ),
-                  ],
-                ),
+                      const SizedBox(width: 4),
+                      TextButton.icon(
+                        onPressed: canVote
+                            ? () => ref
+                                  .read(proposalsControllerProvider.notifier)
+                                  .toggleVote(proposal.id, voteType: 'oppose')
+                            : null,
+                        icon: Icon(
+                          proposal.isOpposed
+                              ? Icons.thumb_down_alt
+                              : Icons.thumb_down_off_alt,
+                          size: 18,
+                        ),
+                        label: Text(
+                          isMine
+                              ? 'مقترحك'
+                              : proposal.isOpposed
+                                  ? 'إلغاء'
+                                  : 'لا يعجبني',
+                        ),
+                        style: TextButton.styleFrom(
+                          foregroundColor: proposal.isOpposed
+                              ? Colors.red
+                              : Colors.grey[600],
+                          backgroundColor: proposal.isOpposed
+                              ? Colors.red.withValues(alpha: 0.1)
+                              : Colors.transparent,
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
               ],
             ),
             const Divider(height: 24),
@@ -349,6 +373,103 @@ class _CitizenProposalsPageState extends ConsumerState<CitizenProposalsPage> {
           ],
         ),
       ),
+    );
+  }
+
+  Widget _chip(String text, Color color) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+      decoration: BoxDecoration(
+        color: color.withValues(alpha: 0.1),
+        borderRadius: BorderRadius.circular(20),
+      ),
+      child: Text(
+        text,
+        style: TextStyle(
+          color: color,
+          fontSize: 11,
+          fontWeight: FontWeight.bold,
+        ),
+      ),
+    );
+  }
+
+  Widget _statusChip(String status) {
+    var label = status;
+    var color = Colors.grey;
+
+    if (status == 'under_review') {
+      label = 'تحت المراجعة';
+      color = Colors.orange;
+    } else if (status == 'accepted') {
+      label = 'مقبول';
+      color = Colors.green;
+    } else if (status == 'rejected') {
+      label = 'مرفوض';
+      color = Colors.red;
+    }
+
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+      decoration: BoxDecoration(
+        color: color.withValues(alpha: 0.12),
+        borderRadius: BorderRadius.circular(20),
+      ),
+      child: Text(
+        label,
+        style: TextStyle(
+          color: color,
+          fontSize: 11,
+          fontWeight: FontWeight.bold,
+        ),
+      ),
+    );
+  }
+
+  Future<void> _openEditPage(
+    BuildContext context,
+    ProposalEntity proposal,
+  ) async {
+    await Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) => SuggestServicePage(proposal: proposal),
+      ),
+    );
+  }
+
+  Future<void> _confirmDelete(
+    BuildContext context,
+    ProposalEntity proposal,
+  ) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: const Text('حذف المقترح'),
+        content: Text('هل أنت متأكد من حذف المقترح "${proposal.title}"؟'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(dialogContext, false),
+            child: const Text('إلغاء'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.pop(dialogContext, true),
+            style: FilledButton.styleFrom(backgroundColor: Colors.red),
+            child: const Text('حذف'),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmed != true || !mounted) return;
+
+    final success = await ref
+        .read(proposalsControllerProvider.notifier)
+        .deleteSuggestion(proposal.id);
+    if (!mounted || !success) return;
+
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text('تم حذف المقترح بنجاح.')),
     );
   }
 

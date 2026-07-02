@@ -7,8 +7,8 @@ class ProposalsRepositoryImpl implements ProposalsRepository {
   ProposalsRepositoryImpl(this._dataSource);
 
   @override
-  Future<List<ProposalEntity>> getProposals({int page = 1}) =>
-      _dataSource.getProposals(page: page);
+  Future<List<ProposalEntity>> getProposals({int page = 1, bool mine = false}) =>
+      _dataSource.getProposals(page: page, mine: mine);
 
   @override
   Future<ProposalEntity> vote(String proposalId, {required String voteType}) =>
@@ -24,8 +24,25 @@ class ProposalsRepositoryImpl implements ProposalsRepository {
     required String category,
     required String description,
   }) => _dataSource.suggestProposal(
-    title: title,
-    category: category,
-    description: description,
-  );
+        title: title,
+        category: category,
+        description: description,
+      );
+
+  @override
+  Future<ProposalEntity> updateProposal({
+    required String proposalId,
+    required String title,
+    required String category,
+    required String description,
+  }) => _dataSource.updateProposal(
+        proposalId: proposalId,
+        title: title,
+        category: category,
+        description: description,
+      );
+
+  @override
+  Future<void> deleteProposal(String proposalId) =>
+      _dataSource.deleteProposal(proposalId);
 }

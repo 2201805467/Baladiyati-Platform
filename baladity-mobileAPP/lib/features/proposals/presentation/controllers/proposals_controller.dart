@@ -2,10 +2,13 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../../features/auth/presentation/controllers/auth_controller.dart';
 import '../../data/datasources/proposals_remote_datasource.dart';
 import '../../data/repositories_impl/proposals_repository_impl.dart';
+import '../../domain/entities/proposal_entity.dart';
 import '../../domain/repositories/proposals_repository.dart';
 import '../../domain/usecases/get_proposals_usecase.dart';
 import '../../domain/usecases/suggest_proposal_usecase.dart';
 import '../../domain/usecases/vote_proposal_usecase.dart';
+import '../../domain/usecases/update_proposal_usecase.dart';
+import '../../domain/usecases/delete_proposal_usecase.dart';
 import 'proposals_state.dart';
 
 // ─── Dependency Providers ─────────────────────────────────────────────────────
@@ -30,6 +33,14 @@ final suggestProposalUseCaseProvider = Provider(
   (ref) => SuggestProposalUseCase(ref.read(proposalsRepositoryProvider)),
 );
 
+final updateProposalUseCaseProvider = Provider(
+  (ref) => UpdateProposalUseCase(ref.read(proposalsRepositoryProvider)),
+);
+
+final deleteProposalUseCaseProvider = Provider(
+  (ref) => DeleteProposalUseCase(ref.read(proposalsRepositoryProvider)),
+);
+
 // ─── Proposals Controller ─────────────────────────────────────────────────────
 
 final proposalsControllerProvider =
@@ -41,12 +52,16 @@ class ProposalsController extends Notifier<ProposalsState> {
   late GetProposalsUseCase _getProposals;
   late VoteProposalUseCase _voteProposal;
   late SuggestProposalUseCase _suggestProposal;
+  late UpdateProposalUseCase _updateProposal;
+  late DeleteProposalUseCase _deleteProposal;
 
   @override
   ProposalsState build() {
     _getProposals = ref.read(getProposalsUseCaseProvider);
     _voteProposal = ref.read(voteProposalUseCaseProvider);
     _suggestProposal = ref.read(suggestProposalUseCaseProvider);
+    _updateProposal = ref.read(updateProposalUseCaseProvider);
+    _deleteProposal = ref.read(deleteProposalUseCaseProvider);
     return const ProposalsState();
   }
 
@@ -56,9 +71,15 @@ class ProposalsController extends Notifier<ProposalsState> {
     state = state.copyWith(isLoading: true, clearError: true);
     try {
       final proposals = await _getProposals(page: page);
+      final myProposals = refresh ? await _getProposals(mine: true) : const [];
+      final merged = _mergeUnique(
+        refresh
+            ? [...myProposals, ...proposals]
+            : [...state.proposals, ...proposals],
+      );
       state = state.copyWith(
         isLoading: false,
-        proposals: refresh ? proposals : [...state.proposals, ...proposals],
+        proposals: merged,
         currentPage: page + 1,
         hasMore: proposals.isNotEmpty,
       );
@@ -152,5 +173,58 @@ class ProposalsController extends Notifier<ProposalsState> {
       state = state.copyWith(isSubmitting: false, errorMessage: e.toString());
       return false;
     }
+  }
+
+  Future<bool> updateSuggestion({
+    required String proposalId,
+    required String title,
+    required String category,
+    required String description,
+  }) async {
+    state = state.copyWith(isSubmitting: true, clearError: true);
+    try {
+      final updated = await _updateProposal(
+        proposalId: proposalId,
+        title: title,
+        category: category,
+        description: description,
+      );
+      state = state.copyWith(
+        isSubmitting: false,
+        proposals: state.proposals
+            .map((proposal) => proposal.id == proposalId ? updated : proposal)
+            .toList(),
+      );
+      return true;
+    } catch (e) {
+      state = state.copyWith(isSubmitting: false, errorMessage: e.toString());
+      return false;
+    }
+  }
+
+  Future<bool> deleteSuggestion(String proposalId) async {
+    state = state.copyWith(isSubmitting: true, clearError: true);
+    try {
+      await _deleteProposal(proposalId);
+      state = state.copyWith(
+        isSubmitting: false,
+        proposals: state.proposals
+            .where((proposal) => proposal.id != proposalId)
+            .toList(),
+      );
+      return true;
+    } catch (e) {
+      state = state.copyWith(isSubmitting: false, errorMessage: e.toString());
+      return false;
+    }
+  }
+
+  List<ProposalEntity> _mergeUnique(List<ProposalEntity> items) {
+    final seen = <String>{};
+    final merged = <ProposalEntity>[];
+    for (final item in items) {
+      if (seen.add(item.id)) merged.add(item);
+    }
+    return merged;
   }
 }

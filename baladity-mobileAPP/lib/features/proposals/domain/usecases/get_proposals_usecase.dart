@@ -5,6 +5,6 @@ class GetProposalsUseCase {
   final ProposalsRepository _repository;
   GetProposalsUseCase(this._repository);
 
-  Future<List<ProposalEntity>> call({int page = 1}) =>
-      _repository.getProposals(page: page);
+  Future<List<ProposalEntity>> call({int page = 1, bool mine = false}) =>
+      _repository.getProposals(page: page, mine: mine);
 }
