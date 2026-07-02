@@ -10,9 +10,12 @@ import '../../../profile/presentation/controllers/profile_controller.dart';
 import '../../../reports/domain/entities/report_entity.dart';
 import '../../../reports/presentation/controllers/reports_controller.dart';
 import '../../../reports/presentation/pages/add_report_page.dart';
+import '../../../reports/presentation/pages/report_details_page.dart';
 import '../../../reports/presentation/pages/reports_page.dart';
+import '../../../proposals/presentation/controllers/proposals_controller.dart';
 import '../../../proposals/presentation/pages/suggest_service_page.dart';
 import '../../../proposals/presentation/pages/citizen_proposals_page.dart';
+import '../../../proposals/presentation/pages/proposal_details_page.dart';
 import '../../../facilities/presentation/pages/public_facilities_page.dart';
 import '../../../projects/presentation/pages/municipal_projects_page.dart';
 
@@ -94,6 +97,86 @@ class _HomePageState extends ConsumerState<HomePage> {
     }
   }
 
+  Future<void> _markNotificationAsRead(_CitizenNotification notification) async {
+    if (notification.isRead) return;
+
+    try {
+      final dio = ref.read(dioProvider);
+      await dio.patch('${ApiConstants.notifications}/${notification.id}/read');
+      if (!mounted) return;
+      setState(() {
+        _notifications = _notifications
+            .map(
+              (item) => item.id == notification.id
+                  ? item.copyWith(isRead: true)
+                  : item,
+            )
+            .toList(growable: false);
+      });
+    } catch (_) {
+      // Navigation should still work even if the read marker request fails.
+    }
+  }
+
+  Future<void> _openNotificationTarget(
+    _CitizenNotification notification,
+  ) async {
+    await _markNotificationAsRead(notification);
+    if (!mounted) return;
+
+    Navigator.of(context).pop();
+
+    final relatedId = notification.relatedId;
+    final relatedType = notification.relatedType.toLowerCase();
+
+    if (relatedId == null) return;
+
+    if (relatedType.contains('suggestion')) {
+      await ref
+          .read(proposalsControllerProvider.notifier)
+          .fetchProposals(refresh: true);
+      if (!mounted) return;
+
+      final proposals = ref.read(proposalsControllerProvider).proposals;
+      final proposal = proposals
+          .where((item) => item.id == relatedId.toString())
+          .firstOrNull;
+
+      if (proposal != null) {
+        Navigator.of(context).push(
+          MaterialPageRoute(
+            builder: (_) => ProposalDetailsPage(proposal: proposal),
+          ),
+        );
+      } else {
+        Navigator.of(context).push(
+          MaterialPageRoute(builder: (_) => const CitizenProposalsPage()),
+        );
+      }
+      return;
+    }
+
+    if (relatedType.contains('report')) {
+      await ref
+          .read(reportsControllerProvider.notifier)
+          .fetchReports(refresh: true);
+      if (!mounted) return;
+
+      final reports = ref.read(reportsControllerProvider).reports;
+      final report = reports.where((item) => item.id == relatedId).firstOrNull;
+
+      if (report != null) {
+        Navigator.of(context).push(
+          MaterialPageRoute(builder: (_) => ReportDetailsPage(report: report)),
+        );
+      } else {
+        Navigator.of(context).push(
+          MaterialPageRoute(builder: (_) => const ReportsPage()),
+        );
+      }
+    }
+  }
+
   Future<void> _showNotificationsSheet() async {
     await _fetchNotifications();
     if (!mounted) return;
@@ -167,6 +250,7 @@ class _HomePageState extends ConsumerState<HomePage> {
                         final notification = _notifications[index];
                         return ListTile(
                           contentPadding: EdgeInsets.zero,
+                          onTap: () => _openNotificationTarget(notification),
                           leading: Icon(
                             notification.isRead
                                 ? Icons.notifications_none
@@ -732,6 +816,8 @@ class _CitizenNotification {
   final String title;
   final String body;
   final String type;
+  final int? relatedId;
+  final String relatedType;
   final bool isRead;
   final DateTime? createdAt;
 
@@ -740,6 +826,8 @@ class _CitizenNotification {
     required this.title,
     required this.body,
     required this.type,
+    this.relatedId,
+    this.relatedType = '',
     required this.isRead,
     this.createdAt,
   });
@@ -750,6 +838,8 @@ class _CitizenNotification {
       title: json['title']?.toString() ?? '',
       body: json['body']?.toString() ?? '',
       type: json['type']?.toString() ?? '',
+      relatedId: _intOrNull(json['related_id']),
+      relatedType: json['related_type']?.toString() ?? '',
       isRead: json['is_read'] == true || json['is_read'] == 1,
       createdAt: json['created_at'] == null
           ? null
@@ -763,8 +853,17 @@ class _CitizenNotification {
       title: title,
       body: body,
       type: type,
+      relatedId: relatedId,
+      relatedType: relatedType,
       isRead: isRead ?? this.isRead,
       createdAt: createdAt,
     );
+  }
+
+  static int? _intOrNull(dynamic value) {
+    if (value == null) return null;
+    if (value is int) return value;
+    if (value is num) return value.toInt();
+    return int.tryParse(value.toString());
   }
 }

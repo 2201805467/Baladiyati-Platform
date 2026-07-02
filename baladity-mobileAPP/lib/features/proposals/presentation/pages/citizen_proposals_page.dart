@@ -48,13 +48,15 @@ class _CitizenProposalsPageState extends ConsumerState<CitizenProposalsPage> {
     final currentUserId = currentUser?.id;
     final currentUserName = currentUser?.name.trim() ?? '';
 
-    final myProposals = state.proposals
-        .where((proposal) => _isMine(proposal, currentUserId, currentUserName))
+    final underReviewMineProposals = state.proposals
+        .where(
+          (proposal) =>
+              _isMine(proposal, currentUserId, currentUserName) &&
+              proposal.isUnderReview,
+        )
         .toList();
-    final publicProposals = state.proposals
-        .where((proposal) =>
-            !_isMine(proposal, currentUserId, currentUserName) &&
-            proposal.isAccepted)
+    final acceptedProposals = state.proposals
+        .where((proposal) => proposal.isAccepted)
         .toList()
       ..sort((a, b) => b.votes.compareTo(a.votes));
 
@@ -94,14 +96,14 @@ class _CitizenProposalsPageState extends ConsumerState<CitizenProposalsPage> {
       child: ListView(
         padding: const EdgeInsets.all(16),
         children: [
-          if (myProposals.isNotEmpty) ...[
+          if (underReviewMineProposals.isNotEmpty) ...[
             _buildSectionHeader(
-              'مقترحاتي',
+              'مقترحاتي تحت المراجعة',
               Icons.person_pin_outlined,
               primaryGreen,
             ),
             const SizedBox(height: 12),
-            ...myProposals.map(
+            ...underReviewMineProposals.map(
               (proposal) => _buildProposalCard(
                 proposal,
                 primaryGreen,
@@ -113,14 +115,14 @@ class _CitizenProposalsPageState extends ConsumerState<CitizenProposalsPage> {
             ),
             const SizedBox(height: 24),
           ],
-          if (publicProposals.isNotEmpty) ...[
+          if (acceptedProposals.isNotEmpty) ...[
             _buildSectionHeader(
-              'المقترحات المقبولة',
+              'المقترحات المقبولة حسب الأصوات',
               Icons.campaign_outlined,
               primaryGreen,
             ),
             const SizedBox(height: 12),
-            ...publicProposals.map(
+            ...acceptedProposals.map(
               (proposal) => _buildProposalCard(
                 proposal,
                 primaryGreen,
