@@ -100,7 +100,7 @@ class AuthController extends Controller
             'device_name' => ['nullable', 'string', 'max:100'],
         ]);
 
-        $user = User::with('role', 'department')
+        $user = User::with('role.permissions', 'department')
             ->where('email', $credentials['login'])
             ->orWhere('phone', $credentials['login'])
             ->first();
@@ -273,7 +273,7 @@ class AuthController extends Controller
     public function me(Request $request): JsonResponse
     {
         return response()->json([
-            'user' => $request->user()->load('role', 'department'),
+            'user' => $request->user()->load('role.permissions', 'department'),
         ]);
     }
 
@@ -306,7 +306,7 @@ class AuthController extends Controller
 
         return response()->json([
             'message' => 'Profile updated successfully.',
-            'user' => $user->fresh()->load('role', 'department'),
+            'user' => $user->fresh()->load('role.permissions', 'department'),
         ]);
     }
 

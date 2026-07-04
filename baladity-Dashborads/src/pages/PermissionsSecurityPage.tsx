@@ -53,6 +53,83 @@ const actionLabels: Record<string, string> = {
   "auth.password.reset": "استعادة كلمة المرور",
 };
 
+const allowedPermissionsByRole: Record<string, string[]> = {
+  admin: [
+    "manage_users",
+    "manage_departments",
+    "manage_categories",
+    "manage_public_facilities",
+    "manage_projects",
+    "manage_permissions",
+    "view_analytics",
+    "review_reports",
+    "assign_reports",
+    "review_suggestions",
+    "process_department_reports",
+    "submit_reports",
+    "submit_suggestions",
+    "vote_suggestions",
+    "rate_reports",
+  ],
+  reception: [
+    "review_reports",
+    "assign_reports",
+    "review_suggestions",
+    "manage_public_facilities",
+    "manage_projects",
+  ],
+  department: ["process_department_reports"],
+  citizen: [
+    "submit_reports",
+    "submit_suggestions",
+    "vote_suggestions",
+    "rate_reports",
+  ],
+};
+
+const permissionLabels: Record<string, string> = {
+  manage_users: "إدارة المستخدمين",
+  manage_departments: "إدارة الأقسام",
+  manage_categories: "إدارة التصنيفات",
+  manage_public_facilities: "إدارة المرافق وأرقام الطوارئ",
+  manage_projects: "إدارة المشاريع",
+  manage_permissions: "إدارة الصلاحيات والسجلات",
+  view_analytics: "عرض التقارير والإحصائيات",
+  review_reports: "مراجعة البلاغات",
+  assign_reports: "تحويل البلاغات للأقسام",
+  review_suggestions: "مراجعة المقترحات",
+  process_department_reports: "معالجة بلاغات القسم",
+  submit_reports: "إرسال البلاغات",
+  submit_suggestions: "إرسال المقترحات",
+  vote_suggestions: "التصويت على المقترحات",
+  rate_reports: "تقييم البلاغات المغلقة",
+};
+
+const permissionGroupLabels: Record<string, string> = {
+  users: "المستخدمون",
+  departments: "الأقسام",
+  categories: "التصنيفات",
+  facilities: "المرافق والمحتوى",
+  projects: "المشاريع",
+  permissions: "الصلاحيات",
+  analytics: "التقارير",
+  reports: "البلاغات",
+  suggestions: "المقترحات",
+};
+
+const permissionGroup = (permissionName: string) => {
+  if (permissionName.includes("user")) return "users";
+  if (permissionName.includes("department")) return "departments";
+  if (permissionName.includes("categor")) return "categories";
+  if (permissionName.includes("facilit")) return "facilities";
+  if (permissionName.includes("project")) return "projects";
+  if (permissionName.includes("permission")) return "permissions";
+  if (permissionName.includes("analytic")) return "analytics";
+  if (permissionName.includes("report")) return "reports";
+  if (permissionName.includes("suggestion")) return "suggestions";
+  return "general";
+};
+
 const formatAction = (action: string) => {
   if (actionLabels[action]) return actionLabels[action];
   if (action.startsWith("permission_denied:")) return `رفض صلاحية: ${action.replace("permission_denied:", "")}`;
@@ -93,10 +170,21 @@ export default function PermissionsSecurityPage() {
 
   useEffect(() => {
     const selectedRole = roles.find((role) => String(role.id) === selectedRoleId);
-    setSelectedPermissionIds(new Set((selectedRole?.permissions || []).map((permission) => String(permission.id))));
+    const allowed = new Set(allowedPermissionsByRole[selectedRole?.role_name || ""] || []);
+    setSelectedPermissionIds(new Set((selectedRole?.permissions || [])
+      .filter((permission) => allowed.has(permission.permission_name))
+      .map((permission) => String(permission.id))));
   }, [selectedRoleId, roles]);
 
   const selectedRole = useMemo(() => roles.find((role) => String(role.id) === selectedRoleId) || null, [roles, selectedRoleId]);
+  const allowedPermissionNames = useMemo(
+    () => new Set(allowedPermissionsByRole[selectedRole?.role_name || ""] || []),
+    [selectedRole?.role_name],
+  );
+  const visiblePermissions = useMemo(
+    () => permissions.filter((permission) => allowedPermissionNames.has(permission.permission_name)),
+    [permissions, allowedPermissionNames],
+  );
 
   const loadRolesAndPermissions = async () => {
     try {
@@ -141,7 +229,9 @@ export default function PermissionsSecurityPage() {
     setSaving(true);
     try {
       const response = await api.put<{ role: Role }>(`/admin/roles/${selectedRole.id}/permissions`, {
-        permission_ids: Array.from(selectedPermissionIds).map((id) => Number(id)),
+        permission_ids: visiblePermissions
+          .filter((permission) => selectedPermissionIds.has(String(permission.id)))
+          .map((permission) => Number(permission.id)),
       });
       setRoles((current) => current.map((role) => String(role.id) === String(response.role.id) ? response.role : role));
     } catch (error: any) {
@@ -152,13 +242,13 @@ export default function PermissionsSecurityPage() {
   };
 
   const permissionsByGroup = useMemo(() => {
-    return permissions.reduce<Record<string, Permission[]>>((groups, permission) => {
-      const group = permission.permission_name.split("_").slice(-1)[0] || "general";
+    return visiblePermissions.reduce<Record<string, Permission[]>>((groups, permission) => {
+      const group = permissionGroup(permission.permission_name);
       if (!groups[group]) groups[group] = [];
       groups[group].push(permission);
       return groups;
     }, {});
-  }, [permissions]);
+  }, [visiblePermissions]);
 
   if (isLoading) return <div className="animate-pulse text-emerald-400">جاري التحميل...</div>;
 
@@ -185,7 +275,9 @@ export default function PermissionsSecurityPage() {
               {roles.map((role) => (
                 <button key={role.id} onClick={() => setSelectedRoleId(String(role.id))} className={`w-full text-right p-3 rounded-lg border ${String(role.id) === selectedRoleId ? "bg-emerald-600/10 border-emerald-500" : "bg-slate-800/50 border-slate-800 hover:border-slate-700"}`}>
                   <div className="font-medium">{roleLabels[role.role_name] || role.role_name}</div>
-                  <div className="text-xs text-slate-500 mt-1">{role.permissions?.length || 0} صلاحية</div>
+                  <div className="text-xs text-slate-500 mt-1">
+                    {(role.permissions || []).filter((permission) => (allowedPermissionsByRole[role.role_name] || []).includes(permission.permission_name)).length} صلاحية منطقية
+                  </div>
                 </button>
               ))}
             </div>
@@ -205,7 +297,7 @@ export default function PermissionsSecurityPage() {
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 max-h-[650px] overflow-y-auto pr-1">
               {Object.entries(permissionsByGroup).map(([group, groupPermissions]) => (
                 <div key={group} className="bg-slate-950/40 border border-slate-800 rounded-xl p-3">
-                  <h3 className="font-bold text-sm text-slate-300 mb-3">{group}</h3>
+                  <h3 className="font-bold text-sm text-slate-300 mb-3">{permissionGroupLabels[group] || group}</h3>
                   <div className="space-y-2">
                     {groupPermissions.map((permission) => {
                       const id = String(permission.id);
@@ -214,7 +306,7 @@ export default function PermissionsSecurityPage() {
                         <label key={permission.id} className="flex items-start gap-3 p-2 rounded-lg hover:bg-slate-800/60 cursor-pointer">
                           <input type="checkbox" checked={checked} onChange={() => togglePermission(id)} className="mt-1 accent-emerald-500" />
                           <span>
-                            <span className="block text-sm text-slate-200">{permission.permission_name}</span>
+                            <span className="block text-sm text-slate-200">{permissionLabels[permission.permission_name] || permission.permission_name}</span>
                             {permission.description && <span className="block text-xs text-slate-500 mt-0.5">{permission.description}</span>}
                           </span>
                         </label>

@@ -10,7 +10,11 @@ interface User {
   email?: string;
   phone?: string;
   role?: string;
-  roleData?: { id: number | string; role_name: string };
+  roleData?: {
+    id: number | string;
+    role_name: string;
+    permissions?: { id?: number | string; permission_name: string }[];
+  };
   department?: { id: number | string; dept_name: string };
   dept_id?: number | string | null;
   departmentId?: number | string | null;

@@ -145,32 +145,56 @@ export default function ContentPage() {
     if (!isLoading && !user) navigate("/login");
   }, [user, isLoading, navigate]);
 
+  const contentBasePath = user?.role === "reception" ? "/reception/content" : "/admin";
+  const userPermissions = new Set(user?.roleData?.permissions?.map((permission) => permission.permission_name) || []);
+  const canManageProjects = user?.role === "admin" || userPermissions.has("manage_projects");
+  const canManagePublicContent = user?.role === "admin" || userPermissions.has("manage_public_facilities");
+  const tabs = [
+    canManageProjects ? { key: "projects" as const, label: `المشاريع (${projects.length})` } : null,
+    canManagePublicContent ? { key: "facilities" as const, label: `المرافق (${facilities.length})` } : null,
+    canManagePublicContent ? { key: "contacts" as const, label: `أرقام الطوارئ (${contacts.length})` } : null,
+  ].filter(Boolean) as { key: Tab; label: string }[];
+
   useEffect(() => {
     loadAll();
-  }, [user?.role]);
+  }, [user?.role, user?.roleData?.permissions]);
 
-  const contentBasePath = user?.role === "reception" ? "/reception/content" : "/admin";
+  useEffect(() => {
+    if (tabs.length > 0 && !tabs.some((item) => item.key === tab)) {
+      setTab(tabs[0].key);
+      setShowForm(false);
+    }
+  }, [tabs, tab]);
 
   const pagedData = <T,>(response: any): T[] => Array.isArray(response) ? response : response.data || [];
 
   const loadAll = async () => {
-    try {
-      const response = await api.get<any>(`${contentBasePath}/projects?per_page=100`);
-      setProjects(pagedData<Project>(response));
-    } catch (error) {
-      console.error("loadProjects", error);
+    if (canManageProjects) {
+      try {
+        const response = await api.get<any>(`${contentBasePath}/projects?per_page=100`);
+        setProjects(pagedData<Project>(response));
+      } catch (error) {
+        console.error("loadProjects", error);
+      }
+    } else {
+      setProjects([]);
     }
-    try {
-      const response = await api.get<any>(`${contentBasePath}/facilities?per_page=100`);
-      setFacilities(pagedData<Facility>(response));
-    } catch (error) {
-      console.error("loadFacilities", error);
-    }
-    try {
-      const response = await api.get<any>(`${contentBasePath}/emergency-contacts?per_page=100`);
-      setContacts(pagedData<EmergencyContact>(response));
-    } catch (error) {
-      console.error("loadContacts", error);
+    if (canManagePublicContent) {
+      try {
+        const response = await api.get<any>(`${contentBasePath}/facilities?per_page=100`);
+        setFacilities(pagedData<Facility>(response));
+      } catch (error) {
+        console.error("loadFacilities", error);
+      }
+      try {
+        const response = await api.get<any>(`${contentBasePath}/emergency-contacts?per_page=100`);
+        setContacts(pagedData<EmergencyContact>(response));
+      } catch (error) {
+        console.error("loadContacts", error);
+      }
+    } else {
+      setFacilities([]);
+      setContacts([]);
     }
   };
 
@@ -197,6 +221,7 @@ export default function ContentPage() {
 
   const handleCreateProject = async (event: React.FormEvent) => {
     event.preventDefault();
+    if (!canManageProjects) return;
     try {
       await api.post(`${contentBasePath}/projects`, {
         name: projectName,
@@ -217,6 +242,7 @@ export default function ContentPage() {
 
   const handleCreateFacility = async (event: React.FormEvent) => {
     event.preventDefault();
+    if (!canManagePublicContent) return;
     if (!facilityLat || !facilityLng) {
       alert("يرجى تحديد موقع المرفق على الخريطة.");
       return;
@@ -241,6 +267,7 @@ export default function ContentPage() {
 
   const handleCreateContact = async (event: React.FormEvent) => {
     event.preventDefault();
+    if (!canManagePublicContent) return;
     try {
       await api.post(`${contentBasePath}/emergency-contacts`, {
         name: contactName,
@@ -258,6 +285,7 @@ export default function ContentPage() {
   };
 
   const updateProject = async (project: Project, changes: Partial<Project>) => {
+    if (!canManageProjects) return;
     try {
       await api.put(`${contentBasePath}/projects/${project.id}`, changes);
       loadAll();
@@ -267,6 +295,7 @@ export default function ContentPage() {
   };
 
   const toggleFacility = async (facility: Facility) => {
+    if (!canManagePublicContent) return;
     try {
       await api.put(`${contentBasePath}/facilities/${facility.id}`, { is_active: !facility.is_active });
       loadAll();
@@ -276,6 +305,7 @@ export default function ContentPage() {
   };
 
   const toggleContact = async (contact: EmergencyContact) => {
+    if (!canManagePublicContent) return;
     try {
       await api.put(`${contentBasePath}/emergency-contacts/${contact.id}`, { is_active: !contact.is_active });
       loadAll();
@@ -290,7 +320,7 @@ export default function ContentPage() {
     <div className="space-y-6 p-6" dir="rtl">
       <div className="flex items-center justify-between">
         <h1 className="text-2xl font-bold text-emerald-400">إدارة المحتوى</h1>
-        <button onClick={() => setShowForm(!showForm)} className="px-4 py-2 bg-emerald-600 rounded-lg text-sm">
+        <button onClick={() => setShowForm(!showForm)} className={`${tabs.length === 0 ? "hidden" : ""} px-4 py-2 bg-emerald-600 rounded-lg text-sm`}>
           {showForm ? "إلغاء" : "إضافة"}
         </button>
       </div>
@@ -301,13 +331,19 @@ export default function ContentPage() {
           { key: "facilities", label: `المرافق (${facilities.length})` },
           { key: "contacts", label: `أرقام الطوارئ (${contacts.length})` },
         ].map((item) => (
-          <button key={item.key} onClick={() => { setTab(item.key as Tab); setShowForm(false); }} className={`px-4 py-2 rounded-lg text-sm ${tab === item.key ? "bg-emerald-600 text-white" : "bg-slate-800 text-slate-400"}`}>
+          <button key={item.key} onClick={() => { const nextTab = item.key as Tab; if ((nextTab === "projects" && !canManageProjects) || (nextTab !== "projects" && !canManagePublicContent)) return; setTab(nextTab); setShowForm(false); }} className={`${(item.key === "projects" && !canManageProjects) || (item.key !== "projects" && !canManagePublicContent) ? "hidden" : ""} px-4 py-2 rounded-lg text-sm ${tab === item.key ? "bg-emerald-600 text-white" : "bg-slate-800 text-slate-400"}`}>
             {item.label}
           </button>
         ))}
       </div>
 
-      {tab === "projects" && (
+      {tabs.length === 0 && (
+        <div className="bg-slate-900 border border-slate-800 rounded-xl p-6 text-center text-slate-400">
+          لا توجد لديك صلاحية لإدارة المحتوى حالياً.
+        </div>
+      )}
+
+      {tab === "projects" && canManageProjects && (
         <div className="space-y-4">
           {showForm && (
             <form onSubmit={handleCreateProject} className="bg-slate-900 rounded-xl p-4 border border-slate-800 space-y-3">
@@ -353,7 +389,7 @@ export default function ContentPage() {
         </div>
       )}
 
-      {tab === "facilities" && (
+      {tab === "facilities" && canManagePublicContent && (
         <div className="space-y-4">
           {showForm && (
             <form onSubmit={handleCreateFacility} className="bg-slate-900 rounded-xl p-4 border border-slate-800 space-y-3">
@@ -404,7 +440,7 @@ export default function ContentPage() {
         </div>
       )}
 
-      {tab === "contacts" && (
+      {tab === "contacts" && canManagePublicContent && (
         <div className="space-y-4">
           {showForm && (
             <form onSubmit={handleCreateContact} className="bg-slate-900 rounded-xl p-4 border border-slate-800 space-y-3">

@@ -130,17 +130,21 @@ Route::middleware(['auth:sanctum', 'role:reception'])
         Route::delete('/reports/{report}', [ReceptionReportController::class, 'reject'])->middleware('permission:review_reports')->name('reports.reject');
 
         Route::prefix('content')->name('content.')->group(function () {
-            Route::get('/facilities', [AdminPublicFacilityController::class, 'index'])->name('facilities.index');
-            Route::post('/facilities', [AdminPublicFacilityController::class, 'store'])->name('facilities.store');
-            Route::put('/facilities/{facility}', [AdminPublicFacilityController::class, 'update'])->name('facilities.update');
+            Route::middleware('permission:manage_public_facilities')->group(function () {
+                Route::get('/facilities', [AdminPublicFacilityController::class, 'index'])->name('facilities.index');
+                Route::post('/facilities', [AdminPublicFacilityController::class, 'store'])->name('facilities.store');
+                Route::put('/facilities/{facility}', [AdminPublicFacilityController::class, 'update'])->name('facilities.update');
 
-            Route::get('/emergency-contacts', [AdminEmergencyContactController::class, 'index'])->name('emergency-contacts.index');
-            Route::post('/emergency-contacts', [AdminEmergencyContactController::class, 'store'])->name('emergency-contacts.store');
-            Route::put('/emergency-contacts/{emergencyContact}', [AdminEmergencyContactController::class, 'update'])->name('emergency-contacts.update');
+                Route::get('/emergency-contacts', [AdminEmergencyContactController::class, 'index'])->name('emergency-contacts.index');
+                Route::post('/emergency-contacts', [AdminEmergencyContactController::class, 'store'])->name('emergency-contacts.store');
+                Route::put('/emergency-contacts/{emergencyContact}', [AdminEmergencyContactController::class, 'update'])->name('emergency-contacts.update');
+            });
 
-            Route::get('/projects', [AdminProjectController::class, 'index'])->name('projects.index');
-            Route::post('/projects', [AdminProjectController::class, 'store'])->name('projects.store');
-            Route::put('/projects/{project}', [AdminProjectController::class, 'update'])->name('projects.update');
+            Route::middleware('permission:manage_projects')->group(function () {
+                Route::get('/projects', [AdminProjectController::class, 'index'])->name('projects.index');
+                Route::post('/projects', [AdminProjectController::class, 'store'])->name('projects.store');
+                Route::put('/projects/{project}', [AdminProjectController::class, 'update'])->name('projects.update');
+            });
         });
 
         Route::get('/suggestions', [ReceptionSuggestionController::class, 'index'])->middleware('permission:review_suggestions')->name('suggestions.index');
