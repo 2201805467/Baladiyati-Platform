@@ -65,6 +65,12 @@ class PermissionController extends Controller
 
     public function updateRolePermissions(Request $request, Role $role): JsonResponse
     {
+        if (! in_array($role->role_name, ['reception', 'department'], true)) {
+            return response()->json([
+                'message' => 'Only reception and department role permissions can be managed from this screen.',
+            ], 422);
+        }
+
         $data = $request->validate([
             'permission_ids' => ['required', 'array'],
             'permission_ids.*' => ['integer', 'exists:permissions,id'],

@@ -130,6 +130,8 @@ const permissionGroup = (permissionName: string) => {
   return "general";
 };
 
+const manageableRoleNames = new Set(["reception", "department"]);
+
 const formatAction = (action: string) => {
   if (actionLabels[action]) return actionLabels[action];
   if (action.startsWith("permission_denied:")) return `رفض صلاحية: ${action.replace("permission_denied:", "")}`;
@@ -192,9 +194,10 @@ export default function PermissionsSecurityPage() {
         api.get<{ roles: Role[] }>("/admin/roles"),
         api.get<{ permissions: Permission[] }>("/admin/permissions"),
       ]);
-      setRoles(rolesResponse.roles || []);
+      const manageableRoles = (rolesResponse.roles || []).filter((role) => manageableRoleNames.has(role.role_name));
+      setRoles(manageableRoles);
       setPermissions(permissionsResponse.permissions || []);
-      setSelectedRoleId((current) => current || String(rolesResponse.roles?.[0]?.id || ""));
+      setSelectedRoleId((current) => current || String(manageableRoles[0]?.id || ""));
     } catch (error) {
       console.error("loadRolesAndPermissions", error);
     }
