@@ -260,7 +260,7 @@ async function exportComparisonPdf(comparison: DepartmentComparison, dateFrom: s
       <h2>Pie Chart: توزيع البلاغات على الأقسام</h2>
       ${pieChartHtml(comparison.pie_chart)}
     </section>
-    <section class="report-section">
+    <section class="report-section pdf-page-break">
       <h2>جدول الترتيب (Leaderboard)</h2>
       ${tableHtml(
         ["#", "القسم", "معدل الإنجاز", "سرعة الاستجابة"],
@@ -359,33 +359,84 @@ async function renderReportPdf(html: string, filename: string) {
   document.body.appendChild(element);
 
   try {
-    const canvas = await html2canvas(element, {
-      scale: 2,
-      backgroundColor: "#ffffff",
-      useCORS: true,
-    });
     const pdf = new jsPDF({ orientation: "portrait", unit: "mm", format: "a4" });
-    const imgData = canvas.toDataURL("image/png");
-    const imgWidth = 210;
-    const pageHeight = 297;
-    const imgHeight = (canvas.height * imgWidth) / canvas.width;
-    let heightLeft = imgHeight;
-    let position = 0;
+    const report = element.querySelector(".baladiyati-report") as HTMLElement;
+    const explicitBreaks = Array.from(report.querySelectorAll<HTMLElement>(".pdf-page-break"));
+    const pages = explicitBreaks.length > 0 ? splitReportIntoPdfPages(report, explicitBreaks) : [report];
 
-    pdf.addImage(imgData, "PNG", 0, position, imgWidth, imgHeight);
-    heightLeft -= pageHeight;
+    for (let index = 0; index < pages.length; index += 1) {
+      const page = pages[index];
 
-    while (heightLeft > 0) {
-      position -= pageHeight;
-      pdf.addPage();
-      pdf.addImage(imgData, "PNG", 0, position, imgWidth, imgHeight);
-      heightLeft -= pageHeight;
+      if (!page.isConnected) {
+        element.innerHTML = "";
+        element.appendChild(page);
+      }
+
+      const canvas = await html2canvas(page, {
+        scale: 2,
+        backgroundColor: "#ffffff",
+        useCORS: true,
+      });
+      addCanvasToPdf(pdf, canvas, index === 0, explicitBreaks.length === 0);
     }
 
     pdf.save(filename);
   } finally {
     element.remove();
   }
+}
+
+function addCanvasToPdf(pdf: jsPDF, canvas: HTMLCanvasElement, isFirstPage: boolean, allowOverflowPages = true) {
+  const imgData = canvas.toDataURL("image/png");
+  const imgWidth = 210;
+  const pageHeight = 297;
+  const imgHeight = (canvas.height * imgWidth) / canvas.width;
+  let heightLeft = imgHeight;
+  let position = 0;
+
+  if (!isFirstPage) pdf.addPage();
+  pdf.addImage(imgData, "PNG", 0, position, imgWidth, allowOverflowPages ? imgHeight : Math.min(imgHeight, pageHeight));
+  if (!allowOverflowPages) return;
+
+  heightLeft -= pageHeight;
+
+  while (heightLeft > 0) {
+    position -= pageHeight;
+    pdf.addPage();
+    pdf.addImage(imgData, "PNG", 0, position, imgWidth, imgHeight);
+    heightLeft -= pageHeight;
+  }
+}
+
+function splitReportIntoPdfPages(report: HTMLElement, breaks: HTMLElement[]) {
+  const pages: HTMLElement[] = [];
+  const children = Array.from(report.children);
+  const styleNodes = children.filter((child) => child.tagName.toLowerCase() === "style");
+  const contentChildren = children.filter((child) => child.tagName.toLowerCase() !== "style");
+  let page = cloneReportShell(report);
+  const breakSet = new Set(breaks);
+
+  styleNodes.forEach((style) => page.appendChild(style.cloneNode(true)));
+
+  contentChildren.forEach((child) => {
+    if (breakSet.has(child as HTMLElement) && page.children.length > 0) {
+      pages.push(page);
+      page = cloneReportShell(report);
+      styleNodes.forEach((style) => page.appendChild(style.cloneNode(true)));
+    }
+    page.appendChild(child.cloneNode(true));
+  });
+
+  if (page.children.length > 0) pages.push(page);
+
+  return pages;
+}
+
+function cloneReportShell(report: HTMLElement) {
+  const page = document.createElement("div");
+  page.className = report.className;
+  page.setAttribute("dir", report.getAttribute("dir") || "rtl");
+  return page;
 }
 
 function reportHeader(title: string, dateFrom: string, dateTo: string) {
