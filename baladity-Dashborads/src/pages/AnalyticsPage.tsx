@@ -538,7 +538,7 @@ function pieChartHtml(rows: DepartmentComparison["pie_chart"]) {
       </svg>
       <div class="pie-list">
         ${rows.map((row, index) => `
-          <div><i style="background:${pieColors[index % pieColors.length]}"></i>${escapeHtml(row.department)}: ${row.total} (${row.percentage}%)</div>
+          <div><i style="background:${pieColors[index % pieColors.length]}"></i>${escapeHtml(row.department)}: ${row.total} : ${row.percentage}% </div>
         `).join("")}
       </div>
     </div>
