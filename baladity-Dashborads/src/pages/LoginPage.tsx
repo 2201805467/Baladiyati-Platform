@@ -52,9 +52,9 @@ export default function LoginPage() {
         </div>
         <div className="mt-6 text-xs text-slate-500 text-center space-y-1">
           <p>حسابات تجريبية:</p>
-          <p>admin@baladiyati.ly / admin123</p>
-          <p>reception@baladiyati.ly / admin123</p>
-          <p>department@baladiyati.ly / admin123</p>
+          <p>admin@baladiyati.test / password</p>
+          <p>reception@baladiyati.test / password</p>
+          <p>department@baladiyati.test / password</p>
         </div>
       </div>
     </div>

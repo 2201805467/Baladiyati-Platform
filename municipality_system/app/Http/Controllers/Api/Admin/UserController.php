@@ -10,6 +10,7 @@ use App\Models\User;
 use App\Support\SecurityLogger;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Str;
@@ -160,11 +161,25 @@ class UserController extends Controller
         }
 
         $deletedUserId = $user->id;
-        $user->delete();
+        $deletedOpenReports = 0;
+        $preservedClosedReports = 0;
+
+        DB::transaction(function () use ($user, &$deletedOpenReports, &$preservedClosedReports) {
+            if ($user->role?->role_name === 'citizen') {
+                $preservedClosedReports = $user->reports()->where('status', 'closed')->count();
+                $deletedOpenReports = $user->reports()->where('status', '!=', 'closed')->delete();
+            }
+
+            $user->tokens()->delete();
+            $user->delete();
+        });
+
         SecurityLogger::log($request, $request->user(), 'admin.users.deleted:'.$deletedUserId, 'success');
 
         return response()->json([
             'message' => 'User deleted permanently.',
+            'deleted_open_reports' => $deletedOpenReports,
+            'preserved_closed_reports' => $preservedClosedReports,
         ]);
     }
 

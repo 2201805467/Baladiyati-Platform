@@ -51,20 +51,30 @@ class AnalyticsController extends Controller
 
     public function departments(Request $request): JsonResponse|\Symfony\Component\HttpFoundation\StreamedResponse
     {
-        $allReportsQuery = $this->reportDateFilter(Report::query(), $request);
-        $allReportIds = (clone $allReportsQuery)->pluck('id');
-        $totalCityReports = (clone $allReportsQuery)->count();
-        $closedCityReports = (clone $allReportsQuery)->where('status', 'closed')->count();
+        $allReports = $this->transferredReportsQuery($request)
+            ->with('logs')
+            ->get()
+            ->map(fn (Report $report) => $this->attachTransferredAt($report, $request));
+        $closedReportsForAverage = $this->closedReportsQuery($request)
+            ->with('logs')
+            ->get()
+            ->map(fn (Report $report) => $this->attachFirstTransferredAt($report));
+        $allReportIds = $allReports->pluck('id');
+        $totalCityReports = $allReports->count();
+        $closedCityReports = $allReports->where('status', 'closed')->count();
 
         $departments = Department::query()
             ->orderBy('dept_name')
             ->get()
             ->map(function (Department $department) use ($request) {
-                $query = $this->reportDateFilter($department->reports(), $request);
-                $reports = (clone $query)->with('logs')->get();
+                $reports = $this->transferredReportsQuery($request)
+                    ->where('dept_id', $department->id)
+                    ->with('logs')
+                    ->get()
+                    ->map(fn (Report $report) => $this->attachTransferredAt($report, $request));
                 $total = $reports->count();
                 $closed = $reports->where('status', 'closed')->count();
-                $open = (clone $query)->whereNotIn('status', ['closed', 'resolved'])->count();
+                $open = $reports->whereNotIn('status', ['closed', 'resolved'])->count();
                 $avgResponse = $this->averageFirstResponseSeconds($reports);
 
                 return [
@@ -125,7 +135,7 @@ class AnalyticsController extends Controller
                 'total_city_reports' => $totalCityReports,
                 'closed_city_reports' => $closedCityReports,
                 'city_completion_rate' => $totalCityReports > 0 ? round(($closedCityReports / $totalCityReports) * 100, 2) : 0,
-                'average_closure_seconds' => $this->averageClosureSeconds((clone $allReportsQuery)->where('status', 'closed')->get()),
+                'average_closure_seconds' => $this->averageClosureSeconds($closedReportsForAverage),
                 'average_satisfaction' => round((float) Rating::whereIn('report_id', $allReportIds)->avg('stars'), 2),
             ],
         ]);
@@ -133,8 +143,11 @@ class AnalyticsController extends Controller
 
     public function departmentPerformance(Request $request, Department $department): JsonResponse|\Symfony\Component\HttpFoundation\StreamedResponse
     {
-        $query = $this->reportDateFilter($department->reports(), $request);
-        $reports = (clone $query)->with('logs')->get();
+        $reports = $this->transferredReportsQuery($request)
+            ->where('dept_id', $department->id)
+            ->with('logs')
+            ->get()
+            ->map(fn (Report $report) => $this->attachTransferredAt($report, $request));
         $total = $reports->count();
         $closed = $reports->where('status', 'closed')->count();
         $dailyChart = $this->dailyReportChart($reports, $request);
@@ -178,51 +191,113 @@ class AnalyticsController extends Controller
             ->when($request->filled('date_to'), fn ($query) => $query->whereDate('created_at', '<=', $request->date('date_to')));
     }
 
+    private function transferredReportsQuery(Request $request)
+    {
+        return Report::query()
+            ->whereNotNull('dept_id')
+            ->whereHas('logs', function ($query) use ($request) {
+                $query->where('action', 'transferred')
+                    ->when($request->filled('date_from'), fn ($query) => $query->whereDate('created_at', '>=', $request->date('date_from')))
+                    ->when($request->filled('date_to'), fn ($query) => $query->whereDate('created_at', '<=', $request->date('date_to')));
+            });
+    }
+
+    private function closedReportsQuery(Request $request)
+    {
+        return Report::query()
+            ->where('status', 'closed')
+            ->whereNotNull('closed_at')
+            ->when($request->filled('date_from'), fn ($query) => $query->whereDate('closed_at', '>=', $request->date('date_from')))
+            ->when($request->filled('date_to'), fn ($query) => $query->whereDate('closed_at', '<=', $request->date('date_to')));
+    }
+
+    private function attachTransferredAt(Report $report, Request $request): Report
+    {
+        $transferredAt = $report->logs
+            ->where('action', 'transferred')
+            ->when($request->filled('date_from'), fn ($logs) => $logs->filter(
+                fn ($log) => $log->created_at?->toDateString() >= $request->date('date_from')->toDateString()
+            ))
+            ->when($request->filled('date_to'), fn ($logs) => $logs->filter(
+                fn ($log) => $log->created_at?->toDateString() <= $request->date('date_to')->toDateString()
+            ))
+            ->sortBy('created_at')
+            ->first()
+            ?->created_at;
+
+        $report->setAttribute('transferred_at', $transferredAt ?? $report->created_at);
+
+        return $report;
+    }
+
+    private function attachFirstTransferredAt(Report $report): Report
+    {
+        $transferredAt = $report->logs
+            ->where('action', 'transferred')
+            ->sortBy('created_at')
+            ->first()
+            ?->created_at;
+
+        $report->setAttribute('transferred_at', $transferredAt);
+
+        return $report;
+    }
+
     private function averageFirstResponseSeconds($reports): ?float
     {
         $seconds = $reports
             ->map(function (Report $report) {
+                $transferredAt = $report->getAttribute('transferred_at');
                 $firstAction = $report->logs
-                    ->whereIn('action', ['opened_for_review', 'transferred', 'status_updated', 'comment_added'])
+                    ->whereIn('action', ['status_updated', 'comment_added', 'attachment_uploaded', 'closed'])
+                    ->filter(fn ($log) => $transferredAt && $log->created_at && $log->created_at->greaterThanOrEqualTo($transferredAt))
                     ->sortBy('created_at')
                     ->first();
 
-                return $firstAction && $report->created_at && $firstAction->created_at
-                    ? $report->created_at->diffInSeconds($firstAction->created_at)
+                return $firstAction && $transferredAt && $firstAction->created_at
+                    ? $transferredAt->diffInSeconds($firstAction->created_at)
                     : null;
             })
             ->filter(fn ($value) => $value !== null);
 
-        return $seconds->isNotEmpty() ? round($seconds->avg(), 2) : null;
+        return $seconds->isNotEmpty() ? round($seconds->avg(), 2) : 0;
     }
 
     private function averageClosureSeconds($reports): ?float
     {
         $seconds = $reports
-            ->map(fn (Report $report) => $report->closed_at && $report->created_at
-                ? $report->created_at->diffInSeconds($report->closed_at)
-                : null)
+            ->map(function (Report $report) {
+                $transferredAt = $report->getAttribute('transferred_at');
+
+                if (! $report->closed_at || ! $transferredAt || $report->closed_at->lessThan($transferredAt)) {
+                    return null;
+                }
+
+                return $transferredAt->diffInSeconds($report->closed_at);
+            })
             ->filter(fn ($value) => $value !== null);
 
-        return $seconds->isNotEmpty() ? round($seconds->avg(), 2) : null;
+        return $seconds->isNotEmpty() ? round($seconds->avg(), 2) : 0;
     }
 
     private function dailyReportChart($reports, Request $request)
     {
-        $oldestReport = $reports->sortBy('created_at')->first();
-        $newestReport = $reports->sortByDesc('created_at')->first();
+        $oldestReport = $reports->sortBy('transferred_at')->first();
+        $newestReport = $reports->sortByDesc('transferred_at')->first();
         $dateFrom = $request->filled('date_from')
             ? $request->date('date_from')->toDateString()
-            : $oldestReport?->created_at?->toDateString();
+            : $oldestReport?->getAttribute('transferred_at')?->toDateString();
         $dateTo = $request->filled('date_to')
             ? $request->date('date_to')->toDateString()
-            : $newestReport?->created_at?->toDateString();
+            : $newestReport?->getAttribute('transferred_at')?->toDateString();
 
         if (! $dateFrom || ! $dateTo) {
             return collect();
         }
 
-        $receivedByDate = $reports->groupBy(fn (Report $report) => $report->created_at->toDateString());
+        $receivedByDate = $reports
+            ->filter(fn (Report $report) => $report->getAttribute('transferred_at'))
+            ->groupBy(fn (Report $report) => $report->getAttribute('transferred_at')->toDateString());
         $closedByDate = $reports
             ->filter(fn (Report $report) => $report->status === 'closed' && $report->closed_at)
             ->groupBy(fn (Report $report) => $report->closed_at->toDateString());

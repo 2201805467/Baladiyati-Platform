@@ -90,6 +90,7 @@ Route::middleware(['auth:sanctum', 'role:admin'])
         Route::get('/reports-map/{report}', [AdminReportMapController::class, 'show'])->middleware('permission:view_analytics')->name('reports-map.show');
 
         Route::get('/departments', [AdminDepartmentController::class, 'index'])->middleware('permission:manage_departments')->name('departments.index');
+        Route::get('/departments/available-accounts', [AdminDepartmentController::class, 'availableAccounts'])->middleware('permission:manage_departments')->name('departments.available-accounts');
         Route::post('/departments', [AdminDepartmentController::class, 'store'])->middleware('permission:manage_departments')->name('departments.store');
         Route::put('/departments/{department}', [AdminDepartmentController::class, 'update'])->middleware('permission:manage_departments')->name('departments.update');
         Route::delete('/departments/{department}', [AdminDepartmentController::class, 'destroy'])->middleware('permission:manage_departments')->name('departments.destroy');

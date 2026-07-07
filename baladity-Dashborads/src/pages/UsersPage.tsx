@@ -31,6 +31,7 @@ export default function UsersPage() {
   const [statusFilter, setStatusFilter] = useState<"citizens" | "staff" | "active" | "inactive">("staff");
   const [showForm, setShowForm] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
+  const [deactivateTarget, setDeactivateTarget] = useState<StaffUser | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<StaffUser | null>(null);
   const [deleteConfirmation, setDeleteConfirmation] = useState("");
 
@@ -166,9 +167,12 @@ export default function UsersPage() {
     }
   };
 
-  const handleDeactivate = async (id: string) => {
+  const handleDeactivate = async () => {
+    if (!deactivateTarget) return;
+
     try {
-      await api.patch(`/admin/users/${id}/deactivate`);
+      await api.patch(`/admin/users/${deactivateTarget.id}/deactivate`);
+      setDeactivateTarget(null);
       loadStaff();
     } catch (error: any) {
       alert(error.message);
@@ -178,10 +182,18 @@ export default function UsersPage() {
   const handleDelete = async () => {
     if (!deleteTarget || deleteConfirmation !== "DELETE") return;
     try {
-      await api.delete(`/admin/users/${deleteTarget.id}`, { confirm: true });
+      const response = await api.delete<{
+        deleted_open_reports?: number;
+        preserved_closed_reports?: number;
+      }>(`/admin/users/${deleteTarget.id}`, { confirm: true });
       setDeleteTarget(null);
       setDeleteConfirmation("");
       loadStaff();
+      if (response.preserved_closed_reports || response.deleted_open_reports) {
+        alert(
+          `تم حذف الحساب. تم حذف ${response.deleted_open_reports || 0} بلاغ غير مغلق، وتم حفظ ${response.preserved_closed_reports || 0} بلاغ مغلق لأغراض الأداء.`
+        );
+      }
     } catch (error: any) {
       alert(error.message);
     }
@@ -303,7 +315,7 @@ export default function UsersPage() {
                               <span className="px-2 py-1 bg-slate-800 text-slate-500 rounded text-xs">لا يمكن تعديل المواطن</span>
                             )}
                             {isActive(staffUser) && (
-                              <button onClick={() => handleDeactivate(staffUser.id)} className="px-2 py-1 bg-red-600/20 text-red-400 rounded text-xs">إيقاف</button>
+                              <button onClick={() => setDeactivateTarget(staffUser)} className="px-2 py-1 bg-red-600/20 text-red-400 rounded text-xs">إيقاف</button>
                             )}
                             {canDeleteUser(staffUser) ? (
                               <button onClick={() => { setDeleteTarget(staffUser); setDeleteConfirmation(""); }} className="px-2 py-1 bg-red-700/30 text-red-300 rounded text-xs">حذف نهائي</button>
@@ -321,6 +333,24 @@ export default function UsersPage() {
           </table>
         </div>
       </div>
+
+      {deactivateTarget && (
+        <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 p-4">
+          <div className="w-full max-w-md bg-slate-900 border border-slate-800 rounded-xl p-5 space-y-4">
+            <h2 className="text-lg font-bold text-amber-300">تأكيد إيقاف الحساب</h2>
+            <p className="text-sm text-slate-300">
+              سيتم إيقاف حساب <strong>{userName(deactivateTarget)}</strong>. لن يستطيع هذا المستخدم تسجيل الدخول، وسيتم إنهاء جلساته الحالية.
+            </p>
+            <div className="rounded-lg bg-amber-500/10 border border-amber-500/20 p-3 text-xs text-amber-200">
+              هذا الإجراء لا يحذف بيانات المستخدم، ويمكنك لاحقاً إعادة تفعيل الحساب من قاعدة البيانات أو بإضافة واجهة تفعيل.
+            </div>
+            <div className="flex justify-end gap-2">
+              <button onClick={() => setDeactivateTarget(null)} className="px-3 py-2 bg-slate-800 hover:bg-slate-700 rounded-lg text-sm">إلغاء</button>
+              <button onClick={handleDeactivate} className="px-3 py-2 bg-amber-600 hover:bg-amber-500 rounded-lg text-sm">تأكيد الإيقاف</button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {deleteTarget && (
         <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 p-4">

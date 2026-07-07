@@ -66,7 +66,7 @@ const pieColors = ["#10b981", "#38bdf8", "#f59e0b", "#f43f5e", "#8b5cf6", "#14b8
 const today = new Date().toISOString().slice(0, 10);
 const monthAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10);
 
-const formatDuration = (seconds?: number | null) => {
+const legacyFormatDuration = (seconds?: number | null) => {
   if (seconds === null || seconds === undefined) return "-";
   if (seconds < 60) return `${Math.round(seconds)} ث`;
   if (seconds < 3600) return `${Math.round(seconds / 60)} د`;
@@ -74,8 +74,18 @@ const formatDuration = (seconds?: number | null) => {
   return `${(seconds / 86400).toFixed(1)} يوم`;
 };
 
-const secondsToHours = (seconds?: number | null) => {
+const legacySecondsToHours = (seconds?: number | null) => {
   if (seconds === null || seconds === undefined) return "-";
+  return (seconds / 3600).toFixed(2);
+};
+
+const formatDuration = (seconds?: number | null) => {
+  if (seconds === null || seconds === undefined || seconds <= 0) return "0 ساعة";
+  return `${(seconds / 3600).toFixed(2)} ساعة`;
+};
+
+const secondsToHours = (seconds?: number | null) => {
+  if (seconds === null || seconds === undefined || seconds <= 0) return "0.00";
   return (seconds / 3600).toFixed(2);
 };
 
