@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../../core/network/dio_client.dart';
 import '../../../../core/utils/logout_stream.dart';
@@ -54,6 +56,8 @@ class AuthController extends Notifier<AuthState> {
   late LogoutUseCase _logoutUseCase;
   late TokenStorage _tokenStorage;
   late AuthRepository _repository;
+  StreamSubscription<void>? _forceLogoutSubscription;
+  bool _isLoggingOut = false;
 
   @override
   AuthState build() {
@@ -65,7 +69,8 @@ class AuthController extends Notifier<AuthState> {
 
     _init();
     ref.read(tokenStorageProvider);
-    forceLogoutStream.listen((_) => logout());
+    _forceLogoutSubscription = forceLogoutStream.listen((_) => forceLogout());
+    ref.onDispose(() => _forceLogoutSubscription?.cancel());
 
     return AuthState.initial();
   }
@@ -191,12 +196,29 @@ class AuthController extends Notifier<AuthState> {
     state = AuthState.authenticated(const UserEntity.empty());
   }
 
+  Future<void> forceLogout() async {
+    if (_isLoggingOut) return;
+
+    _isLoggingOut = true;
+    try {
+      await _tokenStorage.clearAll();
+      state = AuthState.unauthenticated();
+    } finally {
+      _isLoggingOut = false;
+    }
+  }
+
   Future<void> logout() async {
+    if (_isLoggingOut) return;
+
+    _isLoggingOut = true;
     try {
       await _logoutUseCase();
     } catch (_) {
       await _tokenStorage.clearAll();
+    } finally {
+      state = AuthState.unauthenticated();
+      _isLoggingOut = false;
     }
-    state = AuthState.unauthenticated();
   }
 }

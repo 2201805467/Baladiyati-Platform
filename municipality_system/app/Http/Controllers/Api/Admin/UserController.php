@@ -127,6 +127,8 @@ class UserController extends Controller
     public function deactivate(Request $request, User $user): JsonResponse
     {
         $user->update(['is_active' => false]);
+        $user->tokens()->delete();
+
         SecurityLogger::log($request, $request->user(), 'admin.users.deactivated:'.$user->id, 'success');
 
         return response()->json([

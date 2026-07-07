@@ -118,8 +118,8 @@ class AuthController extends Controller
 
             return response()->json([
                 'message' => $user->otp_purpose === 'registration'
-                    ? 'This account is not verified yet.'
-                    : 'This account is deactivated.',
+                    ? 'الحساب غير مفعل بعد. يرجى تأكيد رمز التحقق أولاً.'
+                    : 'تم إيقاف هذا الحساب. يرجى التواصل مع البلدية.',
             ], 403);
         }
 
