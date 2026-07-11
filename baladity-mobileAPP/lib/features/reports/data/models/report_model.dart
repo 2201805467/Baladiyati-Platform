@@ -10,6 +10,8 @@ class ReportModel extends ReportEntity {
     super.longitude,
     super.locationAddress,
     super.imageUrl,
+    super.completionImageUrl,
+    super.completionReport,
     super.status,
     super.createdAt,
     super.comments,
@@ -20,33 +22,36 @@ class ReportModel extends ReportEntity {
   factory ReportModel.fromJson(Map<String, dynamic> json) {
     final categoryJson = json['category'];
     final imagesJson = json['images'];
-    final firstImage =
-        imagesJson is List && imagesJson.isNotEmpty && imagesJson.first is Map
-        ? (imagesJson.first as Map)['image_url']?.toString()
-        : null;
+    final beforeImage = _imageUrlByType(imagesJson, 'before');
+    final afterImage = _imageUrlByType(imagesJson, 'after');
+    final firstImage = _firstImageUrl(imagesJson);
     final comments = _commentsFromJson(json['comments']);
     final ratingJson = json['rating'];
 
     return ReportModel(
       id: _intOrNull(json['id']),
-      category: categoryJson is Map
-          ? categoryJson['category_name']?.toString() ?? ''
-          : json['category']?.toString() ?? '',
+      category:
+          categoryJson is Map
+              ? categoryJson['category_name']?.toString() ?? ''
+              : json['category']?.toString() ?? '',
       description:
           json['description']?.toString() ?? json['title']?.toString() ?? '',
       latitude: _doubleOrNull(json['latitude']),
       longitude: _doubleOrNull(json['longitude']),
       locationAddress: json['location_address']?.toString(),
-      imageUrl: json['image_url']?.toString() ?? firstImage,
+      imageUrl: json['image_url']?.toString() ?? beforeImage ?? firstImage,
+      completionImageUrl:
+          json['completion_image_url']?.toString() ?? afterImage,
+      completionReport: json['completion_report']?.toString(),
       status: json['status']?.toString() ?? 'قيد الانتظار',
-      createdAt: json['created_at'] != null
-          ? DateTime.tryParse(json['created_at'].toString())
-          : null,
+      createdAt:
+          json['created_at'] != null
+              ? DateTime.tryParse(json['created_at'].toString())
+              : null,
       comments: comments,
       ratingStars: ratingJson is Map ? _intOrNull(ratingJson['stars']) : null,
-      ratingComment: ratingJson is Map
-          ? ratingJson['comment']?.toString()
-          : null,
+      ratingComment:
+          ratingJson is Map ? ratingJson['comment']?.toString() : null,
     );
   }
 
@@ -58,6 +63,8 @@ class ReportModel extends ReportEntity {
     if (longitude != null) 'longitude': longitude,
     if (locationAddress != null) 'location_address': locationAddress,
     if (imageUrl != null) 'image_url': imageUrl,
+    if (completionImageUrl != null) 'completion_image_url': completionImageUrl,
+    if (completionReport != null) 'completion_report': completionReport,
     'status': status,
     if (ratingStars != null) 'rating_stars': ratingStars,
     if (ratingComment != null) 'rating_comment': ratingComment,
@@ -66,10 +73,13 @@ class ReportModel extends ReportEntity {
   static List<ReportCommentModel> _commentsFromJson(dynamic value) {
     if (value is! List) return const [];
 
-    final comments = value
-        .whereType<Map>()
-        .map((e) => ReportCommentModel.fromJson(Map<String, dynamic>.from(e)))
-        .toList();
+    final comments =
+        value
+            .whereType<Map>()
+            .map(
+              (e) => ReportCommentModel.fromJson(Map<String, dynamic>.from(e)),
+            )
+            .toList();
 
     comments.sort((a, b) {
       final aDate = a.createdAt;
@@ -81,6 +91,30 @@ class ReportModel extends ReportEntity {
     });
 
     return comments;
+  }
+
+  static String? _firstImageUrl(dynamic value) {
+    if (value is! List || value.isEmpty) return null;
+
+    for (final image in value.whereType<Map>()) {
+      final url = image['image_url']?.toString();
+      if (url != null && url.isNotEmpty) return url;
+    }
+
+    return null;
+  }
+
+  static String? _imageUrlByType(dynamic value, String type) {
+    if (value is! List) return null;
+
+    for (final image in value.whereType<Map>()) {
+      if (image['image_type']?.toString() == type) {
+        final url = image['image_url']?.toString();
+        if (url != null && url.isNotEmpty) return url;
+      }
+    }
+
+    return null;
   }
 
   static int? _intOrNull(dynamic value) {

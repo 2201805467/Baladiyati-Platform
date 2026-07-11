@@ -8,6 +8,8 @@ class ReportEntity {
   final double? longitude;
   final String? locationAddress;
   final String? imageUrl;
+  final String? completionImageUrl;
+  final String? completionReport;
   final String status;
   final DateTime? createdAt;
   final List<ReportCommentEntity> comments;
@@ -22,6 +24,8 @@ class ReportEntity {
     this.longitude,
     this.locationAddress,
     this.imageUrl,
+    this.completionImageUrl,
+    this.completionReport,
     this.status = 'قيد الانتظار',
     this.createdAt,
     this.comments = const [],

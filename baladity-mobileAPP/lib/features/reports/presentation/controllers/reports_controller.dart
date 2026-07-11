@@ -85,9 +85,10 @@ class ReportsController extends Notifier<ReportsState> {
       state = state.copyWith(
         isLoadingDetails: false,
         selectedReport: report,
-        reports: state.reports
-            .map((item) => item.id == report.id ? report : item)
-            .toList(),
+        reports:
+            state.reports
+                .map((item) => item.id == report.id ? report : item)
+                .toList(),
       );
     } catch (e) {
       state = state.copyWith(
@@ -117,6 +118,8 @@ class ReportsController extends Notifier<ReportsState> {
           longitude: current.longitude,
           locationAddress: current.locationAddress,
           imageUrl: current.imageUrl,
+          completionImageUrl: current.completionImageUrl,
+          completionReport: current.completionReport,
           status: current.status,
           createdAt: current.createdAt,
           comments: [...current.comments, comment],
@@ -126,9 +129,13 @@ class ReportsController extends Notifier<ReportsState> {
         state = state.copyWith(
           isSubmittingComment: false,
           selectedReport: updatedReport,
-          reports: state.reports
-              .map((item) => item.id == updatedReport.id ? updatedReport : item)
-              .toList(),
+          reports:
+              state.reports
+                  .map(
+                    (item) =>
+                        item.id == updatedReport.id ? updatedReport : item,
+                  )
+                  .toList(),
         );
       } else {
         state = state.copyWith(isSubmittingComment: false);
@@ -165,20 +172,25 @@ class ReportsController extends Notifier<ReportsState> {
           longitude: current.longitude,
           locationAddress: current.locationAddress,
           imageUrl: current.imageUrl,
+          completionImageUrl: current.completionImageUrl,
+          completionReport: current.completionReport,
           status: current.status,
           createdAt: current.createdAt,
           comments: current.comments,
           ratingStars: stars,
-          ratingComment: comment?.trim().isEmpty == true
-              ? null
-              : comment?.trim(),
+          ratingComment:
+              comment?.trim().isEmpty == true ? null : comment?.trim(),
         );
         state = state.copyWith(
           isSubmittingRating: false,
           selectedReport: updatedReport,
-          reports: state.reports
-              .map((item) => item.id == updatedReport.id ? updatedReport : item)
-              .toList(),
+          reports:
+              state.reports
+                  .map(
+                    (item) =>
+                        item.id == updatedReport.id ? updatedReport : item,
+                  )
+                  .toList(),
         );
       } else {
         state = state.copyWith(isSubmittingRating: false);

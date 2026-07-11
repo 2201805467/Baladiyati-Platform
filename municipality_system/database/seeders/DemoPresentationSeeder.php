@@ -2,8 +2,11 @@
 
 namespace Database\Seeders;
 
+use App\Models\Area;
 use App\Models\Category;
+use App\Models\CurrentProject;
 use App\Models\Notification;
+use App\Models\PublicFacility;
 use App\Models\Rating;
 use App\Models\Report;
 use App\Models\ReportComment;
@@ -135,6 +138,7 @@ class DemoPresentationSeeder extends Seeder
 
             $this->seedSuggestions($citizen, $reception);
             $this->seedNotifications($citizen);
+            $this->seedPublicContent($reception ?? $citizen);
             });
         });
     }
@@ -327,5 +331,123 @@ class DemoPresentationSeeder extends Seeder
                 'created_at' => now()->subDays(12),
             ]
         );
+    }
+
+    private function seedPublicContent(User $adder): void
+    {
+        $areaIds = Area::pluck('id', 'area_name');
+
+        $facilities = [
+            [
+                'name' => 'Tripoli Central Park',
+                'facility_type' => 'park',
+                'latitude' => 32.887800,
+                'longitude' => 13.191900,
+                'working_hours' => '08:00 - 22:00',
+                'services' => 'Walking paths, children play area, seating, green spaces',
+            ],
+            [
+                'name' => 'Hay Al-Andalus Public Library',
+                'facility_type' => 'library',
+                'latitude' => 32.892600,
+                'longitude' => 13.164300,
+                'working_hours' => '09:00 - 18:00',
+                'services' => 'Reading hall, study tables, public internet, children section',
+            ],
+            [
+                'name' => 'Ain Zara Health Center',
+                'facility_type' => 'health_center',
+                'latitude' => 32.824900,
+                'longitude' => 13.247700,
+                'working_hours' => '24 hours',
+                'services' => 'Primary care, emergency first aid, vaccination, pharmacy window',
+            ],
+            [
+                'name' => 'Municipality Service Office',
+                'facility_type' => 'government_office',
+                'latitude' => 32.885400,
+                'longitude' => 13.180700,
+                'working_hours' => '08:30 - 14:30',
+                'services' => 'Citizen services, report follow-up, permits, public inquiries',
+            ],
+            [
+                'name' => 'Recycling Collection Point',
+                'facility_type' => 'recycling',
+                'latitude' => 32.872100,
+                'longitude' => 13.210600,
+                'working_hours' => '07:00 - 20:00',
+                'services' => 'Paper, plastic, metal, glass sorting containers',
+            ],
+        ];
+
+        foreach ($facilities as $facility) {
+            PublicFacility::updateOrCreate(
+                ['name' => $facility['name']],
+                $facility + [
+                    'added_by' => $adder->id,
+                    'is_active' => true,
+                ]
+            );
+        }
+
+        $projects = [
+            [
+                'name' => 'Tripoli Center Road Rehabilitation',
+                'description' => 'Rehabilitating damaged asphalt layers, improving sidewalks, and repainting pedestrian crossings in central streets.',
+                'area_id' => $areaIds->get('Tripoli Center'),
+                'contractor' => 'Al Madar Roads Company',
+                'progress_percent' => 72,
+                'start_date' => Carbon::now()->subMonths(4)->toDateString(),
+                'end_date' => Carbon::now()->addMonths(2)->toDateString(),
+                'status' => 'in_progress',
+            ],
+            [
+                'name' => 'Hay Al-Andalus Street Lighting Upgrade',
+                'description' => 'Replacing old lighting poles with energy-efficient LED lights on main neighborhood roads.',
+                'area_id' => $areaIds->get('Hay Al-Andalus'),
+                'contractor' => 'Noor Libya Electrical Works',
+                'progress_percent' => 48,
+                'start_date' => Carbon::now()->subMonths(2)->toDateString(),
+                'end_date' => Carbon::now()->addMonths(3)->toDateString(),
+                'status' => 'in_progress',
+            ],
+            [
+                'name' => 'Ain Zara Drainage Improvement',
+                'description' => 'Maintaining drainage channels and adding inspection covers in areas affected by rainwater accumulation.',
+                'area_id' => $areaIds->get('Ain Zara'),
+                'contractor' => 'Al Nahr Infrastructure Services',
+                'progress_percent' => 35,
+                'start_date' => Carbon::now()->subMonth()->toDateString(),
+                'end_date' => Carbon::now()->addMonths(4)->toDateString(),
+                'status' => 'in_progress',
+            ],
+            [
+                'name' => 'Public Parks Maintenance Program',
+                'description' => 'Restoring playground equipment, irrigation lines, benches, and lighting in selected public parks.',
+                'area_id' => $areaIds->get('Tripoli Center'),
+                'contractor' => 'Green City Maintenance',
+                'progress_percent' => 60,
+                'start_date' => Carbon::now()->subMonths(3)->toDateString(),
+                'end_date' => Carbon::now()->addMonth()->toDateString(),
+                'status' => 'in_progress',
+            ],
+            [
+                'name' => 'Smart Waste Containers Pilot',
+                'description' => 'Installing monitored waste containers in high-traffic areas to improve collection scheduling and cleanliness.',
+                'area_id' => $areaIds->get('Hay Al-Andalus'),
+                'contractor' => 'CleanTech Municipal Solutions',
+                'progress_percent' => 25,
+                'start_date' => Carbon::now()->subWeeks(3)->toDateString(),
+                'end_date' => Carbon::now()->addMonths(5)->toDateString(),
+                'status' => 'in_progress',
+            ],
+        ];
+
+        foreach ($projects as $project) {
+            CurrentProject::updateOrCreate(
+                ['name' => $project['name']],
+                $project + ['added_by' => $adder->id]
+            );
+        }
     }
 }

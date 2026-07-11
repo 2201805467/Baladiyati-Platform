@@ -7,6 +7,17 @@ import '../../domain/entities/report_entity.dart';
 import '../controllers/reports_controller.dart';
 import '../controllers/reports_state.dart';
 
+String _apiOrigin() {
+  final baseUrl = ApiConstants.baseUrl;
+  if (baseUrl.endsWith('/api/')) {
+    return baseUrl.substring(0, baseUrl.length - 5);
+  }
+  if (baseUrl.endsWith('/api')) {
+    return baseUrl.substring(0, baseUrl.length - 4);
+  }
+  return baseUrl;
+}
+
 class ReportDetailsPage extends ConsumerStatefulWidget {
   const ReportDetailsPage({super.key, required this.report});
 
@@ -102,47 +113,54 @@ class _ReportDetailsPageState extends ConsumerState<ReportDetailsPage> {
       appBar: AppBar(title: const Text('تفاصيل البلاغ'), centerTitle: true),
       body: Directionality(
         textDirection: TextDirection.rtl,
-        child: state.isLoadingDetails
-            ? const Center(child: CircularProgressIndicator())
-            : RefreshIndicator(
-                onRefresh: () async {
-                  final id = report.id;
-                  if (id != null) {
-                    await ref
-                        .read(reportsControllerProvider.notifier)
-                        .fetchReportDetails(id);
-                  }
-                },
-                child: ListView(
-                  padding: const EdgeInsets.all(16),
-                  children: [
-                    _ReportSummary(report: report),
-                    if (_isClosed(report.status)) ...[
+        child:
+            state.isLoadingDetails
+                ? const Center(child: CircularProgressIndicator())
+                : RefreshIndicator(
+                  onRefresh: () async {
+                    final id = report.id;
+                    if (id != null) {
+                      await ref
+                          .read(reportsControllerProvider.notifier)
+                          .fetchReportDetails(id);
+                    }
+                  },
+                  child: ListView(
+                    padding: const EdgeInsets.all(16),
+                    children: [
+                      _ReportSummary(report: report),
+                      if (_isClosed(report.status) &&
+                          (report.completionImageUrl != null ||
+                              report.completionReport != null)) ...[
+                        const SizedBox(height: 16),
+                        _CompletionEvidenceSection(report: report),
+                      ],
+                      if (_isClosed(report.status)) ...[
+                        const SizedBox(height: 16),
+                        _RatingSection(
+                          currentStars: _selectedRating ?? report.ratingStars,
+                          existingComment: report.ratingComment,
+                          controller: _ratingCommentController,
+                          isSubmitting: state.isSubmittingRating,
+                          onStarSelected: (stars) {
+                            setState(() => _selectedRating = stars);
+                          },
+                          onSubmit:
+                              (_selectedRating ?? report.ratingStars) == null
+                                  ? null
+                                  : () => _submitRating(report),
+                        ),
+                      ],
                       const SizedBox(height: 16),
-                      _RatingSection(
-                        currentStars: _selectedRating ?? report.ratingStars,
-                        existingComment: report.ratingComment,
-                        controller: _ratingCommentController,
-                        isSubmitting: state.isSubmittingRating,
-                        onStarSelected: (stars) {
-                          setState(() => _selectedRating = stars);
-                        },
-                        onSubmit:
-                            (_selectedRating ?? report.ratingStars) == null
-                            ? null
-                            : () => _submitRating(report),
+                      _CommentsSection(
+                        comments: report.comments,
+                        controller: _commentController,
+                        isSubmitting: state.isSubmittingComment,
+                        onSend: () => _sendComment(report),
                       ),
                     ],
-                    const SizedBox(height: 16),
-                    _CommentsSection(
-                      comments: report.comments,
-                      controller: _commentController,
-                      isSubmitting: state.isSubmittingComment,
-                      onSend: () => _sendComment(report),
-                    ),
-                  ],
+                  ),
                 ),
-              ),
       ),
     );
   }
@@ -204,9 +222,8 @@ class _ReportSummary extends StatelessWidget {
             const SizedBox(height: 8),
             _InfoRow(
               icon: Icons.description_outlined,
-              text: report.description.isEmpty
-                  ? 'بدون وصف'
-                  : report.description,
+              text:
+                  report.description.isEmpty ? 'بدون وصف' : report.description,
             ),
             if (report.locationAddress != null &&
                 report.locationAddress!.isNotEmpty) ...[
@@ -233,7 +250,75 @@ class _ReportSummary extends StatelessWidget {
     if (value == null || value.isEmpty) return null;
     if (value.startsWith('http')) return value;
 
-    final base = ApiConstants.baseUrl.replaceFirst(RegExp(r'/api/?$'), '');
+    final base = _apiOrigin();
+    return value.startsWith('/') ? '$base$value' : '$base/$value';
+  }
+}
+
+class _CompletionEvidenceSection extends StatelessWidget {
+  const _CompletionEvidenceSection({required this.report});
+
+  final ReportEntity report;
+
+  @override
+  Widget build(BuildContext context) {
+    final imageUrl = _absoluteImageUrl(report.completionImageUrl);
+    final completionReport = report.completionReport?.trim();
+
+    return Card(
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Row(
+              children: [
+                Icon(Icons.verified_outlined, color: Colors.green),
+                SizedBox(width: 8),
+                Text(
+                  'نتيجة الإنجاز',
+                  style: TextStyle(fontSize: 17, fontWeight: FontWeight.bold),
+                ),
+              ],
+            ),
+            if (completionReport != null && completionReport.isNotEmpty) ...[
+              const SizedBox(height: 12),
+              Text(completionReport),
+            ],
+            if (imageUrl != null) ...[
+              const SizedBox(height: 12),
+              ClipRRect(
+                borderRadius: BorderRadius.circular(10),
+                child: Image.network(
+                  imageUrl,
+                  height: 210,
+                  width: double.infinity,
+                  fit: BoxFit.cover,
+                  errorBuilder:
+                      (_, _, _) => Container(
+                        height: 120,
+                        alignment: Alignment.center,
+                        color:
+                            Theme.of(
+                              context,
+                            ).colorScheme.surfaceContainerHighest,
+                        child: const Text('تعذر تحميل صورة الإنجاز'),
+                      ),
+                ),
+              ),
+            ],
+          ],
+        ),
+      ),
+    );
+  }
+
+  String? _absoluteImageUrl(String? value) {
+    if (value == null || value.isEmpty) return null;
+    if (value.startsWith('http')) return value;
+
+    final base = _apiOrigin();
     return value.startsWith('/') ? '$base$value' : '$base/$value';
   }
 }
@@ -314,13 +399,14 @@ class _RatingSection extends StatelessWidget {
               width: double.infinity,
               child: ElevatedButton.icon(
                 onPressed: isSubmitting ? null : onSubmit,
-                icon: isSubmitting
-                    ? const SizedBox(
-                        width: 18,
-                        height: 18,
-                        child: CircularProgressIndicator(strokeWidth: 2),
-                      )
-                    : const Icon(Icons.star_rate),
+                icon:
+                    isSubmitting
+                        ? const SizedBox(
+                          width: 18,
+                          height: 18,
+                          child: CircularProgressIndicator(strokeWidth: 2),
+                        )
+                        : const Icon(Icons.star_rate),
                 label: const Text('حفظ التقييم'),
               ),
             ),
@@ -383,13 +469,14 @@ class _CommentsSection extends StatelessWidget {
               width: double.infinity,
               child: ElevatedButton.icon(
                 onPressed: isSubmitting ? null : onSend,
-                icon: isSubmitting
-                    ? const SizedBox(
-                        width: 18,
-                        height: 18,
-                        child: CircularProgressIndicator(strokeWidth: 2),
-                      )
-                    : const Icon(Icons.send),
+                icon:
+                    isSubmitting
+                        ? const SizedBox(
+                          width: 18,
+                          height: 18,
+                          child: CircularProgressIndicator(strokeWidth: 2),
+                        )
+                        : const Icon(Icons.send),
                 label: const Text('إرسال التعليق'),
               ),
             ),
