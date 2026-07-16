@@ -13,6 +13,7 @@ use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
 
 class ReportController extends Controller
@@ -93,7 +94,7 @@ class ReportController extends Controller
             $this->notifyCitizen(
                 $report,
                 'Report status updated',
-                'Your report '.$report->report_number.' status changed to '.$data['status'].'.',
+                'Your report about '.$this->reportLabel($report).' status changed to '.$data['status'].'.',
                 'report_status'
             );
         });
@@ -130,7 +131,7 @@ class ReportController extends Controller
         $this->notifyCitizen(
             $report,
             'New reply on your report',
-            'A department officer replied to report '.$report->report_number.'.',
+            'A department officer replied to your report about '.$this->reportLabel($report).'.',
             'report_comment'
         );
 
@@ -213,7 +214,7 @@ class ReportController extends Controller
             $this->notifyCitizen(
                 $report,
                 'Report closed',
-                'Your report '.$report->report_number.' was closed and is ready for rating.',
+                'Your report about '.$this->reportLabel($report).' was closed and is ready for rating.',
                 'report_status'
             );
         });
@@ -252,5 +253,20 @@ class ReportController extends Controller
             'related_id' => $report->id,
             'related_type' => Report::class,
         ]);
+    }
+
+    private function reportLabel(Report $report): string
+    {
+        $label = trim((string) ($report->title ?: $report->description));
+
+        if ($label === '') {
+            $label = trim((string) $report->category?->category_name);
+        }
+
+        if ($label === '') {
+            return $report->report_number;
+        }
+
+        return Str::limit($label, 80);
     }
 }

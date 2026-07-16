@@ -13,6 +13,7 @@ use App\Models\User;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
 
 class ReportController extends Controller
@@ -88,7 +89,7 @@ class ReportController extends Controller
             $this->notifyCitizen(
                 $report,
                 'Report under review',
-                'Your report '.$report->report_number.' is now under review.',
+                'Your report about '.$this->reportLabel($report).' is now under review.',
                 'report_status'
             );
         }
@@ -170,7 +171,7 @@ class ReportController extends Controller
             $this->notifyCitizen(
                 $report,
                 'Report transferred',
-                'Your report '.$report->report_number.' was transferred to '.$department->dept_name.'.',
+                'Your report about '.$this->reportLabel($report).' was transferred to '.$department->dept_name.'.',
                 'report_status'
             );
 
@@ -215,12 +216,12 @@ class ReportController extends Controller
             'note' => 'Reception added a comment.',
         ]);
 
-        $this->notifyCitizen(
-            $report,
-            'New reply on your report',
-            'Reception replied to report '.$report->report_number.'.',
-            'report_comment'
-        );
+            $this->notifyCitizen(
+                $report,
+                'New reply on your report',
+                'Reception replied to your report about '.$this->reportLabel($report).'.',
+                'report_comment'
+            );
 
         return response()->json([
             'message' => 'Comment added successfully.',
@@ -234,10 +235,10 @@ class ReportController extends Controller
             'rejection_reason' => ['required', 'string', 'max:2000'],
         ]);
 
-        $reportNumber = $report->report_number;
+        $reportLabel = $this->reportLabel($report);
         $citizenId = $report->citizen_id;
 
-        DB::transaction(function () use ($report, $request, $data, $reportNumber, $citizenId) {
+        DB::transaction(function () use ($report, $request, $data, $reportLabel, $citizenId) {
             ReportLog::create([
                 'report_id' => $report->id,
                 'action_by' => $request->user()->id,
@@ -250,7 +251,7 @@ class ReportController extends Controller
             Notification::create([
                 'user_id' => $citizenId,
                 'title' => 'Report rejected',
-                'body' => 'Your report '.$reportNumber.' was rejected: '.$data['rejection_reason'],
+                'body' => 'Your report about '.$reportLabel.' was rejected: '.$data['rejection_reason'],
                 'type' => 'report_rejected',
                 'related_id' => null,
                 'related_type' => Report::class,
@@ -274,6 +275,21 @@ class ReportController extends Controller
             'related_id' => $report->id,
             'related_type' => Report::class,
         ]);
+    }
+
+    private function reportLabel(Report $report): string
+    {
+        $label = trim((string) ($report->title ?: $report->description));
+
+        if ($label === '') {
+            $label = trim((string) $report->category?->category_name);
+        }
+
+        if ($label === '') {
+            return $report->report_number;
+        }
+
+        return Str::limit($label, 80);
     }
 
     private function notifyDepartmentUsers(Report $report, string $title, string $body, string $type): void
