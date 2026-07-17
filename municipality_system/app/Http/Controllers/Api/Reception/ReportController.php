@@ -21,6 +21,7 @@ class ReportController extends Controller
     public function index(Request $request): JsonResponse
     {
         $reports = Report::with(['citizen', 'category', 'department', 'area', 'images'])
+            ->withCount($this->voteCountColumns())
             ->when(
                 $request->filled('status'),
                 fn ($query) => $request->string('status')->toString() === 'open'
@@ -107,7 +108,7 @@ class ReportController extends Controller
                 'logs.actor',
                 'rating',
                 'duplicateReports',
-            ]),
+            ])->loadCount($this->voteCountColumns()),
         ]);
     }
 
@@ -310,5 +311,13 @@ class ReportController extends Controller
                 'related_type' => Report::class,
             ]);
         });
+    }
+
+    private function voteCountColumns(): array
+    {
+        return [
+            'votes as upvotes_count' => fn ($query) => $query->where('vote_type', 'up'),
+            'votes as downvotes_count' => fn ($query) => $query->where('vote_type', 'down'),
+        ];
     }
 }

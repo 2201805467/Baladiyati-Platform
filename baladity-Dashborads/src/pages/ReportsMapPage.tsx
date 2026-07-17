@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { DivIcon, LatLngExpression } from "leaflet";
 import { MapContainer, Marker, Popup, TileLayer } from "react-leaflet";
-import { useNavigate } from "react-router-dom";
+import { useLocation, useNavigate } from "react-router-dom";
 import { api } from "../lib/api-client";
 import { useAuth } from "../lib/auth";
 import "leaflet/dist/leaflet.css";
@@ -28,6 +28,8 @@ interface Report {
   longitude?: string | number | null;
   status: string;
   sla_status?: string | null;
+  upvotes_count?: number;
+  downvotes_count?: number;
   category?: { category_name?: string } | null;
   department?: { dept_name?: string; name?: string } | null;
   citizen?: { full_name?: string; name?: string; phone?: string } | null;
@@ -97,6 +99,7 @@ const assetUrl = (url?: string | null) => {
 export default function ReportsMapPage() {
   const { user, isLoading } = useAuth();
   const navigate = useNavigate();
+  const location = useLocation();
   const [reports, setReports] = useState<Report[]>([]);
   const [facilities, setFacilities] = useState<Facility[]>([]);
   const [selected, setSelected] = useState<Report | null>(null);
@@ -115,6 +118,13 @@ export default function ReportsMapPage() {
   useEffect(() => {
     if (user?.role === "admin") loadFacilities();
   }, [user?.role]);
+
+  useEffect(() => {
+    const reportId = new URLSearchParams(location.search).get("reportId");
+    if (!reportId || !user?.role) return;
+
+    openReport(reportId);
+  }, [location.search, user?.role]);
 
   const reportsEndpoint = () => {
     if (user?.role === "admin") return "/admin/reports-map";
@@ -170,6 +180,25 @@ export default function ReportsMapPage() {
     }
   };
 
+  const copySelectedLocation = async () => {
+    const lat = numberValue(selected?.latitude);
+    const lng = numberValue(selected?.longitude);
+
+    if (lat === null || lng === null) {
+      alert("لا توجد إحداثيات محفوظة لهذا البلاغ.");
+      return;
+    }
+
+    const url = `https://www.google.com/maps/search/?api=1&query=${lat},${lng}`;
+
+    try {
+      await navigator.clipboard.writeText(url);
+      alert("تم نسخ رابط الموقع.");
+    } catch {
+      window.prompt("انسخ رابط الموقع:", url);
+    }
+  };
+
   const reportPoints = useMemo(() => reports
     .map((report) => ({ report, lat: numberValue(report.latitude), lng: numberValue(report.longitude) }))
     .filter((item): item is { report: Report; lat: number; lng: number } => item.lat !== null && item.lng !== null), [reports]);
@@ -178,7 +207,11 @@ export default function ReportsMapPage() {
     .map((facility) => ({ facility, lat: numberValue(facility.latitude), lng: numberValue(facility.longitude) }))
     .filter((item): item is { facility: Facility; lat: number; lng: number } => item.lat !== null && item.lng !== null), [facilities]);
 
-  const center: LatLngExpression = reportPoints[0]
+  const selectedLat = numberValue(selected?.latitude);
+  const selectedLng = numberValue(selected?.longitude);
+  const center: LatLngExpression = selectedLat !== null && selectedLng !== null
+    ? [selectedLat, selectedLng]
+    : reportPoints[0]
     ? [reportPoints[0].lat, reportPoints[0].lng]
     : [32.8872, 13.1913];
 
@@ -224,6 +257,7 @@ export default function ReportsMapPage() {
                       <p style={{ margin: "6px 0", color: "#475569" }}>{report.title || report.description || "بلاغ بدون عنوان"}</p>
                       <p style={{ margin: "4px 0" }}><span style={{ color }}>●</span> {statusLabels[report.status] || report.status}</p>
                       <p style={{ margin: "4px 0", color: "#64748b" }}>النوع: {report.category?.category_name || "-"}</p>
+                      <p style={{ margin: "4px 0", color: "#64748b" }}>👍 {report.upvotes_count ?? 0} | 👎 {report.downvotes_count ?? 0}</p>
                       <button onClick={() => openReport(report.id)} style={{ marginTop: 8, width: "100%", padding: "7px 10px", background: "#059669", color: "white", border: 0, borderRadius: 8, cursor: "pointer" }}>
                         عرض التفاصيل
                       </button>
@@ -271,7 +305,13 @@ export default function ReportsMapPage() {
                 <p><strong>المواطن:</strong> {personName(selected.citizen)} {selected.citizen?.phone ? `- ${selected.citizen.phone}` : ""}</p>
                 <p><strong>التصنيف:</strong> {selected.category?.category_name || "-"}</p>
                 <p><strong>القسم:</strong> {departmentName(selected.department)}</p>
-                <p><strong>الموقع:</strong> {selected.latitude || "-"}, {selected.longitude || "-"}</p>
+                <div className="flex items-center gap-2">
+                  <strong>الموقع:</strong>
+                  <button type="button" onClick={copySelectedLocation} className="px-3 py-1.5 bg-slate-800 hover:bg-slate-700 rounded-lg text-xs">
+                    نسخ الموقع
+                  </button>
+                </div>
+                <p><strong>تصويتات المجتمع:</strong> 👍 {selected.upvotes_count ?? 0} | 👎 {selected.downvotes_count ?? 0}</p>
                 {selected.sla_status && <p><strong>SLA:</strong> {selected.sla_status}</p>}
               </div>
 

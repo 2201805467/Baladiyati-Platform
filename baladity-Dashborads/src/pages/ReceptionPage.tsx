@@ -40,6 +40,8 @@ interface Report {
   longitude?: string | number | null;
   status: string;
   sla_status?: string | null;
+  upvotes_count?: number;
+  downvotes_count?: number;
   category_id?: string | null;
   dept_id?: string | null;
   citizen?: { full_name?: string; name?: string; phone?: string } | null;
@@ -236,6 +238,15 @@ export default function ReceptionPage() {
     }
   };
 
+  const openReportOnMap = (report: Report) => {
+    if (!report.latitude || !report.longitude) {
+      alert("لا توجد إحداثيات محفوظة لهذا البلاغ.");
+      return;
+    }
+
+    navigate(`/admin/map?reportId=${report.id}`);
+  };
+
   const classifyReport = async () => {
     if (!selectedReport || !categoryId) return;
     try {
@@ -388,7 +399,6 @@ export default function ReceptionPage() {
                 <option value="">الجديدة فقط</option>
                 <option value="under_review">قيد المراجعة</option>
                 <option value="transferred">محولة</option>
-                <option value="new">جديدة</option>
               </select>
               <button onClick={loadReports} className="px-3 py-2 bg-emerald-600 rounded-lg text-sm">بحث</button>
             </div>
@@ -404,6 +414,8 @@ export default function ReceptionPage() {
                         <span>{personName(report.citizen)}</span>
                         <span>{report.category?.category_name || "بدون تصنيف"}</span>
                         <span>{departmentName(report.department)}</span>
+                        <span className="text-emerald-400">👍 {report.upvotes_count ?? 0}</span>
+                        <span className="text-red-400">👎 {report.downvotes_count ?? 0}</span>
                       </div>
                     </div>
                     <div className="flex flex-col gap-1 items-end">
@@ -429,6 +441,8 @@ export default function ReceptionPage() {
                 <div className="flex flex-wrap gap-2">
                   <span className={`px-2 py-1 rounded text-xs ${reportStatusClasses[selectedReport.status] || "bg-slate-500/20 text-slate-400"}`}>{reportStatusLabels[selectedReport.status] || selectedReport.status}</span>
                   {selectedReport.sla_status && <span className="px-2 py-1 rounded text-xs bg-slate-800 text-slate-300">SLA: {selectedReport.sla_status}</span>}
+                  <span className="px-2 py-1 rounded text-xs bg-emerald-500/10 text-emerald-300">تأييد: {selectedReport.upvotes_count ?? 0}</span>
+                  <span className="px-2 py-1 rounded text-xs bg-red-500/10 text-red-300">عدم تأييد: {selectedReport.downvotes_count ?? 0}</span>
                 </div>
 
                 {firstImage && <img src={assetUrl(firstImage.image_url)} alt="صورة البلاغ" className="w-full h-56 object-cover rounded-lg border border-slate-800" />}
@@ -437,7 +451,12 @@ export default function ReceptionPage() {
                   <p><strong>المواطن:</strong> {personName(selectedReport.citizen)} {selectedReport.citizen?.phone ? `- ${selectedReport.citizen.phone}` : ""}</p>
                   <p><strong>التصنيف الحالي:</strong> {selectedReport.category?.category_name || "بدون تصنيف"}</p>
                   <p><strong>القسم الحالي:</strong> {departmentName(selectedReport.department)}</p>
-                  <p><strong>الموقع:</strong> {selectedReport.latitude || "-"}, {selectedReport.longitude || "-"}</p>
+                  <div className="flex items-center gap-2">
+                    <strong>الموقع:</strong>
+                    <button type="button" onClick={() => openReportOnMap(selectedReport)} className="px-3 py-1.5 bg-slate-800 hover:bg-slate-700 rounded-lg text-xs">
+                      عرض على الخريطة
+                    </button>
+                  </div>
                 </div>
                 <p className="text-sm leading-7">{selectedReport.description || "-"}</p>
 

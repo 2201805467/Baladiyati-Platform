@@ -2,6 +2,7 @@ import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:geolocator/geolocator.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 import '../../../../core/network/api_constants.dart';
 import '../../../auth/presentation/controllers/auth_controller.dart';
@@ -309,6 +310,30 @@ class _CommunityReportDetailsPageState
     }
   }
 
+  Future<void> _openReportLocation() async {
+    final latitude = _report.latitude;
+    final longitude = _report.longitude;
+
+    if (latitude == null || longitude == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('لا توجد إحداثيات محفوظة لهذا البلاغ')),
+      );
+      return;
+    }
+
+    final geoUri = Uri.parse('geo:$latitude,$longitude?q=$latitude,$longitude');
+    final webUri = Uri.parse(
+      'https://www.google.com/maps/search/?api=1&query=$latitude,$longitude',
+    );
+
+    if (await canLaunchUrl(geoUri)) {
+      await launchUrl(geoUri, mode: LaunchMode.externalApplication);
+      return;
+    }
+
+    await launchUrl(webUri, mode: LaunchMode.externalApplication);
+  }
+
   void _showError(Object error) {
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
@@ -384,6 +409,15 @@ class _CommunityReportDetailsPageState
                                 : _report.description,
                             style: const TextStyle(height: 1.5),
                           ),
+                          if (_report.latitude != null &&
+                              _report.longitude != null) ...[
+                            const SizedBox(height: 12),
+                            OutlinedButton.icon(
+                              onPressed: _openReportLocation,
+                              icon: const Icon(Icons.map_outlined),
+                              label: const Text('العرض على الخريطة'),
+                            ),
+                          ],
                           if (_report.distanceKm != null) ...[
                             const SizedBox(height: 10),
                             Row(

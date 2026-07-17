@@ -7,6 +7,7 @@ use App\Models\Notification;
 use App\Models\Report;
 use App\Models\ReportComment;
 use App\Models\ReportVote;
+use App\Models\User;
 use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -103,6 +104,22 @@ class CommunityReportController extends Controller
             ]);
         }
 
+        if (in_array($report->status, ['new', 'under_review'], true)) {
+            $this->notifyReceptionUsers(
+                'Community comment on report under review',
+                'A citizen commented on report '.$this->reportLabel($report).' before transfer.',
+                'community_report_comment_reception',
+                $report->id
+            );
+        } else {
+            $this->notifyDepartmentUsers(
+                $report,
+                'Community comment on assigned report',
+                'A citizen commented on report '.$this->reportLabel($report).'.',
+                'community_report_comment_department'
+            );
+        }
+
         return response()->json([
             'message' => 'Comment added successfully.',
             'comment' => $comment->load('user.role'),
@@ -196,5 +213,41 @@ class CommunityReportController extends Controller
             ?: $report->description
             ?: $report->category?->category_name
             ?: $report->report_number;
+    }
+
+    private function notifyReceptionUsers(string $title, string $body, string $type, int $reportId): void
+    {
+        User::whereHas('role', fn ($query) => $query->where('role_name', 'reception'))
+            ->where('is_active', true)
+            ->each(function (User $user) use ($title, $body, $type, $reportId) {
+                Notification::create([
+                    'user_id' => $user->id,
+                    'title' => $title,
+                    'body' => $body,
+                    'type' => $type,
+                    'related_id' => $reportId,
+                    'related_type' => Report::class,
+                ]);
+            });
+    }
+
+    private function notifyDepartmentUsers(Report $report, string $title, string $body, string $type): void
+    {
+        if (! $report->dept_id) {
+            return;
+        }
+
+        User::where('dept_id', $report->dept_id)
+            ->where('is_active', true)
+            ->each(function (User $user) use ($report, $title, $body, $type) {
+                Notification::create([
+                    'user_id' => $user->id,
+                    'title' => $title,
+                    'body' => $body,
+                    'type' => $type,
+                    'related_id' => $report->id,
+                    'related_type' => Report::class,
+                ]);
+            });
     }
 }

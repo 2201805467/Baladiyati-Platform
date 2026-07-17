@@ -139,6 +139,15 @@ export default function TechnicalPage() {
     }
   };
 
+  const openReportOnMap = (report: Report) => {
+    if (!report.latitude || !report.longitude) {
+      alert("لا توجد إحداثيات محفوظة لهذا البلاغ.");
+      return;
+    }
+
+    navigate(`/admin/map?reportId=${report.id}`);
+  };
+
   const updateStatus = async (status: "in_progress" | "pending") => {
     if (!selected || !statusNote.trim()) return;
     try {
@@ -264,7 +273,12 @@ export default function TechnicalPage() {
               <div className="text-sm text-slate-300 space-y-1">
                 <p><strong>المواطن:</strong> {personName(selected.citizen)} {selected.citizen?.phone ? `- ${selected.citizen.phone}` : ""}</p>
                 <p><strong>التصنيف:</strong> {selected.category?.category_name || "-"}</p>
-                <p><strong>الموقع:</strong> {selected.latitude || "-"}, {selected.longitude || "-"}</p>
+                <div className="flex items-center gap-2">
+                  <strong>الموقع:</strong>
+                  <button type="button" onClick={() => openReportOnMap(selected)} className="px-3 py-1.5 bg-slate-800 hover:bg-slate-700 rounded-lg text-xs">
+                    عرض على الخريطة
+                  </button>
+                </div>
               </div>
               <p className="text-sm leading-7">{selected.description || "-"}</p>
 

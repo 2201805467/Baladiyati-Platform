@@ -12,6 +12,7 @@ class ReportMapController extends Controller
     public function index(Request $request): JsonResponse
     {
         $reports = Report::with(['citizen', 'category', 'department', 'area', 'images'])
+            ->withCount($this->voteCountColumns())
             ->when($request->filled('status'), fn ($query) => $request->string('status')->toString() === 'open'
                 ? $query->whereNotIn('status', ['closed', 'rejected'])
                 : $query->where('status', $request->string('status')))
@@ -44,7 +45,15 @@ class ReportMapController extends Controller
                 'comments.user',
                 'logs.actor',
                 'rating',
-            ]),
+            ])->loadCount($this->voteCountColumns()),
         ]);
+    }
+
+    private function voteCountColumns(): array
+    {
+        return [
+            'votes as upvotes_count' => fn ($query) => $query->where('vote_type', 'up'),
+            'votes as downvotes_count' => fn ($query) => $query->where('vote_type', 'down'),
+        ];
     }
 }
