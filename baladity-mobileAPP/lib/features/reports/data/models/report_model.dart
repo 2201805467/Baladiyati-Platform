@@ -58,7 +58,9 @@ class ReportModel extends ReportEntity {
       upvotesCount: _intOrNull(json['upvotes_count']) ?? 0,
       downvotesCount: _intOrNull(json['downvotes_count']) ?? 0,
       viewerVote: json['viewer_vote']?.toString(),
-      distanceKm: _doubleOrNull(json['distance_km']),
+      distanceKm:
+          _doubleOrNull(json['distance_km']) ??
+          _distanceMetersToKm(json['distance_meters']),
     );
   }
 
@@ -137,5 +139,11 @@ class ReportModel extends ReportEntity {
     if (value is double) return value;
     if (value is num) return value.toDouble();
     return double.tryParse(value.toString());
+  }
+
+  static double? _distanceMetersToKm(dynamic value) {
+    final meters = _doubleOrNull(value);
+    if (meters == null) return null;
+    return meters / 1000;
   }
 }

@@ -24,6 +24,7 @@ class CommunityReportController extends Controller
             'latitude' => ['nullable', 'numeric', 'between:-90,90'],
             'longitude' => ['nullable', 'numeric', 'between:-180,180'],
             'radius_km' => ['nullable', 'numeric', 'min:0.1', 'max:'.self::MAX_RADIUS_KM],
+            'category_id' => ['nullable', 'exists:categories,id'],
             'per_page' => ['nullable', 'integer', 'min:1', 'max:50'],
         ]);
 
@@ -37,7 +38,8 @@ class CommunityReportController extends Controller
             ->withCount($this->voteCountColumns())
             ->whereNotNull('citizen_id')
             ->where('citizen_id', '!=', $user->id)
-            ->whereNotIn('status', ['closed', 'rejected']);
+            ->whereNotIn('status', ['closed', 'rejected'])
+            ->when(isset($data['category_id']), fn ($query) => $query->where('category_id', (int) $data['category_id']));
 
         if ($latitude !== null && $longitude !== null) {
             $query

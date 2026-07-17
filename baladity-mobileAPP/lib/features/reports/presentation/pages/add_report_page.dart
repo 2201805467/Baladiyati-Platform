@@ -295,11 +295,14 @@ class _AddReportPageState extends ConsumerState<AddReportPage> {
   }
 
   Future<void> _openLocationPickerMap() async {
+    final categoryId = int.tryParse(_selectedCategory ?? '');
     final LatLng? result = await Navigator.push<LatLng>(
       context,
       MaterialPageRoute(
-        builder: (context) =>
-            LocationSelectionPage(initialLocation: _pickedLocation),
+        builder: (context) => LocationSelectionPage(
+          initialLocation: _pickedLocation,
+          categoryId: categoryId,
+        ),
       ),
     );
     if (!mounted) return;
