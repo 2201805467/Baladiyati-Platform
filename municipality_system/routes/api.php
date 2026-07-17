@@ -12,6 +12,7 @@ use App\Http\Controllers\Api\Admin\ReportMapController as AdminReportMapControll
 use App\Http\Controllers\Api\Admin\SecurityLogController as AdminSecurityLogController;
 use App\Http\Controllers\Api\Admin\UserController as AdminUserController;
 use App\Http\Controllers\Api\Citizen\NotificationController as CitizenNotificationController;
+use App\Http\Controllers\Api\Citizen\CommunityReportController as CitizenCommunityReportController;
 use App\Http\Controllers\Api\Citizen\PublicInfoController as CitizenPublicInfoController;
 use App\Http\Controllers\Api\Citizen\ReportController as CitizenReportController;
 use App\Http\Controllers\Api\Citizen\SuggestionController as CitizenSuggestionController;
@@ -54,6 +55,12 @@ Route::middleware(['auth:sanctum', 'role:citizen'])
         Route::get('/reports/{report}', [CitizenReportController::class, 'show'])->middleware('permission:submit_reports')->name('reports.show');
         Route::post('/reports/{report}/comments', [CitizenReportController::class, 'storeComment'])->middleware('permission:submit_reports')->name('reports.comments.store');
         Route::post('/reports/{report}/rating', [CitizenReportController::class, 'storeRating'])->middleware('permission:rate_reports')->name('reports.rating.store');
+
+        Route::get('/community-reports', [CitizenCommunityReportController::class, 'index'])->middleware('permission:submit_reports')->name('community-reports.index');
+        Route::get('/community-reports/{report}', [CitizenCommunityReportController::class, 'show'])->middleware('permission:submit_reports')->name('community-reports.show');
+        Route::post('/community-reports/{report}/comments', [CitizenCommunityReportController::class, 'storeComment'])->middleware('permission:submit_reports')->name('community-reports.comments.store');
+        Route::post('/community-reports/{report}/vote', [CitizenCommunityReportController::class, 'vote'])->middleware('permission:submit_reports')->name('community-reports.vote');
+        Route::delete('/community-reports/{report}/vote', [CitizenCommunityReportController::class, 'destroyVote'])->middleware('permission:submit_reports')->name('community-reports.vote.destroy');
 
         Route::get('/suggestions', [CitizenSuggestionController::class, 'index'])->middleware('permission:submit_suggestions')->name('suggestions.index');
         Route::post('/suggestions', [CitizenSuggestionController::class, 'store'])->middleware('permission:submit_suggestions')->name('suggestions.store');

@@ -10,6 +10,7 @@ import '../../../profile/presentation/controllers/profile_controller.dart';
 import '../../../reports/domain/entities/report_entity.dart';
 import '../../../reports/presentation/controllers/reports_controller.dart';
 import '../../../reports/presentation/pages/add_report_page.dart';
+import '../../../reports/presentation/pages/community_reports_page.dart';
 import '../../../reports/presentation/pages/report_details_page.dart';
 import '../../../reports/presentation/pages/reports_page.dart';
 import '../../../proposals/presentation/controllers/proposals_controller.dart';
@@ -97,7 +98,9 @@ class _HomePageState extends ConsumerState<HomePage> {
     }
   }
 
-  Future<void> _markNotificationAsRead(_CitizenNotification notification) async {
+  Future<void> _markNotificationAsRead(
+    _CitizenNotification notification,
+  ) async {
     if (notification.isRead) return;
 
     try {
@@ -149,9 +152,9 @@ class _HomePageState extends ConsumerState<HomePage> {
           ),
         );
       } else {
-        Navigator.of(context).push(
-          MaterialPageRoute(builder: (_) => const CitizenProposalsPage()),
-        );
+        Navigator.of(
+          context,
+        ).push(MaterialPageRoute(builder: (_) => const CitizenProposalsPage()));
       }
       return;
     }
@@ -170,9 +173,9 @@ class _HomePageState extends ConsumerState<HomePage> {
           MaterialPageRoute(builder: (_) => ReportDetailsPage(report: report)),
         );
       } else {
-        Navigator.of(context).push(
-          MaterialPageRoute(builder: (_) => const ReportsPage()),
-        );
+        Navigator.of(
+          context,
+        ).push(MaterialPageRoute(builder: (_) => const ReportsPage()));
       }
     }
   }
@@ -577,6 +580,17 @@ class _ActionGrid extends StatelessWidget {
           onTap: () => Navigator.push(
             context,
             MaterialPageRoute(builder: (context) => const ReportsPage()),
+          ),
+        ),
+        _actionItem(
+          context,
+          Icons.groups_2_outlined,
+          'بلاغات الجيران',
+          onTap: () => Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (context) => const CommunityReportsPage(),
+            ),
           ),
         ),
         _actionItem(

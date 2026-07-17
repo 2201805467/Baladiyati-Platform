@@ -85,10 +85,9 @@ class ReportsController extends Notifier<ReportsState> {
       state = state.copyWith(
         isLoadingDetails: false,
         selectedReport: report,
-        reports:
-            state.reports
-                .map((item) => item.id == report.id ? report : item)
-                .toList(),
+        reports: state.reports
+            .map((item) => item.id == report.id ? report : item)
+            .toList(),
       );
     } catch (e) {
       state = state.copyWith(
@@ -125,17 +124,17 @@ class ReportsController extends Notifier<ReportsState> {
           comments: [...current.comments, comment],
           ratingStars: current.ratingStars,
           ratingComment: current.ratingComment,
+          upvotesCount: current.upvotesCount,
+          downvotesCount: current.downvotesCount,
+          viewerVote: current.viewerVote,
+          distanceKm: current.distanceKm,
         );
         state = state.copyWith(
           isSubmittingComment: false,
           selectedReport: updatedReport,
-          reports:
-              state.reports
-                  .map(
-                    (item) =>
-                        item.id == updatedReport.id ? updatedReport : item,
-                  )
-                  .toList(),
+          reports: state.reports
+              .map((item) => item.id == updatedReport.id ? updatedReport : item)
+              .toList(),
         );
       } else {
         state = state.copyWith(isSubmittingComment: false);
@@ -178,19 +177,20 @@ class ReportsController extends Notifier<ReportsState> {
           createdAt: current.createdAt,
           comments: current.comments,
           ratingStars: stars,
-          ratingComment:
-              comment?.trim().isEmpty == true ? null : comment?.trim(),
+          ratingComment: comment?.trim().isEmpty == true
+              ? null
+              : comment?.trim(),
+          upvotesCount: current.upvotesCount,
+          downvotesCount: current.downvotesCount,
+          viewerVote: current.viewerVote,
+          distanceKm: current.distanceKm,
         );
         state = state.copyWith(
           isSubmittingRating: false,
           selectedReport: updatedReport,
-          reports:
-              state.reports
-                  .map(
-                    (item) =>
-                        item.id == updatedReport.id ? updatedReport : item,
-                  )
-                  .toList(),
+          reports: state.reports
+              .map((item) => item.id == updatedReport.id ? updatedReport : item)
+              .toList(),
         );
       } else {
         state = state.copyWith(isSubmittingRating: false);

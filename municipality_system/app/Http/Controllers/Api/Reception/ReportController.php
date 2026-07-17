@@ -23,7 +23,9 @@ class ReportController extends Controller
         $reports = Report::with(['citizen', 'category', 'department', 'area', 'images'])
             ->when(
                 $request->filled('status'),
-                fn ($query) => $query->where('status', $request->string('status')),
+                fn ($query) => $request->string('status')->toString() === 'open'
+                    ? $query->whereNotIn('status', ['closed', 'rejected'])
+                    : $query->where('status', $request->string('status')),
                 fn ($query) => $query->where('status', 'new')
             )
             ->when($request->filled('category_id'), fn ($query) => $query->where('category_id', $request->integer('category_id')))

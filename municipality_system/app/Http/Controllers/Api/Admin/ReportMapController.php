@@ -12,7 +12,9 @@ class ReportMapController extends Controller
     public function index(Request $request): JsonResponse
     {
         $reports = Report::with(['citizen', 'category', 'department', 'area', 'images'])
-            ->when($request->filled('status'), fn ($query) => $query->where('status', $request->string('status')))
+            ->when($request->filled('status'), fn ($query) => $request->string('status')->toString() === 'open'
+                ? $query->whereNotIn('status', ['closed', 'rejected'])
+                : $query->where('status', $request->string('status')))
             ->when($request->filled('search'), function ($query) use ($request) {
                 $search = '%'.$request->string('search')->toString().'%';
 

@@ -187,5 +187,10 @@ class Report extends Model
         return $this->hasOne(Rating::class, 'report_id');
     }
 
+    public function votes(): HasMany
+    {
+        return $this->hasMany(ReportVote::class, 'report_id');
+    }
+
     
 }

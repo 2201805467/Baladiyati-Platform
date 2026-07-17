@@ -88,6 +88,11 @@ class User extends Authenticatable
         return $this->hasMany(ReportComment::class, 'user_id');
     }
 
+    public function reportVotes(): HasMany
+    {
+        return $this->hasMany(ReportVote::class, 'citizen_id');
+    }
+
     public function addedProjects(): HasMany
     {
         return $this->hasMany(CurrentProject::class, 'added_by');

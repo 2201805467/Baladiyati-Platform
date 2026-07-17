@@ -17,6 +17,10 @@ class ReportModel extends ReportEntity {
     super.comments,
     super.ratingStars,
     super.ratingComment,
+    super.upvotesCount,
+    super.downvotesCount,
+    super.viewerVote,
+    super.distanceKm,
   });
 
   factory ReportModel.fromJson(Map<String, dynamic> json) {
@@ -30,10 +34,9 @@ class ReportModel extends ReportEntity {
 
     return ReportModel(
       id: _intOrNull(json['id']),
-      category:
-          categoryJson is Map
-              ? categoryJson['category_name']?.toString() ?? ''
-              : json['category']?.toString() ?? '',
+      category: categoryJson is Map
+          ? categoryJson['category_name']?.toString() ?? ''
+          : json['category']?.toString() ?? '',
       description:
           json['description']?.toString() ?? json['title']?.toString() ?? '',
       latitude: _doubleOrNull(json['latitude']),
@@ -44,14 +47,18 @@ class ReportModel extends ReportEntity {
           json['completion_image_url']?.toString() ?? afterImage,
       completionReport: json['completion_report']?.toString(),
       status: json['status']?.toString() ?? 'قيد الانتظار',
-      createdAt:
-          json['created_at'] != null
-              ? DateTime.tryParse(json['created_at'].toString())
-              : null,
+      createdAt: json['created_at'] != null
+          ? DateTime.tryParse(json['created_at'].toString())
+          : null,
       comments: comments,
       ratingStars: ratingJson is Map ? _intOrNull(ratingJson['stars']) : null,
-      ratingComment:
-          ratingJson is Map ? ratingJson['comment']?.toString() : null,
+      ratingComment: ratingJson is Map
+          ? ratingJson['comment']?.toString()
+          : null,
+      upvotesCount: _intOrNull(json['upvotes_count']) ?? 0,
+      downvotesCount: _intOrNull(json['downvotes_count']) ?? 0,
+      viewerVote: json['viewer_vote']?.toString(),
+      distanceKm: _doubleOrNull(json['distance_km']),
     );
   }
 
@@ -68,18 +75,19 @@ class ReportModel extends ReportEntity {
     'status': status,
     if (ratingStars != null) 'rating_stars': ratingStars,
     if (ratingComment != null) 'rating_comment': ratingComment,
+    'upvotes_count': upvotesCount,
+    'downvotes_count': downvotesCount,
+    if (viewerVote != null) 'viewer_vote': viewerVote,
+    if (distanceKm != null) 'distance_km': distanceKm,
   };
 
   static List<ReportCommentModel> _commentsFromJson(dynamic value) {
     if (value is! List) return const [];
 
-    final comments =
-        value
-            .whereType<Map>()
-            .map(
-              (e) => ReportCommentModel.fromJson(Map<String, dynamic>.from(e)),
-            )
-            .toList();
+    final comments = value
+        .whereType<Map>()
+        .map((e) => ReportCommentModel.fromJson(Map<String, dynamic>.from(e)))
+        .toList();
 
     comments.sort((a, b) {
       final aDate = a.createdAt;

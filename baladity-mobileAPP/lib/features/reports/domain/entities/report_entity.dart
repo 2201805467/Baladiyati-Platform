@@ -15,6 +15,10 @@ class ReportEntity {
   final List<ReportCommentEntity> comments;
   final int? ratingStars;
   final String? ratingComment;
+  final int upvotesCount;
+  final int downvotesCount;
+  final String? viewerVote;
+  final double? distanceKm;
 
   const ReportEntity({
     this.id,
@@ -31,5 +35,9 @@ class ReportEntity {
     this.comments = const [],
     this.ratingStars,
     this.ratingComment,
+    this.upvotesCount = 0,
+    this.downvotesCount = 0,
+    this.viewerVote,
+    this.distanceKm,
   });
 }

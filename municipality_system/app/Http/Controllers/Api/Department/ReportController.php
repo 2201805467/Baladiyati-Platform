@@ -26,7 +26,9 @@ class ReportController extends Controller
             ->where('dept_id', $deptId)
             ->when(
                 $request->filled('status'),
-                fn ($query) => $query->where('status', $request->string('status')),
+                fn ($query) => $request->string('status')->toString() === 'open'
+                    ? $query->whereIn('status', ['transferred', 'in_progress', 'pending'])
+                    : $query->where('status', $request->string('status')),
                 fn ($query) => $query->whereIn('status', ['transferred', 'in_progress', 'pending'])
             )
             ->when($request->filled('area_id'), fn ($query) => $query->where('area_id', $request->integer('area_id')))

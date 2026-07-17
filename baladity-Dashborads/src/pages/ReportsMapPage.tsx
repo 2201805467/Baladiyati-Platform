@@ -137,7 +137,7 @@ export default function ReportsMapPage() {
     try {
       const params = new URLSearchParams();
       params.set("per_page", "200");
-      if (statusFilter) params.set("status", statusFilter);
+      params.set("status", statusFilter || "open");
       if (search) params.set("search", search);
       const response = await api.get<any>(`${endpoint}?${params.toString()}`);
       setReports(response.data || []);
@@ -205,7 +205,6 @@ export default function ReportsMapPage() {
           <option value="transferred">محول</option>
           <option value="in_progress">قيد التنفيذ</option>
           <option value="pending">معلق</option>
-          <option value="closed">مغلق</option>
         </select>
         <button onClick={loadReports} className="px-3 py-2 bg-emerald-600 rounded-lg text-sm">بحث</button>
       </div>
