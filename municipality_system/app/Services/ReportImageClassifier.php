@@ -66,30 +66,37 @@ class ReportImageClassifier
         $base64Image = base64_encode(file_get_contents($image->getRealPath()));
 
         try {
+            $payload = [
+                'model' => $model,
+                'messages' => [[
+                    'role' => 'user',
+                    'content' => [
+                        [
+                            'type' => 'text',
+                            'text' => $prompt,
+                        ],
+                        [
+                            'type' => 'image_url',
+                            'image_url' => [
+                                'url' => "data:{$mimeType};base64,{$base64Image}",
+                            ],
+                        ],
+                    ],
+                ]],
+                'temperature' => 0.1,
+                'max_completion_tokens' => 2048,
+                'response_format' => ['type' => 'json_object'],
+            ];
+
+            if (str_starts_with($model, 'qwen/')) {
+                $payload['reasoning_effort'] = 'none';
+                $payload['reasoning_format'] = 'hidden';
+            }
+
             $response = Http::withToken(config('services.groq.key'))
                 ->acceptJson()
                 ->timeout(30)
-                ->post($endpoint, [
-                    'model' => $model,
-                    'messages' => [[
-                        'role' => 'user',
-                        'content' => [
-                            [
-                                'type' => 'text',
-                                'text' => $prompt,
-                            ],
-                            [
-                                'type' => 'image_url',
-                                'image_url' => [
-                                    'url' => "data:{$mimeType};base64,{$base64Image}",
-                                ],
-                            ],
-                        ],
-                    ]],
-                    'temperature' => 0.1,
-                    'max_completion_tokens' => 512,
-                    'response_format' => ['type' => 'json_object'],
-                ]);
+                ->post($endpoint, $payload);
         } catch (\Throwable $exception) {
             $this->providerFailureReason = 'Groq request failed: '.$exception->getMessage();
             Log::warning('Groq image classification request failed', [

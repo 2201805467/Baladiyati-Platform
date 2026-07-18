@@ -33,6 +33,9 @@ dependencies:
 
   # Media
   image_picker: ^1.0.7
+  record: ^6.0.0
+  audioplayers: ^6.1.0
+  path_provider: ^2.1.5
   url_launcher: ^6.3.0
 
   # UI / Fonts

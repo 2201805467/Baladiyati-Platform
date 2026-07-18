@@ -70,6 +70,8 @@
 	<string>نحتاج للوصول لمكتبة الصور لإرفاق صور البلاغات</string>
 	<key>NSCameraUsageDescription</key>
 	<string>نحتاج لاستخدام الكاميرا لتصوير المشكلة وتوثيق البلاغ</string>
+	<key>NSMicrophoneUsageDescription</key>
+	<string>نحتاج لاستخدام الميكروفون لتسجيل رسالة صوتية اختيارية مع البلاغ</string>
 
 	<key>NSLocationWhenInUseUsageDescription</key>
 	<string>نحتاج للوصول لموقعك لتحديد مكان البلاغ بدقة على الخريطة</string>

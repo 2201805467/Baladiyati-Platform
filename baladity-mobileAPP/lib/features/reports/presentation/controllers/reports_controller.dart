@@ -119,6 +119,7 @@ class ReportsController extends Notifier<ReportsState> {
           imageUrl: current.imageUrl,
           completionImageUrl: current.completionImageUrl,
           completionReport: current.completionReport,
+          voiceNoteUrl: current.voiceNoteUrl,
           status: current.status,
           createdAt: current.createdAt,
           comments: [...current.comments, comment],
@@ -173,6 +174,7 @@ class ReportsController extends Notifier<ReportsState> {
           imageUrl: current.imageUrl,
           completionImageUrl: current.completionImageUrl,
           completionReport: current.completionReport,
+          voiceNoteUrl: current.voiceNoteUrl,
           status: current.status,
           createdAt: current.createdAt,
           comments: current.comments,
@@ -245,6 +247,7 @@ class ReportsController extends Notifier<ReportsState> {
     double? longitude,
     String? locationAddress,
     String? imagePath,
+    String? voiceNotePath,
   }) async {
     state = state.copyWith(isSubmitting: true, clearError: true);
     try {
@@ -255,6 +258,7 @@ class ReportsController extends Notifier<ReportsState> {
         longitude: longitude,
         locationAddress: locationAddress,
         imagePath: imagePath,
+        voiceNotePath: voiceNotePath,
       );
       state = state.copyWith(
         isSubmitting: false,

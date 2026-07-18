@@ -1,11 +1,14 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:audioplayers/audioplayers.dart';
 import 'package:image_picker/image_picker.dart';
 import 'dart:async';
 import 'dart:io';
 import 'package:geolocator/geolocator.dart';
 import 'package:geocoding/geocoding.dart';
 import 'package:latlong2/latlong.dart';
+import 'package:path_provider/path_provider.dart';
+import 'package:record/record.dart';
 import '../../domain/entities/report_image_classification_entity.dart';
 import '../controllers/reports_controller.dart';
 import '../controllers/reports_state.dart';
@@ -26,9 +29,21 @@ class _AddReportPageState extends ConsumerState<AddReportPage> {
   String? _locationAddress;
   XFile? _imageFile;
   final ImagePicker _picker = ImagePicker();
+  final AudioRecorder _audioRecorder = AudioRecorder();
+  final AudioPlayer _voicePreviewPlayer = AudioPlayer();
+  StreamSubscription<void>? _voicePreviewCompleteSubscription;
+  bool _isRecordingVoice = false;
+  bool _isPlayingVoicePreview = false;
+  String? _voiceNotePath;
   @override
   void initState() {
     super.initState();
+    _voicePreviewCompleteSubscription = _voicePreviewPlayer.onPlayerComplete
+        .listen((_) {
+          if (mounted) {
+            setState(() => _isPlayingVoicePreview = false);
+          }
+        });
     Future.microtask(() {
       ref.read(reportsControllerProvider.notifier).clearImageClassification();
       ref.read(reportsControllerProvider.notifier).fetchCategories();
@@ -37,8 +52,96 @@ class _AddReportPageState extends ConsumerState<AddReportPage> {
 
   @override
   void dispose() {
+    _voicePreviewCompleteSubscription?.cancel();
+    _voicePreviewPlayer.dispose();
+    _audioRecorder.dispose();
     _descriptionController.dispose();
     super.dispose();
+  }
+
+  Future<void> _toggleVoiceRecording() async {
+    try {
+      if (_isRecordingVoice) {
+        final path = await _audioRecorder.stop();
+        if (!mounted) return;
+        setState(() {
+          _isRecordingVoice = false;
+          _voiceNotePath = path;
+        });
+        return;
+      }
+
+      await _voicePreviewPlayer.stop();
+      if (mounted) {
+        setState(() => _isPlayingVoicePreview = false);
+      }
+
+      final hasPermission = await _audioRecorder.hasPermission();
+      if (!hasPermission) {
+        if (!mounted) return;
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text(
+              'يرجى السماح باستخدام الميكروفون لتسجيل رسالة صوتية.',
+            ),
+          ),
+        );
+        return;
+      }
+
+      final directory = await getTemporaryDirectory();
+      final path =
+          '${directory.path}/report_voice_${DateTime.now().millisecondsSinceEpoch}.m4a';
+      await _audioRecorder.start(
+        const RecordConfig(encoder: AudioEncoder.aacLc),
+        path: path,
+      );
+      if (!mounted) return;
+      setState(() {
+        _isRecordingVoice = true;
+        _voiceNotePath = null;
+      });
+    } catch (e) {
+      if (!mounted) return;
+      setState(() => _isRecordingVoice = false);
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('تعذر تسجيل الرسالة الصوتية: $e')),
+      );
+    }
+  }
+
+  Future<void> _toggleVoicePreview() async {
+    final path = _voiceNotePath;
+    if (path == null || _isRecordingVoice) return;
+
+    try {
+      if (_isPlayingVoicePreview) {
+        await _voicePreviewPlayer.stop();
+        if (mounted) {
+          setState(() => _isPlayingVoicePreview = false);
+        }
+        return;
+      }
+
+      await _voicePreviewPlayer.play(DeviceFileSource(path));
+      if (mounted) {
+        setState(() => _isPlayingVoicePreview = true);
+      }
+    } catch (e) {
+      if (!mounted) return;
+      setState(() => _isPlayingVoicePreview = false);
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('تعذر تشغيل الرسالة الصوتية: $e')),
+      );
+    }
+  }
+
+  Future<void> _removeVoiceNote() async {
+    await _voicePreviewPlayer.stop();
+    setState(() {
+      _isPlayingVoicePreview = false;
+      _voiceNotePath = null;
+    });
   }
 
   Future<void> _pickImage(ImageSource source) async {
@@ -313,6 +416,15 @@ class _AddReportPageState extends ConsumerState<AddReportPage> {
   }
 
   Future<void> _submit() async {
+    if (_isRecordingVoice) {
+      final path = await _audioRecorder.stop();
+      if (!mounted) return;
+      setState(() {
+        _isRecordingVoice = false;
+        _voiceNotePath = path;
+      });
+    }
+
     if (!_formKey.currentState!.validate()) return;
     final success = await ref
         .read(reportsControllerProvider.notifier)
@@ -323,6 +435,7 @@ class _AddReportPageState extends ConsumerState<AddReportPage> {
           longitude: _pickedLocation?.longitude,
           locationAddress: _locationAddress,
           imagePath: _imageFile?.path,
+          voiceNotePath: _voiceNotePath,
         );
     if (!mounted) return;
     if (success) {
@@ -450,9 +563,25 @@ class _AddReportPageState extends ConsumerState<AddReportPage> {
                       borderSide: BorderSide.none,
                     ),
                   ),
-                  validator: (value) => (value == null || value.isEmpty)
-                      ? 'يرجى كتابة الوصف'
-                      : null,
+                  validator: (value) {
+                    final hasDescription = value?.trim().isNotEmpty == true;
+                    final hasVoiceNote = _voiceNotePath != null;
+                    if (!hasDescription && !hasVoiceNote) {
+                      return 'يرجى كتابة وصف أو تسجيل رسالة صوتية';
+                    }
+                    return null;
+                  },
+                ),
+                const SizedBox(height: 12),
+                _VoiceNoteRecorder(
+                  isRecording: _isRecordingVoice,
+                  hasVoiceNote: _voiceNotePath != null,
+                  isPlayingPreview: _isPlayingVoicePreview,
+                  onToggleRecording: isSubmitting
+                      ? () {}
+                      : _toggleVoiceRecording,
+                  onTogglePreview: isSubmitting ? () {} : _toggleVoicePreview,
+                  onRemove: isSubmitting ? () {} : _removeVoiceNote,
                 ),
                 const SizedBox(height: 24),
                 const Text(
@@ -509,6 +638,86 @@ class _AddReportPageState extends ConsumerState<AddReportPage> {
 }
 
 // ─── Private Widgets ──────────────────────────────────────────────────────────
+
+class _VoiceNoteRecorder extends StatelessWidget {
+  final bool isRecording;
+  final bool hasVoiceNote;
+  final bool isPlayingPreview;
+  final VoidCallback onToggleRecording;
+  final VoidCallback onTogglePreview;
+  final VoidCallback onRemove;
+
+  const _VoiceNoteRecorder({
+    required this.isRecording,
+    required this.hasVoiceNote,
+    required this.isPlayingPreview,
+    required this.onToggleRecording,
+    required this.onTogglePreview,
+    required this.onRemove,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final activeColor = isRecording ? Colors.red : const Color(0xFF2E7D32);
+
+    return Container(
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: isDark ? Colors.grey[850] : Colors.grey[100],
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(
+          color: isDark ? Colors.grey[800]! : Colors.grey[300]!,
+        ),
+      ),
+      child: Row(
+        children: [
+          Icon(
+            isRecording ? Icons.graphic_eq : Icons.mic_none,
+            color: activeColor,
+          ),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Text(
+              isRecording
+                  ? 'جاري التسجيل... اضغط إيقاف عند الانتهاء'
+                  : hasVoiceNote
+                      ? 'تم حفظ رسالة صوتية مع البلاغ'
+                      : 'رسالة صوتية اختيارية بدلاً من كتابة الوصف',
+              style: TextStyle(
+                color: Theme.of(context).textTheme.bodyMedium?.color,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          ),
+          if (hasVoiceNote && !isRecording) ...[
+            IconButton(
+              tooltip: isPlayingPreview ? 'إيقاف الاستماع' : 'استماع للتسجيل',
+              onPressed: onTogglePreview,
+              icon: Icon(
+                isPlayingPreview
+                    ? Icons.stop_circle_outlined
+                    : Icons.play_circle_outline,
+                color: activeColor,
+              ),
+            ),
+            IconButton(
+              tooltip: 'حذف التسجيل',
+              onPressed: onRemove,
+              icon: const Icon(Icons.delete_outline, color: Colors.red),
+            ),
+          ],
+          TextButton.icon(
+            onPressed: onToggleRecording,
+            icon: Icon(isRecording ? Icons.stop : Icons.mic),
+            label: Text(isRecording ? 'إيقاف' : 'تسجيل'),
+            style: TextButton.styleFrom(foregroundColor: activeColor),
+          ),
+        ],
+      ),
+    );
+  }
+}
 
 class _ImageUploadPlaceholder extends StatelessWidget {
   final Color primaryColor;

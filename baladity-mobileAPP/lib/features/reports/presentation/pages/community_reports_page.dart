@@ -791,6 +791,7 @@ ReportEntity _copyReport(
     imageUrl: current.imageUrl,
     completionImageUrl: current.completionImageUrl,
     completionReport: current.completionReport,
+    voiceNoteUrl: current.voiceNoteUrl,
     status: current.status,
     createdAt: current.createdAt,
     comments: comments ?? current.comments,
