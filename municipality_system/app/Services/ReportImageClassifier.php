@@ -24,6 +24,7 @@ class ReportImageClassifier
             return [
                 'provider' => 'none',
                 'suggested_category' => null,
+                'suggested_description' => null,
                 'confidence' => 0,
                 'needs_manual_review' => true,
                 'alternatives' => [],
@@ -57,9 +58,10 @@ class ReportImageClassifier
             ->implode("\n");
 
         $prompt = "You classify municipality service report images.\n"
-            ."Return only strict JSON with: category_id, confidence, reasoning.\n"
+            ."Return only strict JSON with: category_id, confidence, reasoning, suggested_description.\n"
             ."Choose exactly one category_id from this list, or null if unclear.\n"
             ."Confidence must be 0-100.\n\n"
+            ."suggested_description must be a short Arabic sentence for the citizen report description field, max 120 characters, describing the visible problem without inventing details.\n\n"
             ."Categories:\n{$categoryLines}";
 
         $mimeType = $image->getMimeType() ?: 'image/jpeg';
@@ -146,7 +148,8 @@ class ReportImageClassifier
             category: $category,
             confidence: $category ? $confidence : 0,
             alternatives: $this->alternatives($categories, $category?->id),
-            reasoning: $decoded['reasoning'] ?? null
+            reasoning: $decoded['reasoning'] ?? null,
+            suggestedDescription: $decoded['suggested_description'] ?? null
         );
     }
 
@@ -174,7 +177,10 @@ class ReportImageClassifier
             alternatives: $this->alternatives($categories, $category?->id),
             reasoning: $category
                 ? 'Matched local category keywords from the uploaded file metadata.'
-                : 'No confident local keyword match. Manual category selection is recommended.'
+                : 'No confident local keyword match. Manual category selection is recommended.',
+            suggestedDescription: $category
+                ? 'توجد مشكلة مرتبطة بتصنيف '.$category->category_name.' وتحتاج إلى معالجة من البلدية.'
+                : null
         );
 
         if ($this->providerFailureReason && app()->hasDebugModeEnabled()) {
@@ -184,7 +190,14 @@ class ReportImageClassifier
         return $payload;
     }
 
-    private function resultPayload(string $provider, ?Category $category, int $confidence, array $alternatives, ?string $reasoning): array
+    private function resultPayload(
+        string $provider,
+        ?Category $category,
+        int $confidence,
+        array $alternatives,
+        ?string $reasoning,
+        ?string $suggestedDescription = null
+    ): array
     {
         return [
             'provider' => $provider,
@@ -196,6 +209,7 @@ class ReportImageClassifier
                     'dept_name' => $category->department->dept_name,
                 ] : null,
             ] : null,
+            'suggested_description' => $suggestedDescription ? Str::limit(trim($suggestedDescription), 180, '') : null,
             'confidence' => $confidence,
             'needs_manual_review' => ! $category || $confidence < self::MANUAL_REVIEW_THRESHOLD,
             'manual_review_threshold' => self::MANUAL_REVIEW_THRESHOLD,

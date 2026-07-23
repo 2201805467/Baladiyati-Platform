@@ -6,6 +6,7 @@ class ReportImageClassificationEntity {
   final bool needsManualReview;
   final String provider;
   final String? reasoning;
+  final String? suggestedDescription;
   final String? providerFailureReason;
 
   const ReportImageClassificationEntity({
@@ -16,6 +17,7 @@ class ReportImageClassificationEntity {
     required this.needsManualReview,
     required this.provider,
     this.reasoning,
+    this.suggestedDescription,
     this.providerFailureReason,
   });
 

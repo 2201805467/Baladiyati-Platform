@@ -181,6 +181,13 @@ class _AddReportPageState extends ConsumerState<AddReportPage> {
         'matchedCategoryId=$matchedCategoryId',
       );
 
+      final suggestedDescription = classification.suggestedDescription?.trim();
+      if (_descriptionController.text.trim().isEmpty &&
+          suggestedDescription != null &&
+          suggestedDescription.isNotEmpty) {
+        _descriptionController.text = suggestedDescription;
+      }
+
       if (classification.hasConfidentCategory && matchedCategoryId != null) {
         setState(() => _selectedCategory = matchedCategoryId.toString());
         ScaffoldMessenger.of(context).showSnackBar(

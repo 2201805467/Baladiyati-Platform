@@ -9,6 +9,7 @@ class ReportImageClassificationModel extends ReportImageClassificationEntity {
     required super.needsManualReview,
     required super.provider,
     super.reasoning,
+    super.suggestedDescription,
     super.providerFailureReason,
   });
 
@@ -46,6 +47,9 @@ class ReportImageClassificationModel extends ReportImageClassificationEntity {
       ),
       provider: classification['provider']?.toString() ?? 'unknown',
       reasoning: classification['reasoning']?.toString(),
+      suggestedDescription:
+          classification['suggested_description']?.toString() ??
+          classification['suggestedDescription']?.toString(),
       providerFailureReason:
           classification['provider_failure_reason']?.toString() ??
           classification['gemini_failure_reason']?.toString() ??
