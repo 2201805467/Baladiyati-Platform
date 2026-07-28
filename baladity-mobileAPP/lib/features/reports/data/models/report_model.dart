@@ -12,7 +12,6 @@ class ReportModel extends ReportEntity {
     super.imageUrl,
     super.completionImageUrl,
     super.completionReport,
-    super.voiceNoteUrl,
     super.status,
     super.createdAt,
     super.comments,
@@ -47,7 +46,6 @@ class ReportModel extends ReportEntity {
       completionImageUrl:
           json['completion_image_url']?.toString() ?? afterImage,
       completionReport: json['completion_report']?.toString(),
-      voiceNoteUrl: json['voice_note_url']?.toString(),
       status: json['status']?.toString() ?? 'قيد الانتظار',
       createdAt: json['created_at'] != null
           ? DateTime.tryParse(json['created_at'].toString())
@@ -76,7 +74,6 @@ class ReportModel extends ReportEntity {
     if (imageUrl != null) 'image_url': imageUrl,
     if (completionImageUrl != null) 'completion_image_url': completionImageUrl,
     if (completionReport != null) 'completion_report': completionReport,
-    if (voiceNoteUrl != null) 'voice_note_url': voiceNoteUrl,
     'status': status,
     if (ratingStars != null) 'rating_stars': ratingStars,
     if (ratingComment != null) 'rating_comment': ratingComment,

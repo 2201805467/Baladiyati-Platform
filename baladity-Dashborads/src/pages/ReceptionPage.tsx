@@ -36,7 +36,6 @@ interface Report {
   report_number?: string;
   title?: string;
   description?: string | null;
-  voice_note_url?: string | null;
   latitude?: string | number | null;
   longitude?: string | number | null;
   status: string;
@@ -417,7 +416,6 @@ export default function ReceptionPage() {
                         <span>{departmentName(report.department)}</span>
                         <span className="text-emerald-400">👍 {report.upvotes_count ?? 0}</span>
                         <span className="text-red-400">👎 {report.downvotes_count ?? 0}</span>
-                        {report.voice_note_url && <span className="text-cyan-300">رسالة صوتية</span>}
                       </div>
                     </div>
                     <div className="flex flex-col gap-1 items-end">
@@ -461,13 +459,6 @@ export default function ReceptionPage() {
                   </div>
                 </div>
                 <p className="text-sm leading-7">{selectedReport.description || "-"}</p>
-
-                {selectedReport.voice_note_url && (
-                  <div className="border-t border-slate-800 pt-4">
-                    <h3 className="font-bold mb-2">الرسالة الصوتية</h3>
-                    <audio controls src={assetUrl(selectedReport.voice_note_url)} className="w-full" />
-                  </div>
-                )}
 
                 <div className="border-t border-slate-800 pt-4">
                   <h3 className="font-bold mb-3">التعليقات والمناقشة</h3>

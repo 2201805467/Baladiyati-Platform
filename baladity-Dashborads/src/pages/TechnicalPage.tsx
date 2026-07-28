@@ -28,7 +28,6 @@ interface Report {
   report_number?: string;
   title?: string;
   description?: string | null;
-  voice_note_url?: string | null;
   latitude?: string | number | null;
   longitude?: string | number | null;
   status: string;
@@ -282,13 +281,6 @@ export default function TechnicalPage() {
                 </div>
               </div>
               <p className="text-sm leading-7">{selected.description || "-"}</p>
-
-              {selected.voice_note_url && (
-                <div className="border-t border-slate-800 pt-4">
-                  <h3 className="font-bold mb-2">الرسالة الصوتية</h3>
-                  <audio controls src={assetUrl(selected.voice_note_url)} className="w-full" />
-                </div>
-              )}
 
               {selected.status !== "closed" && (
                 <div className="space-y-2 border-t border-slate-800 pt-4">

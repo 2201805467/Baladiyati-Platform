@@ -18,7 +18,6 @@ abstract class ReportsRepository {
     double? longitude,
     String? locationAddress,
     String? imagePath,
-    String? voiceNotePath,
   });
   Future<ReportCommentEntity> addComment({
     required int reportId,

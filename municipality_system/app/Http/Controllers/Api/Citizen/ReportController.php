@@ -87,12 +87,6 @@ class ReportController extends Controller
             'ai_suggested_category' => ['nullable', 'string', 'max:100'],
             'duplicate_action' => ['nullable', Rule::in(['join', 'independent'])],
             'parent_report_id' => ['required_if:duplicate_action,join', 'nullable', 'exists:reports,id'],
-            'voice_note' => [
-                'nullable',
-                'file',
-                'mimetypes:audio/mpeg,audio/mp3,audio/wav,audio/x-wav,audio/mp4,audio/x-m4a,audio/aac,audio/ogg,audio/webm,video/mp4,video/webm,application/octet-stream',
-                'max:10240',
-            ],
             'images' => ['required', 'array', 'min:1', 'max:5'],
             'images.*' => ['image', 'max:5120'],
         ]);
@@ -151,13 +145,6 @@ class ReportController extends Controller
                     'image_url' => Storage::url($path),
                     'image_type' => 'before',
                     'uploaded_by' => $user->id,
-                ]);
-            }
-
-            if ($request->hasFile('voice_note')) {
-                $path = $request->file('voice_note')->store('reports/'.$report->id.'/voice', 'public');
-                $report->update([
-                    'voice_note_url' => Storage::url($path),
                 ]);
             }
 

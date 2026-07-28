@@ -34,7 +34,6 @@ class ReportsRepositoryImpl implements ReportsRepository {
     double? longitude,
     String? locationAddress,
     String? imagePath,
-    String? voiceNotePath,
   }) => _dataSource.createReport(
     category: category,
     description: description,
@@ -42,7 +41,6 @@ class ReportsRepositoryImpl implements ReportsRepository {
     longitude: longitude,
     locationAddress: locationAddress,
     imagePath: imagePath,
-    voiceNotePath: voiceNotePath,
   );
 
   @override

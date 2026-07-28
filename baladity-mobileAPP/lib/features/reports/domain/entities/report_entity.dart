@@ -10,7 +10,6 @@ class ReportEntity {
   final String? imageUrl;
   final String? completionImageUrl;
   final String? completionReport;
-  final String? voiceNoteUrl;
   final String status;
   final DateTime? createdAt;
   final List<ReportCommentEntity> comments;
@@ -31,7 +30,6 @@ class ReportEntity {
     this.imageUrl,
     this.completionImageUrl,
     this.completionReport,
-    this.voiceNoteUrl,
     this.status = 'قيد الانتظار',
     this.createdAt,
     this.comments = const [],

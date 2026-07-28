@@ -20,7 +20,6 @@ abstract class ReportsRemoteDataSource {
     double? longitude,
     String? locationAddress,
     String? imagePath,
-    String? voiceNotePath,
   });
   Future<ReportCommentModel> addComment({
     required int reportId,
@@ -108,7 +107,6 @@ class ReportsRemoteDataSourceImpl implements ReportsRemoteDataSource {
     double? longitude,
     String? locationAddress,
     String? imagePath,
-    String? voiceNotePath,
   }) async {
     try {
       final categoryId = int.tryParse(category) ?? 1;
@@ -122,11 +120,6 @@ class ReportsRemoteDataSourceImpl implements ReportsRemoteDataSource {
           'location_address': locationAddress,
         if (imagePath case final String p?)
           'images[]': await MultipartFile.fromFile(p, filename: 'report.jpg'),
-        if (voiceNotePath case final String p?)
-          'voice_note': await MultipartFile.fromFile(
-            p,
-            filename: 'voice_note.m4a',
-          ),
       });
 
       final res = await _dio.post(ApiConstants.reports, data: formData);

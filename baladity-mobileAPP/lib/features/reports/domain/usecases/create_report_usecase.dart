@@ -12,7 +12,6 @@ class CreateReportUseCase {
     double? longitude,
     String? locationAddress,
     String? imagePath,
-    String? voiceNotePath,
   }) =>
       _repository.createReport(
         category: category,
@@ -21,6 +20,5 @@ class CreateReportUseCase {
         longitude: longitude,
         locationAddress: locationAddress,
         imagePath: imagePath,
-        voiceNotePath: voiceNotePath,
       );
 }
