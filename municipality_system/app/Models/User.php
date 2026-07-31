@@ -45,12 +45,6 @@ class User extends Authenticatable
         return $this->hasMany(Report::class, 'citizen_id');
     }
 
-    // المواطن يحفظ العديد من مسودات البلاغات
-    public function drafts(): HasMany
-    {
-        return $this->hasMany(DraftReport::class, 'citizen_id');
-    }
-
     // المواطن يقدم العديد من المقترحات
     public function suggestions(): HasMany
     {

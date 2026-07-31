@@ -23,10 +23,4 @@ class Category extends Model
     {
         return $this->hasMany(Report::class, 'category_id');
     }
-
-    // التصنيف قد يربط بالعديد من مسودات البلاغات
-    public function draftReports(): HasMany
-    {
-        return $this->hasMany(DraftReport::class, 'category_id');
-    }
 }
