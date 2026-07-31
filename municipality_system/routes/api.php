@@ -3,6 +3,7 @@
 use App\Http\Controllers\Api\AuthController;
 use App\Http\Controllers\Api\Admin\AnalyticsController as AdminAnalyticsController;
 use App\Http\Controllers\Api\Admin\CategoryController as AdminCategoryController;
+use App\Http\Controllers\Api\Admin\CommunityInitiativeController as AdminCommunityInitiativeController;
 use App\Http\Controllers\Api\Admin\DepartmentController as AdminDepartmentController;
 use App\Http\Controllers\Api\Admin\EmergencyContactController as AdminEmergencyContactController;
 use App\Http\Controllers\Api\Admin\PermissionController as AdminPermissionController;
@@ -13,6 +14,7 @@ use App\Http\Controllers\Api\Admin\SecurityLogController as AdminSecurityLogCont
 use App\Http\Controllers\Api\Admin\UserController as AdminUserController;
 use App\Http\Controllers\Api\Citizen\NotificationController as CitizenNotificationController;
 use App\Http\Controllers\Api\Citizen\CommunityReportController as CitizenCommunityReportController;
+use App\Http\Controllers\Api\Citizen\CommunityInitiativeController as CitizenCommunityInitiativeController;
 use App\Http\Controllers\Api\Citizen\PublicInfoController as CitizenPublicInfoController;
 use App\Http\Controllers\Api\Citizen\ReportController as CitizenReportController;
 use App\Http\Controllers\Api\Citizen\SuggestionController as CitizenSuggestionController;
@@ -76,6 +78,12 @@ Route::middleware(['auth:sanctum', 'role:citizen'])
         Route::get('/projects', [CitizenPublicInfoController::class, 'projects'])->name('projects.index');
         Route::get('/facilities', [CitizenPublicInfoController::class, 'facilities'])->name('facilities.index');
         Route::get('/emergency-contacts', [CitizenPublicInfoController::class, 'emergencyContacts'])->name('emergency-contacts.index');
+
+        Route::get('/initiatives', [CitizenCommunityInitiativeController::class, 'index'])->name('initiatives.index');
+        Route::get('/initiatives/{initiative}', [CitizenCommunityInitiativeController::class, 'show'])->name('initiatives.show');
+        Route::post('/initiatives/{initiative}/register', [CitizenCommunityInitiativeController::class, 'register'])->name('initiatives.register');
+        Route::delete('/initiatives/{initiative}/register', [CitizenCommunityInitiativeController::class, 'cancelRegistration'])->name('initiatives.register.cancel');
+        Route::post('/initiatives/{initiative}/attendance', [CitizenCommunityInitiativeController::class, 'confirmAttendance'])->name('initiatives.attendance.confirm');
     });
 
 Route::middleware(['auth:sanctum', 'role:admin'])
@@ -119,6 +127,14 @@ Route::middleware(['auth:sanctum', 'role:admin'])
         Route::post('/projects', [AdminProjectController::class, 'store'])->middleware('permission:manage_projects')->name('projects.store');
         Route::put('/projects/{project}', [AdminProjectController::class, 'update'])->middleware('permission:manage_projects')->name('projects.update');
 
+        Route::get('/initiatives', [AdminCommunityInitiativeController::class, 'index'])->middleware('permission:manage_initiatives')->name('initiatives.index');
+        Route::post('/initiatives', [AdminCommunityInitiativeController::class, 'store'])->middleware('permission:manage_initiatives')->name('initiatives.store');
+        Route::get('/initiatives/{initiative}', [AdminCommunityInitiativeController::class, 'show'])->middleware('permission:manage_initiatives')->name('initiatives.show');
+        Route::patch('/initiatives/{initiative}/publish', [AdminCommunityInitiativeController::class, 'publish'])->middleware('permission:manage_initiatives')->name('initiatives.publish');
+        Route::patch('/initiatives/{initiative}/close-registration', [AdminCommunityInitiativeController::class, 'closeRegistration'])->middleware('permission:manage_initiatives')->name('initiatives.close-registration');
+        Route::patch('/initiatives/{initiative}/cancel', [AdminCommunityInitiativeController::class, 'cancel'])->middleware('permission:manage_initiatives')->name('initiatives.cancel');
+        Route::post('/initiatives/{initiative}/complete', [AdminCommunityInitiativeController::class, 'complete'])->middleware('permission:manage_initiatives')->name('initiatives.complete');
+
         Route::get('/analytics/reports', [AdminAnalyticsController::class, 'reports'])->middleware('permission:view_analytics')->name('analytics.reports');
         Route::get('/analytics/departments', [AdminAnalyticsController::class, 'departments'])->middleware('permission:view_analytics')->name('analytics.departments');
         Route::get('/analytics/departments/{department}', [AdminAnalyticsController::class, 'departmentPerformance'])->middleware('permission:view_analytics')->name('analytics.departments.show');
@@ -152,6 +168,16 @@ Route::middleware(['auth:sanctum', 'role:reception'])
                 Route::get('/projects', [AdminProjectController::class, 'index'])->name('projects.index');
                 Route::post('/projects', [AdminProjectController::class, 'store'])->name('projects.store');
                 Route::put('/projects/{project}', [AdminProjectController::class, 'update'])->name('projects.update');
+            });
+
+            Route::middleware('permission:manage_initiatives')->group(function () {
+                Route::get('/initiatives', [AdminCommunityInitiativeController::class, 'index'])->name('initiatives.index');
+                Route::post('/initiatives', [AdminCommunityInitiativeController::class, 'store'])->name('initiatives.store');
+                Route::get('/initiatives/{initiative}', [AdminCommunityInitiativeController::class, 'show'])->name('initiatives.show');
+                Route::patch('/initiatives/{initiative}/publish', [AdminCommunityInitiativeController::class, 'publish'])->name('initiatives.publish');
+                Route::patch('/initiatives/{initiative}/close-registration', [AdminCommunityInitiativeController::class, 'closeRegistration'])->name('initiatives.close-registration');
+                Route::patch('/initiatives/{initiative}/cancel', [AdminCommunityInitiativeController::class, 'cancel'])->name('initiatives.cancel');
+                Route::post('/initiatives/{initiative}/complete', [AdminCommunityInitiativeController::class, 'complete'])->name('initiatives.complete');
             });
         });
 

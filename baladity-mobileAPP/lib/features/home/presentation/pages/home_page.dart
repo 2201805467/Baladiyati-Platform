@@ -18,6 +18,7 @@ import '../../../proposals/presentation/pages/suggest_service_page.dart';
 import '../../../proposals/presentation/pages/citizen_proposals_page.dart';
 import '../../../proposals/presentation/pages/proposal_details_page.dart';
 import '../../../facilities/presentation/pages/public_facilities_page.dart';
+import '../../../initiatives/presentation/pages/community_initiatives_page.dart';
 import '../../../projects/presentation/pages/municipal_projects_page.dart';
 
 class HomePage extends ConsumerStatefulWidget {
@@ -156,6 +157,13 @@ class _HomePageState extends ConsumerState<HomePage> {
           context,
         ).push(MaterialPageRoute(builder: (_) => const CitizenProposalsPage()));
       }
+      return;
+    }
+
+    if (relatedType.contains('initiative')) {
+      Navigator.of(
+        context,
+      ).push(MaterialPageRoute(builder: (_) => const CommunityInitiativesPage()));
       return;
     }
 
@@ -320,7 +328,7 @@ class _HomePageState extends ConsumerState<HomePage> {
         : 'مستخدم';
 
     return DefaultTabController(
-      length: 5,
+      length: 6,
       child: Directionality(
         textDirection: TextDirection.rtl,
         child: Scaffold(
@@ -372,6 +380,7 @@ class _HomePageState extends ConsumerState<HomePage> {
                 Tab(text: 'الرئيسية'),
                 Tab(text: 'مرافق البلدية'),
                 Tab(text: 'مشاريع البلدية'),
+                Tab(text: 'المبادرات'),
                 Tab(text: 'مقترحات المواطنين'),
                 Tab(text: 'أرقام الطوارئ'),
               ],
@@ -386,6 +395,7 @@ class _HomePageState extends ConsumerState<HomePage> {
               ),
               const PublicFacilitiesPage(),
               const MunicipalProjectsPage(),
+              const CommunityInitiativesPage(showAppBar: false),
               const CitizenProposalsPage(),
               const EmergencyNumbersView(),
             ],
@@ -600,6 +610,17 @@ class _ActionGrid extends StatelessWidget {
           onTap: () => Navigator.push(
             context,
             MaterialPageRoute(builder: (context) => const SuggestServicePage()),
+          ),
+        ),
+        _actionItem(
+          context,
+          Icons.volunteer_activism_outlined,
+          'المبادرات',
+          onTap: () => Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (context) => const CommunityInitiativesPage(),
+            ),
           ),
         ),
         _actionItem(

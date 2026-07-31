@@ -18,6 +18,7 @@ class PermissionController extends Controller
             'manage_categories',
             'manage_public_facilities',
             'manage_projects',
+            'manage_initiatives',
             'manage_permissions',
             'view_analytics',
             'review_reports',
@@ -35,6 +36,7 @@ class PermissionController extends Controller
             'review_suggestions',
             'manage_public_facilities',
             'manage_projects',
+            'manage_initiatives',
         ],
         'department' => [
             'process_department_reports',

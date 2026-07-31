@@ -102,6 +102,16 @@ class User extends Authenticatable
         return $this->hasMany(EmergencyContact::class, 'added_by');
     }
 
+    public function createdInitiatives(): HasMany
+    {
+        return $this->hasMany(CommunityInitiative::class, 'created_by');
+    }
+
+    public function initiativeRegistrations(): HasMany
+    {
+        return $this->hasMany(InitiativeRegistration::class, 'citizen_id');
+    }
+
     // المستخدم يستقبل العديد من الإشعارات
     public function notifications(): HasMany
     {

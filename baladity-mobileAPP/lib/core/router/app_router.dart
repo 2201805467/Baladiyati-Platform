@@ -9,6 +9,7 @@ import '../../features/auth/presentation/pages/otp_verification_page.dart';
 import '../../features/auth/presentation/pages/registration_page.dart';
 import '../../features/auth/presentation/pages/reset_password_page.dart';
 import '../../features/home/presentation/pages/home_page.dart';
+import '../../features/initiatives/presentation/pages/community_initiatives_page.dart';
 import '../../features/proposals/domain/entities/proposal_entity.dart';
 import '../../features/proposals/presentation/pages/proposal_details_page.dart';
 import '../../features/proposals/presentation/pages/suggest_service_page.dart';
@@ -91,6 +92,10 @@ final goRouterProvider = Provider<GoRouter>((ref) {
       GoRoute(
         path: AppRoutes.emergency,
         builder: (context, state) => const EmergencyNumbersPage(),
+      ),
+      GoRoute(
+        path: AppRoutes.initiatives,
+        builder: (context, state) => const CommunityInitiativesPage(),
       ),
     ],
   );

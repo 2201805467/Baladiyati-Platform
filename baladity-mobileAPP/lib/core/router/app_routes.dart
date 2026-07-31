@@ -19,6 +19,7 @@ abstract class AppRoutes {
 
   // ─── Projects ─────────────────────────────────────────────────────────────
   static const String projects = '/projects';
+  static const String initiatives = '/initiatives';
 
   // ─── Profile ──────────────────────────────────────────────────────────────
   static const String profile = '/profile';

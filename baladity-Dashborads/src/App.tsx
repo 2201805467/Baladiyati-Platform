@@ -13,6 +13,7 @@ import CategoriesPage from "./pages/CategoriesPage";
 import NotificationsPage from "./pages/NotificationsPage";
 import ReportsMapPage from "./pages/ReportsMapPage";
 import PermissionsSecurityPage from "./pages/PermissionsSecurityPage";
+import InitiativesPage from "./pages/InitiativesPage";
 
 function ProtectedRoute({ children, roles }: { children: React.ReactNode; roles?: string[] }) {
   const { user } = useAuth();
@@ -46,6 +47,7 @@ export default function App() {
         <Route path="notifications" element={<ProtectedRoute roles={["reception", "department"]}><NotificationsPage /></ProtectedRoute>} />
         <Route path="map" element={<ProtectedRoute roles={["reception", "department", "admin"]}><ReportsMapPage /></ProtectedRoute>} />
         <Route path="content" element={<ProtectedRoute roles={["admin", "reception"]}><ContentPage /></ProtectedRoute>} />
+        <Route path="initiatives" element={<ProtectedRoute roles={["admin", "reception"]}><InitiativesPage /></ProtectedRoute>} />
       </Route>
       <Route path="/" element={<Navigate to="/admin" replace />} />
       <Route path="*" element={<Navigate to="/admin" replace />} />

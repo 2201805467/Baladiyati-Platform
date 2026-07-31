@@ -48,6 +48,7 @@ abstract class ApiConstants {
   // ─── Projects ────────────────────────────────────────────────────────────────
   static const String projects = '/citizen/projects';
   static const String emergencyContacts = '/citizen/emergency-contacts';
+  static const String initiatives = '/citizen/initiatives';
 
   // ─── Profile ─────────────────────────────────────────────────────────────────
   static const String userProfile = '/auth/me';

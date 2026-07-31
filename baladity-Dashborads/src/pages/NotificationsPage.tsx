@@ -42,6 +42,10 @@ const notificationLabel = (type: string) => {
     citizen_report_comment_reception: "تعليق مواطن",
     suggestion_status: "حالة مقترح",
     suggestion_implementation: "تنفيذ مقترح",
+    initiative_capacity_full: "اكتمال عدد المتطوعين",
+    initiative_cancelled: "إلغاء مبادرة",
+    initiative_completed: "إنهاء مبادرة",
+    initiative_published: "مبادرة جديدة",
   };
 
   return labels[type] || type;
@@ -60,6 +64,10 @@ const relatedPath = (notification: Notification, role?: string | null) => {
 
   if (relatedType.includes("Suggestion")) {
     return role === "reception" ? "/admin/reception" : "/admin/notifications";
+  }
+
+  if (relatedType.includes("CommunityInitiative")) {
+    return "/admin/initiatives";
   }
 
   return "/admin/notifications";
