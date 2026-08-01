@@ -290,6 +290,21 @@ export default function InitiativesPage() {
     }
   };
 
+  const deleteInitiative = async () => {
+    if (!selected) return;
+    if (!["completed", "cancelled"].includes(selected.status)) return;
+
+    if (!window.confirm(`هل تريد حذف مبادرة "${selected.title}" نهائياً؟ لا يمكن التراجع عن هذا الإجراء.`)) return;
+
+    try {
+      await api.delete(`${contentBasePath}/initiatives/${selected.id}`);
+      setSelected(null);
+      await loadInitiatives();
+    } catch (error: any) {
+      alert(error.message);
+    }
+  };
+
   const toggleRegistration = async () => {
     if (!selected) return;
     const path = selected.status === "registration_closed" ? "publish" : "close-registration";
@@ -473,6 +488,11 @@ export default function InitiativesPage() {
                   <input type="file" accept="image/*" onChange={(event) => setCompletionImage(event.target.files?.[0] || null)} className="text-sm text-slate-300" />
                   <button onClick={completeInitiative} className="px-3 py-2 bg-emerald-700 rounded-lg text-sm">إنهاء المبادرة</button>
                 </div>
+              )}
+              {["completed", "cancelled"].includes(selected.status) && (
+                <button onClick={deleteInitiative} className="px-3 py-2 bg-red-800 rounded-lg text-sm">
+                  حذف المبادرة نهائياً
+                </button>
               )}
             </div>
 

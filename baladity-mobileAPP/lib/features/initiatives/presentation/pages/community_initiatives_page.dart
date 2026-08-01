@@ -109,7 +109,7 @@ class _CommunityInitiativesPageState
                   Expanded(
                     child: SegmentedButton<String>(
                       segments: const [
-                        ButtonSegment(value: 'available', label: Text('المتاحة')),
+                        ButtonSegment(value: 'available', label: Text('جميع المبادرات')),
                         ButtonSegment(value: 'my', label: Text('مبادراتي')),
                       ],
                       selected: {_scope},
@@ -342,6 +342,14 @@ class _InitiativeDetailsPageState
                 Text('المتطلبات: ${_initiative.requirements}'),
               ],
               const SizedBox(height: 16),
+              if (_initiative.scheduleStatusText != null)
+                Padding(
+                  padding: const EdgeInsets.only(bottom: 8),
+                  child: _InfoRow(
+                    icon: Icons.timer_outlined,
+                    text: _initiative.scheduleStatusText!,
+                  ),
+                ),
               _InfoRow(icon: Icons.calendar_today_outlined, text: _initiative.dateText),
               _InfoRow(icon: Icons.group_outlined, text: _initiative.capacityText),
               _InfoRow(icon: Icons.location_on_outlined, text: 'نطاق الحضور ${_initiative.radiusMeters} متر'),
@@ -460,6 +468,13 @@ class _InitiativeCard extends StatelessWidget {
                     ],
                   ),
                   const SizedBox(height: 8),
+                  if (initiative.scheduleStatusText != null) ...[
+                    Text(
+                      initiative.scheduleStatusText!,
+                      style: TextStyle(fontSize: 12, color: primaryGreen, fontWeight: FontWeight.w700),
+                    ),
+                    const SizedBox(height: 6),
+                  ],
                   Text(initiative.dateText, style: const TextStyle(fontSize: 12, color: Colors.grey)),
                   const SizedBox(height: 10),
                   Row(
@@ -637,6 +652,32 @@ class _Initiative {
   double? get capacityProgress {
     if (maxCapacity == null || maxCapacity == 0) return null;
     return (registeredCount / maxCapacity!).clamp(0, 1).toDouble();
+  }
+
+  String? get scheduleStatusText {
+    if (status != 'published' || startsAt == null) return null;
+
+    final now = DateTime.now();
+    final end = endsAt;
+    if ((now.isAtSameMomentAs(startsAt!) || now.isAfter(startsAt!)) &&
+        (end == null || now.isBefore(end) || now.isAtSameMomentAs(end))) {
+      return 'جارية الآن';
+    }
+
+    final remaining = startsAt!.difference(now);
+    if (remaining.isNegative || remaining.inSeconds <= 0) return null;
+
+    final days = remaining.inDays;
+    final hours = remaining.inHours.remainder(24);
+    final minutes = remaining.inMinutes.remainder(60);
+
+    if (days > 0) {
+      return 'يبدأ بعد $days يوم و $hours ساعة';
+    }
+    if (hours > 0) {
+      return 'يبدأ بعد $hours ساعة و $minutes دقيقة';
+    }
+    return 'يبدأ بعد $minutes دقيقة';
   }
 
   String get dateText {

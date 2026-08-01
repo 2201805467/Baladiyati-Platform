@@ -136,6 +136,7 @@ Route::middleware(['auth:sanctum', 'role:admin'])
         Route::patch('/initiatives/{initiative}/close-registration', [AdminCommunityInitiativeController::class, 'closeRegistration'])->middleware('permission:manage_initiatives')->name('initiatives.close-registration');
         Route::patch('/initiatives/{initiative}/cancel', [AdminCommunityInitiativeController::class, 'cancel'])->middleware('permission:manage_initiatives')->name('initiatives.cancel');
         Route::post('/initiatives/{initiative}/complete', [AdminCommunityInitiativeController::class, 'complete'])->middleware('permission:manage_initiatives')->name('initiatives.complete');
+        Route::delete('/initiatives/{initiative}', [AdminCommunityInitiativeController::class, 'destroy'])->middleware('permission:manage_initiatives')->name('initiatives.destroy');
 
         Route::get('/analytics/reports', [AdminAnalyticsController::class, 'reports'])->middleware('permission:view_analytics')->name('analytics.reports');
         Route::get('/analytics/departments', [AdminAnalyticsController::class, 'departments'])->middleware('permission:view_analytics')->name('analytics.departments');
@@ -182,6 +183,7 @@ Route::middleware(['auth:sanctum', 'role:reception'])
                 Route::patch('/initiatives/{initiative}/close-registration', [AdminCommunityInitiativeController::class, 'closeRegistration'])->name('initiatives.close-registration');
                 Route::patch('/initiatives/{initiative}/cancel', [AdminCommunityInitiativeController::class, 'cancel'])->name('initiatives.cancel');
                 Route::post('/initiatives/{initiative}/complete', [AdminCommunityInitiativeController::class, 'complete'])->name('initiatives.complete');
+                Route::delete('/initiatives/{initiative}', [AdminCommunityInitiativeController::class, 'destroy'])->name('initiatives.destroy');
             });
         });
 

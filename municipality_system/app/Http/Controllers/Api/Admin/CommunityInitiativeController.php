@@ -206,6 +206,23 @@ class CommunityInitiativeController extends Controller
         ]);
     }
 
+    public function destroy(CommunityInitiative $initiative): JsonResponse
+    {
+        if (! in_array($initiative->status, ['completed', 'cancelled'], true)) {
+            return response()->json([
+                'message' => 'Only completed or cancelled initiatives can be deleted.',
+            ], 422);
+        }
+
+        $this->deletePublicStorageFile($initiative->cover_image_url);
+        $this->deletePublicStorageFile($initiative->completion_image_url);
+        $initiative->delete();
+
+        return response()->json([
+            'message' => 'Initiative deleted successfully.',
+        ]);
+    }
+
     public function blockedCitizens(Request $request): JsonResponse
     {
         $this->volunteerBlocker->refreshAllCitizens();
@@ -308,6 +325,8 @@ class CommunityInitiativeController extends Controller
 
         return [
             ...$initiative->toArray(),
+            'starts_at' => $initiative->starts_at?->format('Y-m-d\TH:i:s'),
+            'ends_at' => $initiative->ends_at?->format('Y-m-d\TH:i:s'),
             'registered_count' => $registeredCount,
             'attendees_count' => (int) ($initiative->attendees_count ?? $initiative->attendees()->count()),
             'is_full' => $maxCapacity !== null && $registeredCount >= $maxCapacity,
@@ -339,5 +358,14 @@ class CommunityInitiativeController extends Controller
             'missed_completed_initiatives_count' => $this->volunteerBlocker->missedCompletedInitiativesCount($citizen),
             'attended_completed_initiatives_count' => $this->volunteerBlocker->attendedCompletedInitiativesCount($citizen),
         ];
+    }
+
+    private function deletePublicStorageFile(?string $url): void
+    {
+        if (! $url || ! str_starts_with($url, '/storage/')) {
+            return;
+        }
+
+        Storage::disk('public')->delete(substr($url, strlen('/storage/')));
     }
 }

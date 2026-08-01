@@ -31,8 +31,6 @@ class CommunityInitiativeController extends Controller
                 $query->whereHas('registrations', fn ($query) => $query
                     ->where('citizen_id', $userId)
                     ->where('status', 'registered'));
-            }, function ($query) {
-                $query->whereIn('status', ['published', 'registration_closed']);
             })
             ->when($request->filled('status'), fn ($query) => $query->where('status', $request->string('status')))
             ->when($request->filled('initiative_type'), fn ($query) => $query->where('initiative_type', $request->string('initiative_type')))
@@ -232,6 +230,8 @@ class CommunityInitiativeController extends Controller
 
         return [
             ...$initiative->toArray(),
+            'starts_at' => $initiative->starts_at?->format('Y-m-d\TH:i:s'),
+            'ends_at' => $initiative->ends_at?->format('Y-m-d\TH:i:s'),
             'registered_count' => $registeredCount,
             'attendees_count' => (int) ($initiative->attendees_count ?? $initiative->attendees()->count()),
             'is_full' => $isFull,
