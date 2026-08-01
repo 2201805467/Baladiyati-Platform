@@ -15,7 +15,8 @@ class User extends Authenticatable
     protected $fillable = [
         'full_name', 'email', 'phone', 'password', 
         'employee_number', 'profile_image', 'phone_verified_at', 'email_verified_at', 'otp_code', 'otp_purpose',
-        'otp_expires_at', 'is_active', 'role_id', 'dept_id'
+        'otp_expires_at', 'is_active', 'initiative_registration_blocked_at',
+        'initiative_registration_unblocked_at', 'initiative_registration_block_reason', 'role_id', 'dept_id'
     ];
 
     protected $hidden = ['password', 'remember_token'];
@@ -25,6 +26,8 @@ class User extends Authenticatable
         'phone_verified_at' => 'datetime',
         'email_verified_at' => 'datetime',
         'otp_expires_at' => 'datetime',
+        'initiative_registration_blocked_at' => 'datetime',
+        'initiative_registration_unblocked_at' => 'datetime',
     ];
 
     // المستخدم لديه دور محدد

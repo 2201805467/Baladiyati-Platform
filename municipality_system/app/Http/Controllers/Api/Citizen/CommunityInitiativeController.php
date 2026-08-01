@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\CommunityInitiative;
 use App\Models\InitiativeRegistration;
 use App\Models\Notification;
+use App\Services\InitiativeVolunteerBlocker;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
@@ -13,6 +14,10 @@ use Illuminate\Support\Facades\DB;
 
 class CommunityInitiativeController extends Controller
 {
+    public function __construct(private readonly InitiativeVolunteerBlocker $volunteerBlocker)
+    {
+    }
+
     public function index(Request $request): JsonResponse
     {
         $userId = $request->user()->id;
@@ -64,7 +69,13 @@ class CommunityInitiativeController extends Controller
 
     public function register(Request $request, CommunityInitiative $initiative): JsonResponse
     {
-        $user = $request->user();
+        $user = $this->volunteerBlocker->refreshUser($request->user());
+
+        if ($user->initiative_registration_blocked_at) {
+            return response()->json([
+                'message' => 'تم حظر حسابك من التسجيل، يرجى التواصل مع البلدية.',
+            ], 403);
+        }
 
         if ($initiative->status !== 'published') {
             return response()->json(['message' => 'Registration is not open for this initiative.'], 422);

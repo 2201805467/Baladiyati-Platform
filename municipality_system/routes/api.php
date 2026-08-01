@@ -129,6 +129,8 @@ Route::middleware(['auth:sanctum', 'role:admin'])
 
         Route::get('/initiatives', [AdminCommunityInitiativeController::class, 'index'])->middleware('permission:manage_initiatives')->name('initiatives.index');
         Route::post('/initiatives', [AdminCommunityInitiativeController::class, 'store'])->middleware('permission:manage_initiatives')->name('initiatives.store');
+        Route::get('/initiatives/blocked-citizens', [AdminCommunityInitiativeController::class, 'blockedCitizens'])->middleware('permission:manage_initiatives')->name('initiatives.blocked-citizens.index');
+        Route::patch('/initiatives/blocked-citizens/{citizen}/unblock', [AdminCommunityInitiativeController::class, 'unblockCitizen'])->middleware('permission:manage_initiatives')->name('initiatives.blocked-citizens.unblock');
         Route::get('/initiatives/{initiative}', [AdminCommunityInitiativeController::class, 'show'])->middleware('permission:manage_initiatives')->name('initiatives.show');
         Route::patch('/initiatives/{initiative}/publish', [AdminCommunityInitiativeController::class, 'publish'])->middleware('permission:manage_initiatives')->name('initiatives.publish');
         Route::patch('/initiatives/{initiative}/close-registration', [AdminCommunityInitiativeController::class, 'closeRegistration'])->middleware('permission:manage_initiatives')->name('initiatives.close-registration');
@@ -173,6 +175,8 @@ Route::middleware(['auth:sanctum', 'role:reception'])
             Route::middleware('permission:manage_initiatives')->group(function () {
                 Route::get('/initiatives', [AdminCommunityInitiativeController::class, 'index'])->name('initiatives.index');
                 Route::post('/initiatives', [AdminCommunityInitiativeController::class, 'store'])->name('initiatives.store');
+                Route::get('/initiatives/blocked-citizens', [AdminCommunityInitiativeController::class, 'blockedCitizens'])->name('initiatives.blocked-citizens.index');
+                Route::patch('/initiatives/blocked-citizens/{citizen}/unblock', [AdminCommunityInitiativeController::class, 'unblockCitizen'])->name('initiatives.blocked-citizens.unblock');
                 Route::get('/initiatives/{initiative}', [AdminCommunityInitiativeController::class, 'show'])->name('initiatives.show');
                 Route::patch('/initiatives/{initiative}/publish', [AdminCommunityInitiativeController::class, 'publish'])->name('initiatives.publish');
                 Route::patch('/initiatives/{initiative}/close-registration', [AdminCommunityInitiativeController::class, 'closeRegistration'])->name('initiatives.close-registration');

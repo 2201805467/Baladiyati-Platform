@@ -7,6 +7,7 @@ use App\Models\CommunityInitiative;
 use App\Models\Notification;
 use App\Models\Role;
 use App\Models\User;
+use App\Services\InitiativeVolunteerBlocker;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
@@ -14,6 +15,10 @@ use Illuminate\Validation\Rule;
 
 class CommunityInitiativeController extends Controller
 {
+    public function __construct(private readonly InitiativeVolunteerBlocker $volunteerBlocker)
+    {
+    }
+
     public function index(Request $request): JsonResponse
     {
         $initiatives = CommunityInitiative::with('creator:id,full_name,email')
@@ -193,9 +198,42 @@ class CommunityInitiativeController extends Controller
             'initiative_completed'
         );
 
+        $this->volunteerBlocker->refreshAllCitizens();
+
         return response()->json([
             'message' => 'Initiative completed successfully.',
             'initiative' => $this->formatInitiative($initiative->fresh()),
+        ]);
+    }
+
+    public function blockedCitizens(Request $request): JsonResponse
+    {
+        $this->volunteerBlocker->refreshAllCitizens();
+
+        $citizenRoleId = Role::where('role_name', 'citizen')->value('id');
+
+        $citizens = User::query()
+            ->when($citizenRoleId, fn ($query) => $query->where('role_id', $citizenRoleId))
+            ->whereNotNull('initiative_registration_blocked_at')
+            ->orderByDesc('initiative_registration_blocked_at')
+            ->paginate($request->integer('per_page', 50));
+
+        $citizens->getCollection()->transform(fn (User $citizen) => $this->formatBlockedCitizen($citizen));
+
+        return response()->json($citizens);
+    }
+
+    public function unblockCitizen(User $citizen): JsonResponse
+    {
+        $citizen->update([
+            'initiative_registration_blocked_at' => null,
+            'initiative_registration_unblocked_at' => now(),
+            'initiative_registration_block_reason' => null,
+        ]);
+
+        return response()->json([
+            'message' => 'Citizen initiative registration block removed successfully.',
+            'citizen' => $this->formatBlockedCitizen($citizen->fresh()),
         ]);
     }
 
@@ -286,6 +324,20 @@ class CommunityInitiativeController extends Controller
             'cancelled_at' => $registration->cancelled_at,
             'attended_at' => $registration->attended_at,
             'citizen' => $registration->citizen,
+        ];
+    }
+
+    private function formatBlockedCitizen(User $citizen): array
+    {
+        return [
+            'id' => $citizen->id,
+            'full_name' => $citizen->full_name,
+            'email' => $citizen->email,
+            'phone' => $citizen->phone,
+            'blocked_at' => $citizen->initiative_registration_blocked_at,
+            'block_reason' => $citizen->initiative_registration_block_reason,
+            'missed_completed_initiatives_count' => $this->volunteerBlocker->missedCompletedInitiativesCount($citizen),
+            'attended_completed_initiatives_count' => $this->volunteerBlocker->attendedCompletedInitiativesCount($citizen),
         ];
     }
 }
