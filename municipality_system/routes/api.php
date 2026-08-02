@@ -6,6 +6,7 @@ use App\Http\Controllers\Api\Admin\CategoryController as AdminCategoryController
 use App\Http\Controllers\Api\Admin\CommunityInitiativeController as AdminCommunityInitiativeController;
 use App\Http\Controllers\Api\Admin\DepartmentController as AdminDepartmentController;
 use App\Http\Controllers\Api\Admin\EmergencyContactController as AdminEmergencyContactController;
+use App\Http\Controllers\Api\Admin\GeoBroadcastController as AdminGeoBroadcastController;
 use App\Http\Controllers\Api\Admin\PermissionController as AdminPermissionController;
 use App\Http\Controllers\Api\Admin\ProjectController as AdminProjectController;
 use App\Http\Controllers\Api\Admin\PublicFacilityController as AdminPublicFacilityController;
@@ -15,6 +16,7 @@ use App\Http\Controllers\Api\Admin\UserController as AdminUserController;
 use App\Http\Controllers\Api\Citizen\NotificationController as CitizenNotificationController;
 use App\Http\Controllers\Api\Citizen\CommunityReportController as CitizenCommunityReportController;
 use App\Http\Controllers\Api\Citizen\CommunityInitiativeController as CitizenCommunityInitiativeController;
+use App\Http\Controllers\Api\Citizen\GeoBroadcastController as CitizenGeoBroadcastController;
 use App\Http\Controllers\Api\Citizen\PublicInfoController as CitizenPublicInfoController;
 use App\Http\Controllers\Api\Citizen\ReportController as CitizenReportController;
 use App\Http\Controllers\Api\Citizen\SuggestionController as CitizenSuggestionController;
@@ -84,6 +86,11 @@ Route::middleware(['auth:sanctum', 'role:citizen'])
         Route::post('/initiatives/{initiative}/register', [CitizenCommunityInitiativeController::class, 'register'])->name('initiatives.register');
         Route::delete('/initiatives/{initiative}/register', [CitizenCommunityInitiativeController::class, 'cancelRegistration'])->name('initiatives.register.cancel');
         Route::post('/initiatives/{initiative}/attendance', [CitizenCommunityInitiativeController::class, 'confirmAttendance'])->name('initiatives.attendance.confirm');
+
+        Route::get('/geo-broadcasts', [CitizenGeoBroadcastController::class, 'index'])->name('geo-broadcasts.index');
+        Route::put('/geo-broadcasts/home-location', [CitizenGeoBroadcastController::class, 'updateHomeLocation'])->name('geo-broadcasts.home-location.update');
+        Route::patch('/geo-broadcasts/location', [CitizenGeoBroadcastController::class, 'updateLastLocation'])->name('geo-broadcasts.location.update');
+        Route::get('/geo-broadcasts/{geoBroadcast}', [CitizenGeoBroadcastController::class, 'show'])->name('geo-broadcasts.show');
     });
 
 Route::middleware(['auth:sanctum', 'role:admin'])
@@ -138,6 +145,12 @@ Route::middleware(['auth:sanctum', 'role:admin'])
         Route::post('/initiatives/{initiative}/complete', [AdminCommunityInitiativeController::class, 'complete'])->middleware('permission:manage_initiatives')->name('initiatives.complete');
         Route::delete('/initiatives/{initiative}', [AdminCommunityInitiativeController::class, 'destroy'])->middleware('permission:manage_initiatives')->name('initiatives.destroy');
 
+        Route::get('/geo-broadcasts', [AdminGeoBroadcastController::class, 'index'])->middleware('permission:manage_geo_broadcasts')->name('geo-broadcasts.index');
+        Route::post('/geo-broadcasts', [AdminGeoBroadcastController::class, 'store'])->middleware('permission:manage_geo_broadcasts')->name('geo-broadcasts.store');
+        Route::post('/geo-broadcasts/preview', [AdminGeoBroadcastController::class, 'preview'])->middleware('permission:manage_geo_broadcasts')->name('geo-broadcasts.preview');
+        Route::get('/geo-broadcasts/{geoBroadcast}', [AdminGeoBroadcastController::class, 'show'])->middleware('permission:manage_geo_broadcasts')->name('geo-broadcasts.show');
+        Route::patch('/geo-broadcasts/{geoBroadcast}/cancel', [AdminGeoBroadcastController::class, 'cancel'])->middleware('permission:manage_geo_broadcasts')->name('geo-broadcasts.cancel');
+
         Route::get('/analytics/reports', [AdminAnalyticsController::class, 'reports'])->middleware('permission:view_analytics')->name('analytics.reports');
         Route::get('/analytics/departments', [AdminAnalyticsController::class, 'departments'])->middleware('permission:view_analytics')->name('analytics.departments');
         Route::get('/analytics/departments/{department}', [AdminAnalyticsController::class, 'departmentPerformance'])->middleware('permission:view_analytics')->name('analytics.departments.show');
@@ -184,6 +197,14 @@ Route::middleware(['auth:sanctum', 'role:reception'])
                 Route::patch('/initiatives/{initiative}/cancel', [AdminCommunityInitiativeController::class, 'cancel'])->name('initiatives.cancel');
                 Route::post('/initiatives/{initiative}/complete', [AdminCommunityInitiativeController::class, 'complete'])->name('initiatives.complete');
                 Route::delete('/initiatives/{initiative}', [AdminCommunityInitiativeController::class, 'destroy'])->name('initiatives.destroy');
+            });
+
+            Route::middleware('permission:manage_geo_broadcasts')->group(function () {
+                Route::get('/geo-broadcasts', [AdminGeoBroadcastController::class, 'index'])->name('geo-broadcasts.index');
+                Route::post('/geo-broadcasts', [AdminGeoBroadcastController::class, 'store'])->name('geo-broadcasts.store');
+                Route::post('/geo-broadcasts/preview', [AdminGeoBroadcastController::class, 'preview'])->name('geo-broadcasts.preview');
+                Route::get('/geo-broadcasts/{geoBroadcast}', [AdminGeoBroadcastController::class, 'show'])->name('geo-broadcasts.show');
+                Route::patch('/geo-broadcasts/{geoBroadcast}/cancel', [AdminGeoBroadcastController::class, 'cancel'])->name('geo-broadcasts.cancel');
             });
         });
 

@@ -1,6 +1,10 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:geolocator/geolocator.dart';
 import 'package:go_router/go_router.dart';
+import 'package:url_launcher/url_launcher.dart';
 import '../../../../core/network/api_constants.dart';
 import '../../../../core/router/app_routes.dart';
 import '../../../../theme_manager.dart';
@@ -18,6 +22,7 @@ import '../../../proposals/presentation/pages/suggest_service_page.dart';
 import '../../../proposals/presentation/pages/citizen_proposals_page.dart';
 import '../../../proposals/presentation/pages/proposal_details_page.dart';
 import '../../../facilities/presentation/pages/public_facilities_page.dart';
+import '../../../geo_broadcasts/presentation/pages/geo_broadcasts_page.dart';
 import '../../../initiatives/presentation/pages/community_initiatives_page.dart';
 import '../../../projects/presentation/pages/municipal_projects_page.dart';
 
@@ -32,8 +37,11 @@ class _HomePageState extends ConsumerState<HomePage> {
   static const _primaryGreen = Color(0xFF2E7D32);
 
   List<_CitizenNotification> _notifications = const [];
+  List<_HomeGeoBroadcast> _activeGeoBroadcasts = const [];
   bool _isLoadingNotifications = false;
   String? _notificationsError;
+  Timer? _geoBroadcastTimer;
+  int _geoBroadcastIndex = 0;
 
   @override
   void initState() {
@@ -41,8 +49,45 @@ class _HomePageState extends ConsumerState<HomePage> {
     Future.microtask(() {
       ref.read(profileControllerProvider.notifier).fetchProfile();
       ref.read(reportsControllerProvider.notifier).fetchReports(refresh: true);
-      _fetchNotifications();
+      _syncGeoBroadcastLocationIfAllowed().whenComplete(() {
+        _fetchNotifications();
+        _fetchActiveGeoBroadcasts();
+      });
     });
+  }
+
+  @override
+  void dispose() {
+    _geoBroadcastTimer?.cancel();
+    super.dispose();
+  }
+
+  Future<void> _syncGeoBroadcastLocationIfAllowed() async {
+    try {
+      if (!await Geolocator.isLocationServiceEnabled()) return;
+      final permission = await Geolocator.checkPermission();
+      if (permission == LocationPermission.denied ||
+          permission == LocationPermission.deniedForever) {
+        return;
+      }
+
+      final position = await Geolocator.getCurrentPosition(
+        locationSettings: const LocationSettings(
+          accuracy: LocationAccuracy.high,
+          timeLimit: Duration(seconds: 8),
+        ),
+      );
+
+      await ref.read(dioProvider).patch(
+        ApiConstants.geoBroadcastLocation,
+        data: {
+          'latitude': position.latitude,
+          'longitude': position.longitude,
+        },
+      );
+    } catch (_) {
+      // Silent sync: the normal notifications flow should not be interrupted.
+    }
   }
 
   Future<void> _fetchNotifications() async {
@@ -74,6 +119,47 @@ class _HomePageState extends ConsumerState<HomePage> {
         _notificationsError = e.toString();
       });
     }
+  }
+
+  Future<void> _fetchActiveGeoBroadcasts() async {
+    try {
+      final response = await ref.read(dioProvider).get(
+        ApiConstants.geoBroadcasts,
+        queryParameters: {'active_only': true, 'per_page': 20},
+      );
+      final raw = response.data['data'] ?? response.data;
+      final list = raw is List ? raw : const [];
+      final broadcasts = list
+          .whereType<Map>()
+          .map((item) => _HomeGeoBroadcast.fromJson(item))
+          .where((item) => item.status != 'cancelled')
+          .toList()
+        ..sort((a, b) => a.priority.compareTo(b.priority));
+
+      if (!mounted) return;
+      setState(() {
+        _activeGeoBroadcasts = broadcasts.toList(growable: false);
+        _geoBroadcastIndex = 0;
+      });
+      _startGeoBroadcastRotation();
+    } catch (_) {
+      if (!mounted) return;
+      setState(() => _activeGeoBroadcasts = const []);
+      _geoBroadcastTimer?.cancel();
+    }
+  }
+
+  void _startGeoBroadcastRotation() {
+    _geoBroadcastTimer?.cancel();
+    if (_activeGeoBroadcasts.length <= 1) return;
+
+    _geoBroadcastTimer = Timer.periodic(const Duration(seconds: 4), (_) {
+      if (!mounted || _activeGeoBroadcasts.isEmpty) return;
+      setState(() {
+        _geoBroadcastIndex =
+            (_geoBroadcastIndex + 1) % _activeGeoBroadcasts.length;
+      });
+    });
   }
 
   Future<void> _markAllNotificationsAsRead({bool showError = true}) async {
@@ -164,6 +250,14 @@ class _HomePageState extends ConsumerState<HomePage> {
       Navigator.of(
         context,
       ).push(MaterialPageRoute(builder: (_) => const CommunityInitiativesPage()));
+      return;
+    }
+
+    if (relatedType.contains('geobroadcast') ||
+        relatedType.contains('geo_broadcast')) {
+      Navigator.of(
+        context,
+      ).push(MaterialPageRoute(builder: (_) => const GeoBroadcastsPage()));
       return;
     }
 
@@ -328,7 +422,7 @@ class _HomePageState extends ConsumerState<HomePage> {
         : 'مستخدم';
 
     return DefaultTabController(
-      length: 6,
+      length: 7,
       child: Directionality(
         textDirection: TextDirection.rtl,
         child: Scaffold(
@@ -381,6 +475,7 @@ class _HomePageState extends ConsumerState<HomePage> {
                 Tab(text: 'مرافق البلدية'),
                 Tab(text: 'مشاريع البلدية'),
                 Tab(text: 'المبادرات'),
+                Tab(text: 'التنبيهات الجغرافية'),
                 Tab(text: 'مقترحات المواطنين'),
                 Tab(text: 'أرقام الطوارئ'),
               ],
@@ -392,10 +487,16 @@ class _HomePageState extends ConsumerState<HomePage> {
                 primaryGreen: primaryGreen,
                 displayName: displayName,
                 reports: reports,
+                activeGeoBroadcast: _activeGeoBroadcasts.isEmpty
+                    ? null
+                    : _activeGeoBroadcasts[
+                        _geoBroadcastIndex % _activeGeoBroadcasts.length
+                      ],
               ),
               const PublicFacilitiesPage(),
               const MunicipalProjectsPage(),
               const CommunityInitiativesPage(showAppBar: false),
+              const GeoBroadcastsPage(showAppBar: false),
               const CitizenProposalsPage(),
               const EmergencyNumbersView(),
             ],
@@ -410,11 +511,13 @@ class _HomeTabContent extends StatelessWidget {
   final Color primaryGreen;
   final String displayName;
   final List<ReportEntity> reports;
+  final _HomeGeoBroadcast? activeGeoBroadcast;
 
   const _HomeTabContent({
     required this.primaryGreen,
     required this.displayName,
     required this.reports,
+    required this.activeGeoBroadcast,
   });
 
   @override
@@ -433,6 +536,19 @@ class _HomeTabContent extends StatelessWidget {
             style: TextStyle(fontSize: 14),
           ),
           const SizedBox(height: 16),
+          if (activeGeoBroadcast != null) ...[
+            _ActiveGeoBroadcastBanner(
+              broadcast: activeGeoBroadcast!,
+              onTap: () => Navigator.of(context).push(
+                MaterialPageRoute(
+                  builder: (_) => _HomeGeoBroadcastDetailsPage(
+                    broadcast: activeGeoBroadcast!,
+                  ),
+                ),
+              ),
+            ),
+            const SizedBox(height: 16),
+          ],
           if (reports.isNotEmpty) ...[
             _NotificationPreview(report: reports.first),
             const SizedBox(height: 24),
@@ -561,6 +677,202 @@ class _StatisticsSection extends StatelessWidget {
   }
 }
 
+class _ActiveGeoBroadcastBanner extends StatelessWidget {
+  final _HomeGeoBroadcast broadcast;
+  final VoidCallback onTap;
+
+  const _ActiveGeoBroadcastBanner({
+    required this.broadcast,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final color = broadcast.displayColor;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
+    return AnimatedSwitcher(
+      duration: const Duration(milliseconds: 350),
+      child: Material(
+        key: ValueKey(broadcast.id),
+        color: Colors.transparent,
+        child: InkWell(
+          onTap: onTap,
+          borderRadius: BorderRadius.circular(10),
+          child: Container(
+            padding: const EdgeInsets.all(12),
+            decoration: BoxDecoration(
+              color: isDark
+                  ? color.withValues(alpha: 0.12)
+                  : color.withValues(alpha: 0.08),
+              borderRadius: BorderRadius.circular(10),
+              border: Border.all(color: color, width: 1.2),
+            ),
+            child: Row(
+              children: [
+                Icon(broadcast.icon, color: color, size: 22),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        broadcast.title,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: TextStyle(
+                          color: color,
+                          fontWeight: FontWeight.bold,
+                          fontSize: 13,
+                        ),
+                      ),
+                      const SizedBox(height: 3),
+                      Text(
+                        broadcast.body,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: const TextStyle(fontSize: 12),
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(width: 8),
+                Text(
+                  broadcast.typeLabel,
+                  style: TextStyle(
+                    color: color,
+                    fontSize: 11,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+                const SizedBox(width: 4),
+                Icon(Icons.chevron_left, color: color, size: 20),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _HomeGeoBroadcastDetailsPage extends StatelessWidget {
+  final _HomeGeoBroadcast broadcast;
+
+  const _HomeGeoBroadcastDetailsPage({required this.broadcast});
+
+  Future<void> _openLocation() async {
+    final latitude = broadcast.latitude;
+    final longitude = broadcast.longitude;
+    if (latitude == null || longitude == null) return;
+
+    final geoUri = Uri.parse('geo:$latitude,$longitude?q=$latitude,$longitude');
+    final webUri = Uri.parse(
+      'https://www.google.com/maps/search/?api=1&query=$latitude,$longitude',
+    );
+
+    if (await canLaunchUrl(geoUri)) {
+      await launchUrl(geoUri, mode: LaunchMode.externalApplication);
+      return;
+    }
+    await launchUrl(webUri, mode: LaunchMode.externalApplication);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final color = broadcast.displayColor;
+
+    return Directionality(
+      textDirection: TextDirection.rtl,
+      child: Scaffold(
+        appBar: AppBar(title: const Text('تفاصيل التنبيه')),
+        body: ListView(
+          padding: const EdgeInsets.all(16),
+          children: [
+            Container(
+              padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                color: color.withValues(alpha: 0.08),
+                borderRadius: BorderRadius.circular(14),
+                border: Border.all(color: color, width: 1.2),
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      Icon(broadcast.icon, color: color, size: 28),
+                      const SizedBox(width: 10),
+                      Expanded(
+                        child: Text(
+                          broadcast.title,
+                          style: TextStyle(
+                            color: color,
+                            fontSize: 18,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 14),
+                  Text(broadcast.body, style: const TextStyle(fontSize: 15)),
+                  const SizedBox(height: 16),
+                  _GeoDetailRow(
+                    icon: Icons.category_outlined,
+                    text: 'النوع: ${broadcast.typeLabel}',
+                  ),
+                  _GeoDetailRow(
+                    icon: Icons.schedule,
+                    text: broadcast.dateText,
+                  ),
+                  _GeoDetailRow(
+                    icon: Icons.radar,
+                    text: 'النطاق: ${broadcast.radiusMeters} متر',
+                  ),
+                  if (broadcast.latitude != null && broadcast.longitude != null)
+                    Padding(
+                      padding: const EdgeInsets.only(top: 12),
+                      child: SizedBox(
+                        width: double.infinity,
+                        child: OutlinedButton.icon(
+                          onPressed: _openLocation,
+                          icon: const Icon(Icons.map_outlined),
+                          label: const Text('عرض الموقع على الخريطة'),
+                        ),
+                      ),
+                    ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _GeoDetailRow extends StatelessWidget {
+  final IconData icon;
+  final String text;
+
+  const _GeoDetailRow({required this.icon, required this.text});
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 5),
+      child: Row(
+        children: [
+          Icon(icon, size: 18, color: Colors.grey),
+          const SizedBox(width: 8),
+          Expanded(child: Text(text)),
+        ],
+      ),
+    );
+  }
+}
+
 class _ActionGrid extends StatelessWidget {
   final Color primaryColor;
   const _ActionGrid({required this.primaryColor});
@@ -621,6 +933,15 @@ class _ActionGrid extends StatelessWidget {
             MaterialPageRoute(
               builder: (context) => const CommunityInitiativesPage(),
             ),
+          ),
+        ),
+        _actionItem(
+          context,
+          Icons.radar_outlined,
+          'التنبيهات الجغرافية',
+          onTap: () => Navigator.push(
+            context,
+            MaterialPageRoute(builder: (context) => const GeoBroadcastsPage()),
           ),
         ),
         _actionItem(
@@ -900,5 +1221,147 @@ class _CitizenNotification {
     if (value is int) return value;
     if (value is num) return value.toInt();
     return int.tryParse(value.toString());
+  }
+}
+
+class _HomeGeoBroadcast {
+  final int id;
+  final String title;
+  final String body;
+  final String broadcastType;
+  final String status;
+  final double? latitude;
+  final double? longitude;
+  final int radiusMeters;
+  final DateTime? startsAt;
+  final DateTime? endsAt;
+
+  const _HomeGeoBroadcast({
+    required this.id,
+    required this.title,
+    required this.body,
+    required this.broadcastType,
+    required this.status,
+    required this.latitude,
+    required this.longitude,
+    required this.radiusMeters,
+    required this.startsAt,
+    required this.endsAt,
+  });
+
+  factory _HomeGeoBroadcast.fromJson(Map<dynamic, dynamic> json) {
+    return _HomeGeoBroadcast(
+      id: _intOrZero(json['id']),
+      title: json['title']?.toString() ?? '',
+      body: json['body']?.toString() ?? '',
+      broadcastType: json['broadcast_type']?.toString() ?? 'info',
+      status: json['status']?.toString() ?? '',
+      latitude: _doubleOrNull(json['latitude']),
+      longitude: _doubleOrNull(json['longitude']),
+      radiusMeters: _intOrZero(json['radius_meters'], fallback: 500),
+      startsAt: _dateOrNull(json['starts_at']),
+      endsAt: _dateOrNull(json['ends_at']),
+    );
+  }
+
+  Color get displayColor {
+    switch (broadcastType) {
+      case 'critical':
+        return Colors.red;
+      case 'service':
+        return Colors.orange;
+      case 'works':
+        return Colors.amber;
+      case 'weather':
+        return Colors.lightBlue;
+      default:
+        return Colors.blue.shade800;
+    }
+  }
+
+  IconData get icon {
+    switch (broadcastType) {
+      case 'critical':
+        return Icons.warning_amber_rounded;
+      case 'service':
+        return Icons.water_drop_outlined;
+      case 'works':
+        return Icons.construction_outlined;
+      case 'weather':
+        return Icons.cloud_outlined;
+      default:
+        return Icons.info_outline;
+    }
+  }
+
+  int get priority {
+    switch (broadcastType) {
+      case 'critical':
+        return 0;
+      case 'service':
+        return 1;
+      case 'works':
+        return 2;
+      case 'weather':
+        return 3;
+      default:
+        return 4;
+    }
+  }
+
+  String get typeLabel {
+    switch (broadcastType) {
+      case 'critical':
+        return 'طارئ';
+      case 'service':
+        return 'خدمي';
+      case 'works':
+        return 'صيانة';
+      case 'weather':
+        return 'جوي';
+      default:
+        return 'إعلام عام';
+    }
+  }
+
+  String get dateText {
+    final start = startsAt;
+    final end = endsAt;
+    if (start == null) return '-';
+    final startText = _formatDateTime(start);
+    if (end == null) return 'من $startText';
+    final sameDay = start.year == end.year &&
+        start.month == end.month &&
+        start.day == end.day;
+    final endText = sameDay ? _formatTime(end) : _formatDateTime(end);
+    return 'من $startText إلى $endText';
+  }
+
+  static int _intOrZero(dynamic value, {int fallback = 0}) {
+    if (value is int) return value;
+    if (value is num) return value.toInt();
+    return int.tryParse(value?.toString() ?? '') ?? fallback;
+  }
+
+  static double? _doubleOrNull(dynamic value) {
+    if (value == null) return null;
+    if (value is double) return value;
+    if (value is num) return value.toDouble();
+    return double.tryParse(value.toString());
+  }
+
+  static DateTime? _dateOrNull(dynamic value) {
+    if (value == null) return null;
+    return DateTime.tryParse(value.toString())?.toLocal();
+  }
+
+  static String _two(int value) => value.toString().padLeft(2, '0');
+
+  static String _formatDateTime(DateTime value) {
+    return '${value.year}-${_two(value.month)}-${_two(value.day)} ${_formatTime(value)}';
+  }
+
+  static String _formatTime(DateTime value) {
+    return '${_two(value.hour)}:${_two(value.minute)}';
   }
 }

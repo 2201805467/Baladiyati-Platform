@@ -16,7 +16,9 @@ class User extends Authenticatable
         'full_name', 'email', 'phone', 'password', 
         'employee_number', 'profile_image', 'phone_verified_at', 'email_verified_at', 'otp_code', 'otp_purpose',
         'otp_expires_at', 'is_active', 'initiative_registration_blocked_at',
-        'initiative_registration_unblocked_at', 'initiative_registration_block_reason', 'role_id', 'dept_id'
+        'initiative_registration_unblocked_at', 'initiative_registration_block_reason', 'role_id', 'dept_id',
+        'home_latitude', 'home_longitude', 'last_latitude', 'last_longitude',
+        'last_location_at', 'location_sharing_enabled',
     ];
 
     protected $hidden = ['password', 'remember_token'];
@@ -28,6 +30,12 @@ class User extends Authenticatable
         'otp_expires_at' => 'datetime',
         'initiative_registration_blocked_at' => 'datetime',
         'initiative_registration_unblocked_at' => 'datetime',
+        'home_latitude' => 'decimal:7',
+        'home_longitude' => 'decimal:7',
+        'last_latitude' => 'decimal:7',
+        'last_longitude' => 'decimal:7',
+        'last_location_at' => 'datetime',
+        'location_sharing_enabled' => 'boolean',
     ];
 
     // المستخدم لديه دور محدد
@@ -113,6 +121,16 @@ class User extends Authenticatable
     public function initiativeRegistrations(): HasMany
     {
         return $this->hasMany(InitiativeRegistration::class, 'citizen_id');
+    }
+
+    public function createdGeoBroadcasts(): HasMany
+    {
+        return $this->hasMany(GeoBroadcast::class, 'created_by');
+    }
+
+    public function geoBroadcastRecipients(): HasMany
+    {
+        return $this->hasMany(GeoBroadcastRecipient::class);
     }
 
     // المستخدم يستقبل العديد من الإشعارات

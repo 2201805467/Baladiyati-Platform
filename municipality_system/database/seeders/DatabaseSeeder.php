@@ -43,6 +43,7 @@ class DatabaseSeeder extends Seeder
             'manage_public_facilities',
             'manage_projects',
             'manage_initiatives',
+            'manage_geo_broadcasts',
             'manage_permissions',
             'view_analytics',
             'review_reports',
@@ -73,6 +74,7 @@ class DatabaseSeeder extends Seeder
                 'assign_reports',
                 'review_suggestions',
                 'manage_initiatives',
+                'manage_geo_broadcasts',
             ])->pluck('id')->all());
 
         Role::where('role_name', 'department')->first()
