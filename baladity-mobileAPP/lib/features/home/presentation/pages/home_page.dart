@@ -24,6 +24,7 @@ import '../../../proposals/presentation/pages/proposal_details_page.dart';
 import '../../../facilities/presentation/pages/public_facilities_page.dart';
 import '../../../geo_broadcasts/presentation/pages/geo_broadcasts_page.dart';
 import '../../../initiatives/presentation/pages/community_initiatives_page.dart';
+import '../../../lost_found/presentation/pages/lost_found_page.dart';
 import '../../../projects/presentation/pages/municipal_projects_page.dart';
 
 class HomePage extends ConsumerStatefulWidget {
@@ -261,6 +262,16 @@ class _HomePageState extends ConsumerState<HomePage> {
       return;
     }
 
+    if (relatedType.contains('lostfound') ||
+        relatedType.contains('lost_found') ||
+        relatedType.contains('lostfounditem') ||
+        relatedType.contains('lostfoundchatthread')) {
+      Navigator.of(
+        context,
+      ).push(MaterialPageRoute(builder: (_) => const LostFoundPage()));
+      return;
+    }
+
     if (relatedType.contains('report')) {
       await ref
           .read(reportsControllerProvider.notifier)
@@ -290,7 +301,7 @@ class _HomePageState extends ConsumerState<HomePage> {
       context: context,
       showDragHandle: true,
       isScrollControlled: true,
-      builder: (_) => Directionality(
+      builder: (sheetContext) => Directionality(
         textDirection: TextDirection.rtl,
         child: SafeArea(
           child: SizedBox(
@@ -314,8 +325,8 @@ class _HomePageState extends ConsumerState<HomePage> {
                         onPressed: _notifications.any((n) => !n.isRead)
                             ? () async {
                                 await _markAllNotificationsAsRead();
-                                if (context.mounted) {
-                                  Navigator.of(context).pop();
+                                if (sheetContext.mounted) {
+                                  Navigator.of(sheetContext).pop();
                                 }
                               }
                             : null,
@@ -422,7 +433,7 @@ class _HomePageState extends ConsumerState<HomePage> {
         : 'مستخدم';
 
     return DefaultTabController(
-      length: 7,
+      length: 8,
       child: Directionality(
         textDirection: TextDirection.rtl,
         child: Scaffold(
@@ -476,6 +487,7 @@ class _HomePageState extends ConsumerState<HomePage> {
                 Tab(text: 'مشاريع البلدية'),
                 Tab(text: 'المبادرات'),
                 Tab(text: 'التنبيهات الجغرافية'),
+                Tab(text: 'مفقودات وموجودات'),
                 Tab(text: 'مقترحات المواطنين'),
                 Tab(text: 'أرقام الطوارئ'),
               ],
@@ -497,6 +509,7 @@ class _HomePageState extends ConsumerState<HomePage> {
               const MunicipalProjectsPage(),
               const CommunityInitiativesPage(showAppBar: false),
               const GeoBroadcastsPage(showAppBar: false),
+              const LostFoundPage(showAppBar: false),
               const CitizenProposalsPage(),
               const EmergencyNumbersView(),
             ],
@@ -942,6 +955,15 @@ class _ActionGrid extends StatelessWidget {
           onTap: () => Navigator.push(
             context,
             MaterialPageRoute(builder: (context) => const GeoBroadcastsPage()),
+          ),
+        ),
+        _actionItem(
+          context,
+          Icons.manage_search_rounded,
+          'مفقودات وموجودات',
+          onTap: () => Navigator.push(
+            context,
+            MaterialPageRoute(builder: (context) => const LostFoundPage()),
           ),
         ),
         _actionItem(

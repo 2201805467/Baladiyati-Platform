@@ -16,6 +16,7 @@ const navItems = [
   { path: "/admin/content", label: "المحتوى", icon: "📦", roles: ["admin", "reception"] },
   { path: "/admin/initiatives", label: "المبادرات", icon: "✦", roles: ["admin", "reception"] },
   { path: "/admin/geo-broadcasts", label: "التنبيهات الجغرافية", icon: "!", roles: ["admin", "reception"] },
+  { path: "/admin/lost-found", label: "رقابة المفقودات", icon: "?", roles: ["admin", "reception"] },
 ];
 
 export default function AdminLayout() {

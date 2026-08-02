@@ -21,6 +21,7 @@ abstract class AppRoutes {
   static const String projects = '/projects';
   static const String initiatives = '/initiatives';
   static const String geoBroadcasts = '/geo-broadcasts';
+  static const String lostFound = '/lost-found';
 
   // ─── Profile ──────────────────────────────────────────────────────────────
   static const String profile = '/profile';

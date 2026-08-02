@@ -7,6 +7,7 @@ use App\Http\Controllers\Api\Admin\CommunityInitiativeController as AdminCommuni
 use App\Http\Controllers\Api\Admin\DepartmentController as AdminDepartmentController;
 use App\Http\Controllers\Api\Admin\EmergencyContactController as AdminEmergencyContactController;
 use App\Http\Controllers\Api\Admin\GeoBroadcastController as AdminGeoBroadcastController;
+use App\Http\Controllers\Api\Admin\LostFoundModerationController as AdminLostFoundModerationController;
 use App\Http\Controllers\Api\Admin\PermissionController as AdminPermissionController;
 use App\Http\Controllers\Api\Admin\ProjectController as AdminProjectController;
 use App\Http\Controllers\Api\Admin\PublicFacilityController as AdminPublicFacilityController;
@@ -17,6 +18,7 @@ use App\Http\Controllers\Api\Citizen\NotificationController as CitizenNotificati
 use App\Http\Controllers\Api\Citizen\CommunityReportController as CitizenCommunityReportController;
 use App\Http\Controllers\Api\Citizen\CommunityInitiativeController as CitizenCommunityInitiativeController;
 use App\Http\Controllers\Api\Citizen\GeoBroadcastController as CitizenGeoBroadcastController;
+use App\Http\Controllers\Api\Citizen\LostFoundController as CitizenLostFoundController;
 use App\Http\Controllers\Api\Citizen\PublicInfoController as CitizenPublicInfoController;
 use App\Http\Controllers\Api\Citizen\ReportController as CitizenReportController;
 use App\Http\Controllers\Api\Citizen\SuggestionController as CitizenSuggestionController;
@@ -91,6 +93,19 @@ Route::middleware(['auth:sanctum', 'role:citizen'])
         Route::put('/geo-broadcasts/home-location', [CitizenGeoBroadcastController::class, 'updateHomeLocation'])->name('geo-broadcasts.home-location.update');
         Route::patch('/geo-broadcasts/location', [CitizenGeoBroadcastController::class, 'updateLastLocation'])->name('geo-broadcasts.location.update');
         Route::get('/geo-broadcasts/{geoBroadcast}', [CitizenGeoBroadcastController::class, 'show'])->name('geo-broadcasts.show');
+
+        Route::get('/lost-found', [CitizenLostFoundController::class, 'index'])->name('lost-found.index');
+        Route::post('/lost-found', [CitizenLostFoundController::class, 'store'])->name('lost-found.store');
+        Route::get('/lost-found/my-items', [CitizenLostFoundController::class, 'myItems'])->name('lost-found.my-items');
+        Route::get('/lost-found/threads', [CitizenLostFoundController::class, 'threads'])->name('lost-found.threads');
+        Route::get('/lost-found/threads/{thread}', [CitizenLostFoundController::class, 'showThread'])->name('lost-found.threads.show');
+        Route::post('/lost-found/threads/{thread}/messages', [CitizenLostFoundController::class, 'storeMessage'])->name('lost-found.threads.messages.store');
+        Route::post('/lost-found/report-abuse', [CitizenLostFoundController::class, 'reportAbuse'])->name('lost-found.report-abuse');
+        Route::get('/lost-found/{item}', [CitizenLostFoundController::class, 'show'])->name('lost-found.show');
+        Route::post('/lost-found/{item}/comments', [CitizenLostFoundController::class, 'storeComment'])->name('lost-found.comments.store');
+        Route::post('/lost-found/{item}/resolve', [CitizenLostFoundController::class, 'resolve'])->name('lost-found.resolve');
+        Route::post('/lost-found/{item}/republish', [CitizenLostFoundController::class, 'republish'])->name('lost-found.republish');
+        Route::post('/lost-found/{item}/threads', [CitizenLostFoundController::class, 'startThread'])->name('lost-found.threads.start');
     });
 
 Route::middleware(['auth:sanctum', 'role:admin'])
@@ -151,6 +166,12 @@ Route::middleware(['auth:sanctum', 'role:admin'])
         Route::get('/geo-broadcasts/{geoBroadcast}', [AdminGeoBroadcastController::class, 'show'])->middleware('permission:manage_geo_broadcasts')->name('geo-broadcasts.show');
         Route::patch('/geo-broadcasts/{geoBroadcast}/cancel', [AdminGeoBroadcastController::class, 'cancel'])->middleware('permission:manage_geo_broadcasts')->name('geo-broadcasts.cancel');
 
+        Route::get('/lost-found', [AdminLostFoundModerationController::class, 'index'])->middleware('permission:manage_public_facilities')->name('lost-found.index');
+        Route::get('/lost-found/abuse-reports', [AdminLostFoundModerationController::class, 'abuseReports'])->middleware('permission:manage_public_facilities')->name('lost-found.abuse-reports.index');
+        Route::patch('/lost-found/abuse-reports/{abuseReport}', [AdminLostFoundModerationController::class, 'updateAbuseReport'])->middleware('permission:manage_public_facilities')->name('lost-found.abuse-reports.update');
+        Route::get('/lost-found/{item}', [AdminLostFoundModerationController::class, 'show'])->middleware('permission:manage_public_facilities')->name('lost-found.show');
+        Route::patch('/lost-found/{item}/remove', [AdminLostFoundModerationController::class, 'remove'])->middleware('permission:manage_public_facilities')->name('lost-found.remove');
+
         Route::get('/analytics/reports', [AdminAnalyticsController::class, 'reports'])->middleware('permission:view_analytics')->name('analytics.reports');
         Route::get('/analytics/departments', [AdminAnalyticsController::class, 'departments'])->middleware('permission:view_analytics')->name('analytics.departments');
         Route::get('/analytics/departments/{department}', [AdminAnalyticsController::class, 'departmentPerformance'])->middleware('permission:view_analytics')->name('analytics.departments.show');
@@ -205,6 +226,14 @@ Route::middleware(['auth:sanctum', 'role:reception'])
                 Route::post('/geo-broadcasts/preview', [AdminGeoBroadcastController::class, 'preview'])->name('geo-broadcasts.preview');
                 Route::get('/geo-broadcasts/{geoBroadcast}', [AdminGeoBroadcastController::class, 'show'])->name('geo-broadcasts.show');
                 Route::patch('/geo-broadcasts/{geoBroadcast}/cancel', [AdminGeoBroadcastController::class, 'cancel'])->name('geo-broadcasts.cancel');
+            });
+
+            Route::middleware('permission:manage_public_facilities')->group(function () {
+                Route::get('/lost-found', [AdminLostFoundModerationController::class, 'index'])->name('lost-found.index');
+                Route::get('/lost-found/abuse-reports', [AdminLostFoundModerationController::class, 'abuseReports'])->name('lost-found.abuse-reports.index');
+                Route::patch('/lost-found/abuse-reports/{abuseReport}', [AdminLostFoundModerationController::class, 'updateAbuseReport'])->name('lost-found.abuse-reports.update');
+                Route::get('/lost-found/{item}', [AdminLostFoundModerationController::class, 'show'])->name('lost-found.show');
+                Route::patch('/lost-found/{item}/remove', [AdminLostFoundModerationController::class, 'remove'])->name('lost-found.remove');
             });
         });
 

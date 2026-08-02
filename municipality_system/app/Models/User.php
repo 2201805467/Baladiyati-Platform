@@ -133,6 +133,31 @@ class User extends Authenticatable
         return $this->hasMany(GeoBroadcastRecipient::class);
     }
 
+    public function lostFoundItems(): HasMany
+    {
+        return $this->hasMany(LostFoundItem::class);
+    }
+
+    public function lostFoundComments(): HasMany
+    {
+        return $this->hasMany(LostFoundComment::class);
+    }
+
+    public function lostFoundChatThreadsAsPublisher(): HasMany
+    {
+        return $this->hasMany(LostFoundChatThread::class, 'publisher_id');
+    }
+
+    public function lostFoundChatThreadsAsInterestedUser(): HasMany
+    {
+        return $this->hasMany(LostFoundChatThread::class, 'interested_user_id');
+    }
+
+    public function lostFoundChatMessages(): HasMany
+    {
+        return $this->hasMany(LostFoundChatMessage::class, 'sender_id');
+    }
+
     // المستخدم يستقبل العديد من الإشعارات
     public function notifications(): HasMany
     {
