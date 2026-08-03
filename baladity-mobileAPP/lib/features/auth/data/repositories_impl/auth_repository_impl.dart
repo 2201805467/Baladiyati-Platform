@@ -17,6 +17,8 @@ class AuthRepositoryImpl implements AuthRepository {
     final response = await _dataSource.login(email: email, password: password);
     await _tokenStorage.saveToken(response.token);
     await _tokenStorage.saveUserId(response.user.id.toString());
+    await _tokenStorage.saveUserRole(response.user.role);
+    await _tokenStorage.saveDepartmentName(response.user.departmentName);
     return (token: response.token, user: response.user as UserEntity);
   }
 
@@ -36,6 +38,8 @@ class AuthRepositoryImpl implements AuthRepository {
     if (response.token.isNotEmpty) {
       await _tokenStorage.saveToken(response.token);
       await _tokenStorage.saveUserId(response.user.id.toString());
+      await _tokenStorage.saveUserRole(response.user.role);
+      await _tokenStorage.saveDepartmentName(response.user.departmentName);
     }
     return (token: response.token, user: response.user as UserEntity);
   }

@@ -267,6 +267,10 @@ class AnalyticsController extends Controller
     {
         $seconds = $reports
             ->map(function (Report $report) {
+                if ($report->field_execution_duration_seconds !== null) {
+                    return (int) $report->field_execution_duration_seconds;
+                }
+
                 $transferredAt = $report->getAttribute('transferred_at');
 
                 if (! $report->closed_at || ! $transferredAt || $report->closed_at->lessThan($transferredAt)) {

@@ -13,6 +13,7 @@ abstract class AppRoutes {
   // ─── Reports ──────────────────────────────────────────────────────────────
   static const String reports = '/reports';
   static const String addReport = '/reports/add';
+  static const String departmentReports = '/department/reports';
 
   // ─── Facilities ───────────────────────────────────────────────────────────
   static const String facilities = '/facilities';

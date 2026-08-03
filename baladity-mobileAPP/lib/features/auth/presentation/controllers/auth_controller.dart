@@ -78,9 +78,22 @@ class AuthController extends Notifier<AuthState> {
   /// Checks for a stored token on startup so GoRouter redirect fires correctly.
   Future<void> _init() async {
     final hasToken = await _tokenStorage.hasToken();
-    state = hasToken
-        ? AuthState.authenticated(const UserEntity.empty())
-        : AuthState.unauthenticated();
+    if (!hasToken) {
+      state = AuthState.unauthenticated();
+      return;
+    }
+
+    final role = await _tokenStorage.getUserRole();
+    final departmentName = await _tokenStorage.getDepartmentName();
+    state = AuthState.authenticated(
+      UserEntity(
+        id: 0,
+        name: '',
+        email: '',
+        role: role,
+        departmentName: departmentName,
+      ),
+    );
   }
 
   Future<void> login({required String email, required String password}) async {

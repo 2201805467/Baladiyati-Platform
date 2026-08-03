@@ -50,10 +50,12 @@ abstract class ApiConstants {
   static const String emergencyContacts = '/citizen/emergency-contacts';
   static const String initiatives = '/citizen/initiatives';
   static const String geoBroadcasts = '/citizen/geo-broadcasts';
-  static const String geoBroadcastHomeLocation = '/citizen/geo-broadcasts/home-location';
+  static const String geoBroadcastHomeLocation =
+      '/citizen/geo-broadcasts/home-location';
   static const String geoBroadcastLocation = '/citizen/geo-broadcasts/location';
   static const String lostFound = '/citizen/lost-found';
   static const String polls = '/citizen/polls';
+  static const String departmentReports = '/department/reports';
 
   // ─── Profile ─────────────────────────────────────────────────────────────────
   static const String userProfile = '/auth/me';

@@ -272,6 +272,9 @@ Route::middleware(['auth:sanctum', 'role:department'])
         Route::patch('/reports/{report}/status', [DepartmentReportController::class, 'updateStatus'])->middleware('permission:process_department_reports')->name('reports.status.update');
         Route::post('/reports/{report}/comments', [DepartmentReportController::class, 'storeComment'])->middleware('permission:process_department_reports')->name('reports.comments.store');
         Route::post('/reports/{report}/attachments', [DepartmentReportController::class, 'storeAttachment'])->middleware('permission:process_department_reports')->name('reports.attachments.store');
+        Route::post('/reports/{report}/field/start', [DepartmentReportController::class, 'startFieldWork'])->middleware('permission:process_department_reports')->name('reports.field.start');
+        Route::post('/reports/{report}/field/finish', [DepartmentReportController::class, 'finishFieldWork'])->middleware('permission:process_department_reports')->name('reports.field.finish');
+        Route::post('/reports/{report}/field/cannot-complete', [DepartmentReportController::class, 'cannotComplete'])->middleware('permission:process_department_reports')->name('reports.field.cannot-complete');
         Route::patch('/reports/{report}/close', [DepartmentReportController::class, 'close'])->middleware('permission:process_department_reports')->name('reports.close');
 
     });

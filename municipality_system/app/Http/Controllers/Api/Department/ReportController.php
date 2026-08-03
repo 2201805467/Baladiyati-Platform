@@ -177,6 +177,176 @@ class ReportController extends Controller
         ], 201);
     }
 
+    public function startFieldWork(Request $request, Report $report): JsonResponse
+    {
+        $this->ensureDepartmentOwnsReport($request, $report);
+
+        $data = $request->validate([
+            'latitude' => ['required', 'numeric', 'between:-90,90'],
+            'longitude' => ['required', 'numeric', 'between:-180,180'],
+            'before_image' => ['nullable', 'image', 'max:5120'],
+            'note' => ['nullable', 'string', 'max:2000'],
+        ]);
+
+        $oldStatus = $report->status;
+        $distanceMeters = $this->distanceMeters(
+            (float) $data['latitude'],
+            (float) $data['longitude'],
+            (float) $report->latitude,
+            (float) $report->longitude,
+        );
+
+        DB::transaction(function () use ($report, $request, $data, $oldStatus, $distanceMeters) {
+            if ($request->hasFile('before_image')) {
+                $path = $request->file('before_image')->store('reports/'.$report->id, 'public');
+
+                ReportImage::create([
+                    'report_id' => $report->id,
+                    'image_url' => Storage::url($path),
+                    'image_type' => 'before',
+                    'uploaded_by' => $request->user()->id,
+                ]);
+            }
+
+            $report->update([
+                'status' => 'in_progress',
+                'field_started_at' => $report->field_started_at ?: now(),
+                'field_start_latitude' => $data['latitude'],
+                'field_start_longitude' => $data['longitude'],
+            ]);
+
+            ReportLog::create([
+                'report_id' => $report->id,
+                'action_by' => $request->user()->id,
+                'action' => 'field_started',
+                'old_status' => $oldStatus,
+                'new_status' => 'in_progress',
+                'note' => $data['note'] ?? 'Field work started. Distance from report: '.round($distanceMeters).' meters.',
+            ]);
+
+            $this->notifyCitizen(
+                $report,
+                'Report work started',
+                'Work has started on your report about '.$this->reportLabel($report).'.',
+                'report_status'
+            );
+        });
+
+        return response()->json([
+            'message' => 'Field work started successfully.',
+            'distance_meters' => round($distanceMeters, 2),
+            'is_far_from_report' => $distanceMeters > 100,
+            'report' => $report->fresh()->load(['category', 'department', 'images.uploader', 'comments.user.role', 'logs.actor']),
+        ]);
+    }
+
+    public function finishFieldWork(Request $request, Report $report): JsonResponse
+    {
+        $this->ensureDepartmentOwnsReport($request, $report);
+
+        $data = $request->validate([
+            'latitude' => ['required', 'numeric', 'between:-90,90'],
+            'longitude' => ['required', 'numeric', 'between:-180,180'],
+            'after_image' => ['required', 'image', 'max:5120'],
+            'note' => ['nullable', 'string', 'max:5000'],
+        ]);
+
+        $oldStatus = $report->status;
+        $finishedAt = now();
+        $startedAt = $report->field_started_at ?: $finishedAt;
+        $durationSeconds = max(0, $startedAt->diffInSeconds($finishedAt));
+        $completionReport = $data['note'] ?? 'Field work completed.';
+
+        DB::transaction(function () use ($report, $request, $data, $oldStatus, $finishedAt, $startedAt, $durationSeconds, $completionReport) {
+            $path = $request->file('after_image')->store('reports/'.$report->id, 'public');
+
+            ReportImage::create([
+                'report_id' => $report->id,
+                'image_url' => Storage::url($path),
+                'image_type' => 'after',
+                'uploaded_by' => $request->user()->id,
+            ]);
+
+            $report->update([
+                'status' => 'closed',
+                'completion_report' => $completionReport,
+                'closed_at' => $finishedAt,
+                'field_started_at' => $report->field_started_at ?: $startedAt,
+                'field_finished_at' => $finishedAt,
+                'field_finish_latitude' => $data['latitude'],
+                'field_finish_longitude' => $data['longitude'],
+                'field_execution_duration_seconds' => $durationSeconds,
+            ]);
+
+            ReportLog::create([
+                'report_id' => $report->id,
+                'action_by' => $request->user()->id,
+                'action' => 'field_finished',
+                'old_status' => $oldStatus,
+                'new_status' => 'closed',
+                'note' => $completionReport,
+            ]);
+
+            if (trim($completionReport) !== '') {
+                ReportComment::create([
+                    'report_id' => $report->id,
+                    'user_id' => $request->user()->id,
+                    'comment_text' => $completionReport,
+                ]);
+            }
+
+            $this->notifyCitizen(
+                $report,
+                'Report closed',
+                'Your report about '.$this->reportLabel($report).' was completed and is ready for rating.',
+                'report_status'
+            );
+        });
+
+        return response()->json([
+            'message' => 'Field work finished and report closed successfully.',
+            'report' => $report->fresh()->load(['category', 'department', 'images.uploader', 'comments.user.role', 'logs.actor', 'rating']),
+        ]);
+    }
+
+    public function cannotComplete(Request $request, Report $report): JsonResponse
+    {
+        $this->ensureDepartmentOwnsReport($request, $report);
+
+        $data = $request->validate([
+            'reason' => ['required', 'string', 'max:2000'],
+        ]);
+
+        $oldStatus = $report->status;
+
+        DB::transaction(function () use ($report, $request, $data, $oldStatus) {
+            $report->update([
+                'status' => 'pending',
+            ]);
+
+            ReportLog::create([
+                'report_id' => $report->id,
+                'action_by' => $request->user()->id,
+                'action' => 'field_blocked',
+                'old_status' => $oldStatus,
+                'new_status' => 'pending',
+                'note' => $data['reason'],
+            ]);
+
+            $this->notifyCitizen(
+                $report,
+                'Report work delayed',
+                'Work on your report about '.$this->reportLabel($report).' needs additional follow-up.',
+                'report_status'
+            );
+        });
+
+        return response()->json([
+            'message' => 'Report marked as pending follow-up.',
+            'report' => $report->fresh()->load(['category', 'department', 'images.uploader', 'comments.user.role', 'logs.actor']),
+        ]);
+    }
+
     public function close(Request $request, Report $report): JsonResponse
     {
         $this->ensureDepartmentOwnsReport($request, $report);
@@ -270,5 +440,16 @@ class ReportController extends Controller
         }
 
         return Str::limit($label, 80);
+    }
+
+    private function distanceMeters(float $fromLat, float $fromLng, float $toLat, float $toLng): float
+    {
+        $earthRadius = 6371000;
+        $latDelta = deg2rad($toLat - $fromLat);
+        $lngDelta = deg2rad($toLng - $fromLng);
+        $a = sin($latDelta / 2) ** 2
+            + cos(deg2rad($fromLat)) * cos(deg2rad($toLat)) * sin($lngDelta / 2) ** 2;
+
+        return $earthRadius * 2 * atan2(sqrt($a), sqrt(1 - $a));
     }
 }

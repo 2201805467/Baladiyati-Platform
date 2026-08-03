@@ -8,6 +8,7 @@ import '../../features/auth/presentation/pages/login_page.dart';
 import '../../features/auth/presentation/pages/otp_verification_page.dart';
 import '../../features/auth/presentation/pages/registration_page.dart';
 import '../../features/auth/presentation/pages/reset_password_page.dart';
+import '../../features/department_reports/presentation/pages/department_reports_page.dart';
 import '../../features/home/presentation/pages/home_page.dart';
 import '../../features/geo_broadcasts/presentation/pages/geo_broadcasts_page.dart';
 import '../../features/initiatives/presentation/pages/community_initiatives_page.dart';
@@ -76,6 +77,10 @@ final goRouterProvider = Provider<GoRouter>((ref) {
         builder: (context, state) => const ReportsPage(),
       ),
       GoRoute(
+        path: AppRoutes.departmentReports,
+        builder: (context, state) => const DepartmentReportsPage(),
+      ),
+      GoRoute(
         path: AppRoutes.addReport,
         builder: (context, state) => const AddReportPage(),
       ),
@@ -137,7 +142,27 @@ class _RouterNotifier extends ChangeNotifier {
     if (authState.status == AuthStatus.initial) return null;
 
     if (!authState.isAuthenticated && !isAuthPage) return AppRoutes.login;
-    if (authState.isAuthenticated && isAuthPage) return AppRoutes.home;
+    if (authState.isAuthenticated) {
+      final isDepartmentOfficer = authState.user?.isDepartmentOfficer == true;
+      final isDepartmentPage = loc.startsWith(AppRoutes.departmentReports);
+      final isSharedAuthenticatedPage = loc == AppRoutes.profile;
+
+      if (isAuthPage) {
+        return isDepartmentOfficer
+            ? AppRoutes.departmentReports
+            : AppRoutes.home;
+      }
+
+      if (isDepartmentOfficer &&
+          !isDepartmentPage &&
+          !isSharedAuthenticatedPage) {
+        return AppRoutes.departmentReports;
+      }
+
+      if (!isDepartmentOfficer && isDepartmentPage) {
+        return AppRoutes.home;
+      }
+    }
 
     return null;
   }

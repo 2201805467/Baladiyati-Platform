@@ -15,7 +15,11 @@ class Report extends Model
         'report_number', 'citizen_id', 'category_id', 'dept_id', 'area_id',
         'title', 'description', 'latitude', 'longitude', 'status',
         'ai_suggested_category', 'is_duplicate', 'parent_report_id',
-        'rejection_reason', 'completion_report', 'closed_at', 'sla_due_at'
+        'rejection_reason', 'completion_report', 'closed_at', 'sla_due_at',
+        'field_started_at', 'field_finished_at',
+        'field_start_latitude', 'field_start_longitude',
+        'field_finish_latitude', 'field_finish_longitude',
+        'field_execution_duration_seconds',
     ];
 
     protected $casts = [
@@ -24,6 +28,12 @@ class Report extends Model
         'longitude' => 'decimal:8',
         'closed_at' => 'datetime',
         'sla_due_at' => 'datetime',
+        'field_started_at' => 'datetime',
+        'field_finished_at' => 'datetime',
+        'field_start_latitude' => 'decimal:8',
+        'field_start_longitude' => 'decimal:8',
+        'field_finish_latitude' => 'decimal:8',
+        'field_finish_longitude' => 'decimal:8',
     ];
 
     protected $appends = [
