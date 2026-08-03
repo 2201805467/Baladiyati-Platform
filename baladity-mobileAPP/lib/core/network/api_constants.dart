@@ -53,6 +53,7 @@ abstract class ApiConstants {
   static const String geoBroadcastHomeLocation = '/citizen/geo-broadcasts/home-location';
   static const String geoBroadcastLocation = '/citizen/geo-broadcasts/location';
   static const String lostFound = '/citizen/lost-found';
+  static const String polls = '/citizen/polls';
 
   // ─── Profile ─────────────────────────────────────────────────────────────────
   static const String userProfile = '/auth/me';

@@ -60,6 +60,7 @@ const allowedPermissionsByRole: Record<string, string[]> = {
     "manage_categories",
     "manage_public_facilities",
     "manage_projects",
+    "manage_polls",
     "manage_permissions",
     "view_analytics",
     "review_reports",
@@ -77,6 +78,7 @@ const allowedPermissionsByRole: Record<string, string[]> = {
     "review_suggestions",
     "manage_public_facilities",
     "manage_projects",
+    "manage_polls",
   ],
   department: ["process_department_reports"],
   citizen: [
@@ -93,6 +95,7 @@ const permissionLabels: Record<string, string> = {
   manage_categories: "إدارة التصنيفات",
   manage_public_facilities: "إدارة المرافق وأرقام الطوارئ",
   manage_projects: "إدارة المشاريع",
+  manage_polls: "إدارة استطلاعات الرأي",
   manage_permissions: "إدارة الصلاحيات والسجلات",
   view_analytics: "عرض التقارير والإحصائيات",
   review_reports: "مراجعة البلاغات",
@@ -111,6 +114,7 @@ const permissionGroupLabels: Record<string, string> = {
   categories: "التصنيفات",
   facilities: "المرافق والمحتوى",
   projects: "المشاريع",
+  polls: "استطلاعات الرأي",
   permissions: "الصلاحيات",
   analytics: "التقارير",
   reports: "البلاغات",
@@ -123,6 +127,7 @@ const permissionGroup = (permissionName: string) => {
   if (permissionName.includes("categor")) return "categories";
   if (permissionName.includes("facilit")) return "facilities";
   if (permissionName.includes("project")) return "projects";
+  if (permissionName.includes("poll")) return "polls";
   if (permissionName.includes("permission")) return "permissions";
   if (permissionName.includes("analytic")) return "analytics";
   if (permissionName.includes("report")) return "reports";

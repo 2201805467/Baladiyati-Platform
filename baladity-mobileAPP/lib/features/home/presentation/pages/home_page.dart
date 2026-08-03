@@ -25,6 +25,7 @@ import '../../../facilities/presentation/pages/public_facilities_page.dart';
 import '../../../geo_broadcasts/presentation/pages/geo_broadcasts_page.dart';
 import '../../../initiatives/presentation/pages/community_initiatives_page.dart';
 import '../../../lost_found/presentation/pages/lost_found_page.dart';
+import '../../../polls/presentation/pages/polls_page.dart';
 import '../../../projects/presentation/pages/municipal_projects_page.dart';
 
 class HomePage extends ConsumerStatefulWidget {
@@ -272,6 +273,13 @@ class _HomePageState extends ConsumerState<HomePage> {
       return;
     }
 
+    if (relatedType.contains('poll')) {
+      Navigator.of(
+        context,
+      ).push(MaterialPageRoute(builder: (_) => const PollsPage()));
+      return;
+    }
+
     if (relatedType.contains('report')) {
       await ref
           .read(reportsControllerProvider.notifier)
@@ -433,7 +441,7 @@ class _HomePageState extends ConsumerState<HomePage> {
         : 'مستخدم';
 
     return DefaultTabController(
-      length: 8,
+      length: 9,
       child: Directionality(
         textDirection: TextDirection.rtl,
         child: Scaffold(
@@ -488,6 +496,7 @@ class _HomePageState extends ConsumerState<HomePage> {
                 Tab(text: 'المبادرات'),
                 Tab(text: 'التنبيهات الجغرافية'),
                 Tab(text: 'مفقودات وموجودات'),
+                Tab(text: 'استطلاعات الرأي'),
                 Tab(text: 'مقترحات المواطنين'),
                 Tab(text: 'أرقام الطوارئ'),
               ],
@@ -510,6 +519,7 @@ class _HomePageState extends ConsumerState<HomePage> {
               const CommunityInitiativesPage(showAppBar: false),
               const GeoBroadcastsPage(showAppBar: false),
               const LostFoundPage(showAppBar: false),
+              const PollsPage(showAppBar: false),
               const CitizenProposalsPage(),
               const EmergencyNumbersView(),
             ],
@@ -647,11 +657,17 @@ class _StatisticsSection extends StatelessWidget {
     Color color,
     Color cardBg,
   ) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final background = Color.alphaBlend(
+      color.withValues(alpha: isDark ? 0.12 : 0.06),
+      cardBg,
+    );
+
     return Expanded(
       child: Container(
         padding: const EdgeInsets.symmetric(vertical: 16),
         decoration: BoxDecoration(
-          color: cardBg,
+          color: background,
           borderRadius: BorderRadius.circular(12),
           border: Border(bottom: BorderSide(color: color, width: 4)),
           boxShadow: const [BoxShadow(color: Colors.black12, blurRadius: 4)],
@@ -968,6 +984,15 @@ class _ActionGrid extends StatelessWidget {
         ),
         _actionItem(
           context,
+          Icons.poll_outlined,
+          'استطلاعات الرأي',
+          onTap: () => Navigator.push(
+            context,
+            MaterialPageRoute(builder: (context) => const PollsPage()),
+          ),
+        ),
+        _actionItem(
+          context,
           Icons.emergency_outlined,
           'أرقام الطوارئ',
           onTap: () => Navigator.push(
@@ -987,8 +1012,15 @@ class _ActionGrid extends StatelessWidget {
     String label, {
     VoidCallback? onTap,
   }) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final cardColor = Theme.of(context).cardColor;
+    final background = Color.alphaBlend(
+      primaryColor.withValues(alpha: isDark ? 0.12 : 0.05),
+      cardColor,
+    );
+
     return Material(
-      color: Theme.of(context).cardColor,
+      color: background,
       borderRadius: BorderRadius.circular(12),
       elevation: 1,
       shadowColor: Colors.black12,
@@ -1007,6 +1039,7 @@ class _ActionGrid extends StatelessWidget {
                   fontSize: 12,
                   fontWeight: FontWeight.w600,
                 ),
+                textAlign: TextAlign.center,
               ),
             ],
           ),

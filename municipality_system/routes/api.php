@@ -9,6 +9,7 @@ use App\Http\Controllers\Api\Admin\EmergencyContactController as AdminEmergencyC
 use App\Http\Controllers\Api\Admin\GeoBroadcastController as AdminGeoBroadcastController;
 use App\Http\Controllers\Api\Admin\LostFoundModerationController as AdminLostFoundModerationController;
 use App\Http\Controllers\Api\Admin\PermissionController as AdminPermissionController;
+use App\Http\Controllers\Api\Admin\PollController as AdminPollController;
 use App\Http\Controllers\Api\Admin\ProjectController as AdminProjectController;
 use App\Http\Controllers\Api\Admin\PublicFacilityController as AdminPublicFacilityController;
 use App\Http\Controllers\Api\Admin\ReportMapController as AdminReportMapController;
@@ -19,6 +20,7 @@ use App\Http\Controllers\Api\Citizen\CommunityReportController as CitizenCommuni
 use App\Http\Controllers\Api\Citizen\CommunityInitiativeController as CitizenCommunityInitiativeController;
 use App\Http\Controllers\Api\Citizen\GeoBroadcastController as CitizenGeoBroadcastController;
 use App\Http\Controllers\Api\Citizen\LostFoundController as CitizenLostFoundController;
+use App\Http\Controllers\Api\Citizen\PollController as CitizenPollController;
 use App\Http\Controllers\Api\Citizen\PublicInfoController as CitizenPublicInfoController;
 use App\Http\Controllers\Api\Citizen\ReportController as CitizenReportController;
 use App\Http\Controllers\Api\Citizen\SuggestionController as CitizenSuggestionController;
@@ -106,6 +108,10 @@ Route::middleware(['auth:sanctum', 'role:citizen'])
         Route::post('/lost-found/{item}/resolve', [CitizenLostFoundController::class, 'resolve'])->name('lost-found.resolve');
         Route::post('/lost-found/{item}/republish', [CitizenLostFoundController::class, 'republish'])->name('lost-found.republish');
         Route::post('/lost-found/{item}/threads', [CitizenLostFoundController::class, 'startThread'])->name('lost-found.threads.start');
+
+        Route::get('/polls', [CitizenPollController::class, 'index'])->name('polls.index');
+        Route::get('/polls/{poll}', [CitizenPollController::class, 'show'])->name('polls.show');
+        Route::post('/polls/{poll}/vote', [CitizenPollController::class, 'vote'])->name('polls.vote');
     });
 
 Route::middleware(['auth:sanctum', 'role:admin'])
@@ -172,6 +178,12 @@ Route::middleware(['auth:sanctum', 'role:admin'])
         Route::get('/lost-found/{item}', [AdminLostFoundModerationController::class, 'show'])->middleware('permission:manage_public_facilities')->name('lost-found.show');
         Route::patch('/lost-found/{item}/remove', [AdminLostFoundModerationController::class, 'remove'])->middleware('permission:manage_public_facilities')->name('lost-found.remove');
 
+        Route::get('/polls', [AdminPollController::class, 'index'])->middleware('permission:manage_polls')->name('polls.index');
+        Route::post('/polls', [AdminPollController::class, 'store'])->middleware('permission:manage_polls')->name('polls.store');
+        Route::get('/polls/{poll}', [AdminPollController::class, 'show'])->middleware('permission:manage_polls')->name('polls.show');
+        Route::patch('/polls/{poll}/cancel', [AdminPollController::class, 'cancel'])->middleware('permission:manage_polls')->name('polls.cancel');
+        Route::delete('/polls/{poll}', [AdminPollController::class, 'destroy'])->middleware('permission:manage_polls')->name('polls.destroy');
+
         Route::get('/analytics/reports', [AdminAnalyticsController::class, 'reports'])->middleware('permission:view_analytics')->name('analytics.reports');
         Route::get('/analytics/departments', [AdminAnalyticsController::class, 'departments'])->middleware('permission:view_analytics')->name('analytics.departments');
         Route::get('/analytics/departments/{department}', [AdminAnalyticsController::class, 'departmentPerformance'])->middleware('permission:view_analytics')->name('analytics.departments.show');
@@ -235,6 +247,14 @@ Route::middleware(['auth:sanctum', 'role:reception'])
                 Route::get('/lost-found/{item}', [AdminLostFoundModerationController::class, 'show'])->name('lost-found.show');
                 Route::patch('/lost-found/{item}/remove', [AdminLostFoundModerationController::class, 'remove'])->name('lost-found.remove');
             });
+
+            Route::middleware('permission:manage_polls')->group(function () {
+                Route::get('/polls', [AdminPollController::class, 'index'])->name('polls.index');
+                Route::post('/polls', [AdminPollController::class, 'store'])->name('polls.store');
+                Route::get('/polls/{poll}', [AdminPollController::class, 'show'])->name('polls.show');
+                Route::patch('/polls/{poll}/cancel', [AdminPollController::class, 'cancel'])->name('polls.cancel');
+                Route::delete('/polls/{poll}', [AdminPollController::class, 'destroy'])->name('polls.destroy');
+            });
         });
 
         Route::get('/suggestions', [ReceptionSuggestionController::class, 'index'])->middleware('permission:review_suggestions')->name('suggestions.index');
@@ -253,4 +273,5 @@ Route::middleware(['auth:sanctum', 'role:department'])
         Route::post('/reports/{report}/comments', [DepartmentReportController::class, 'storeComment'])->middleware('permission:process_department_reports')->name('reports.comments.store');
         Route::post('/reports/{report}/attachments', [DepartmentReportController::class, 'storeAttachment'])->middleware('permission:process_department_reports')->name('reports.attachments.store');
         Route::patch('/reports/{report}/close', [DepartmentReportController::class, 'close'])->middleware('permission:process_department_reports')->name('reports.close');
+
     });

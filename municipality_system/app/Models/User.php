@@ -128,6 +128,21 @@ class User extends Authenticatable
         return $this->hasMany(GeoBroadcast::class, 'created_by');
     }
 
+    public function createdPolls(): HasMany
+    {
+        return $this->hasMany(Poll::class, 'created_by');
+    }
+
+    public function pollVotes(): HasMany
+    {
+        return $this->hasMany(PollVote::class, 'citizen_id');
+    }
+
+    public function pollRecipients(): HasMany
+    {
+        return $this->hasMany(PollRecipient::class);
+    }
+
     public function geoBroadcastRecipients(): HasMany
     {
         return $this->hasMany(GeoBroadcastRecipient::class);

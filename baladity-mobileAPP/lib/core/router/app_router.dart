@@ -12,6 +12,7 @@ import '../../features/home/presentation/pages/home_page.dart';
 import '../../features/geo_broadcasts/presentation/pages/geo_broadcasts_page.dart';
 import '../../features/initiatives/presentation/pages/community_initiatives_page.dart';
 import '../../features/lost_found/presentation/pages/lost_found_page.dart';
+import '../../features/polls/presentation/pages/polls_page.dart';
 import '../../features/proposals/domain/entities/proposal_entity.dart';
 import '../../features/proposals/presentation/pages/proposal_details_page.dart';
 import '../../features/proposals/presentation/pages/suggest_service_page.dart';
@@ -106,6 +107,10 @@ final goRouterProvider = Provider<GoRouter>((ref) {
       GoRoute(
         path: AppRoutes.lostFound,
         builder: (context, state) => const LostFoundPage(),
+      ),
+      GoRoute(
+        path: AppRoutes.polls,
+        builder: (context, state) => const PollsPage(),
       ),
     ],
   );

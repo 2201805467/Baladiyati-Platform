@@ -20,6 +20,7 @@ class PermissionController extends Controller
             'manage_projects',
             'manage_initiatives',
             'manage_geo_broadcasts',
+            'manage_polls',
             'manage_permissions',
             'view_analytics',
             'review_reports',
@@ -39,6 +40,7 @@ class PermissionController extends Controller
             'manage_projects',
             'manage_initiatives',
             'manage_geo_broadcasts',
+            'manage_polls',
         ],
         'department' => [
             'process_department_reports',
