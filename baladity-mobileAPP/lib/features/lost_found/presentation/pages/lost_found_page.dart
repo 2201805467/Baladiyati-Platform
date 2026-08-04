@@ -9,11 +9,14 @@ import 'package:url_launcher/url_launcher.dart';
 
 import '../../../../core/network/api_constants.dart';
 import '../../../auth/presentation/controllers/auth_controller.dart';
-import '../../../reports/presentation/pages/location_selection_page.dart' as report_map;
+import '../../../reports/presentation/pages/location_selection_page.dart'
+    as report_map;
 
 String _apiOrigin() {
   final baseUrl = ApiConstants.baseUrl;
-  if (baseUrl.endsWith('/api/')) return baseUrl.substring(0, baseUrl.length - 5);
+  if (baseUrl.endsWith('/api/')) {
+    return baseUrl.substring(0, baseUrl.length - 5);
+  }
   if (baseUrl.endsWith('/api')) return baseUrl.substring(0, baseUrl.length - 4);
   return baseUrl;
 }
@@ -32,6 +35,75 @@ class LostFoundPage extends ConsumerStatefulWidget {
 
   @override
   ConsumerState<LostFoundPage> createState() => _LostFoundPageState();
+}
+
+class LostFoundThreadPage extends ConsumerStatefulWidget {
+  final int threadId;
+
+  const LostFoundThreadPage({super.key, required this.threadId});
+
+  @override
+  ConsumerState<LostFoundThreadPage> createState() =>
+      _LostFoundThreadPageState();
+}
+
+class _LostFoundThreadPageState extends ConsumerState<LostFoundThreadPage> {
+  _LostFoundThread? _thread;
+  Object? _error;
+
+  @override
+  void initState() {
+    super.initState();
+    Future.microtask(_loadThread);
+  }
+
+  Future<void> _loadThread() async {
+    try {
+      final response = await ref
+          .read(dioProvider)
+          .get('${ApiConstants.lostFound}/threads/${widget.threadId}');
+      if (!mounted) return;
+      setState(() {
+        _thread = _LostFoundThread.fromJson(response.data['thread'] ?? {});
+        _error = null;
+      });
+    } catch (e) {
+      if (!mounted) return;
+      setState(() => _error = e);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    if (_thread != null) {
+      return _LostFoundChatPage(thread: _thread!);
+    }
+
+    return Directionality(
+      textDirection: TextDirection.rtl,
+      child: Scaffold(
+        appBar: AppBar(title: const Text('الدردشة')),
+        body: Center(
+          child: _error == null
+              ? const CircularProgressIndicator()
+              : Padding(
+                  padding: const EdgeInsets.all(16),
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Text(_messageFromError(_error!)),
+                      const SizedBox(height: 12),
+                      FilledButton(
+                        onPressed: _loadThread,
+                        child: const Text('إعادة المحاولة'),
+                      ),
+                    ],
+                  ),
+                ),
+        ),
+      ),
+    );
+  }
 }
 
 class _LostFoundPageState extends ConsumerState<LostFoundPage> {
@@ -58,14 +130,16 @@ class _LostFoundPageState extends ConsumerState<LostFoundPage> {
       final path = _scope == 'my'
           ? '${ApiConstants.lostFound}/my-items'
           : ApiConstants.lostFound;
-      final response = await ref.read(dioProvider).get(
-        path,
-        queryParameters: {
-          'per_page': 50,
-          if (_scope == 'found' || _scope == 'lost') 'item_type': _scope,
-          if (_category.isNotEmpty) 'category': _category,
-        },
-      );
+      final response = await ref
+          .read(dioProvider)
+          .get(
+            path,
+            queryParameters: {
+              'per_page': 50,
+              if (_scope == 'found' || _scope == 'lost') 'item_type': _scope,
+              if (_category.isNotEmpty) 'category': _category,
+            },
+          );
       final raw = response.data['data'] ?? response.data;
       final list = raw is List ? raw : const [];
       if (!mounted) return;
@@ -86,10 +160,12 @@ class _LostFoundPageState extends ConsumerState<LostFoundPage> {
   Future<void> _loadThreads() async {
     setState(() => _isLoading = true);
     try {
-      final response = await ref.read(dioProvider).get(
-        '${ApiConstants.lostFound}/threads',
-        queryParameters: {'per_page': 50},
-      );
+      final response = await ref
+          .read(dioProvider)
+          .get(
+            '${ApiConstants.lostFound}/threads',
+            queryParameters: {'per_page': 50},
+          );
       final raw = response.data['data'] ?? response.data;
       final list = raw is List ? raw : const [];
       if (!mounted) return;
@@ -130,7 +206,10 @@ class _LostFoundPageState extends ConsumerState<LostFoundPage> {
 
   void _showError(Object error) {
     ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text(_messageFromError(error)), backgroundColor: Colors.red[700]),
+      SnackBar(
+        content: Text(_messageFromError(error)),
+        backgroundColor: Colors.red[700],
+      ),
     );
   }
 
@@ -166,9 +245,15 @@ class _LostFoundPageState extends ConsumerState<LostFoundPage> {
                     isDense: true,
                   ),
                   items: [
-                    const DropdownMenuItem(value: '', child: Text('كل التصنيفات')),
+                    const DropdownMenuItem(
+                      value: '',
+                      child: Text('كل التصنيفات'),
+                    ),
                     ..._LostFoundItem.categoryLabels.entries.map(
-                      (entry) => DropdownMenuItem(value: entry.key, child: Text(entry.value)),
+                      (entry) => DropdownMenuItem(
+                        value: entry.key,
+                        child: Text(entry.value),
+                      ),
                     ),
                   ],
                   onChanged: (value) {
@@ -254,9 +339,11 @@ class _LostFoundPageState extends ConsumerState<LostFoundPage> {
           child: ListTile(
             leading: const CircleAvatar(child: Icon(Icons.chat_outlined)),
             title: Text(thread.itemTitle),
-            subtitle: Text(thread.lastMessage?.isNotEmpty == true
-                ? thread.lastMessage!
-                : 'ابدأ المحادثة بشكل مجهول'),
+            subtitle: Text(
+              thread.lastMessage?.isNotEmpty == true
+                  ? thread.lastMessage!
+                  : 'ابدأ المحادثة بشكل مجهول',
+            ),
             trailing: Text(thread.otherAlias),
             onTap: () => _openThread(thread),
           ),
@@ -270,7 +357,8 @@ class _LostFoundCreatePage extends ConsumerStatefulWidget {
   const _LostFoundCreatePage();
 
   @override
-  ConsumerState<_LostFoundCreatePage> createState() => _LostFoundCreatePageState();
+  ConsumerState<_LostFoundCreatePage> createState() =>
+      _LostFoundCreatePageState();
 }
 
 class _LostFoundCreatePageState extends ConsumerState<_LostFoundCreatePage> {
@@ -300,14 +388,18 @@ class _LostFoundCreatePageState extends ConsumerState<_LostFoundCreatePage> {
   }
 
   Future<void> _pickImage() async {
-    final image = await _picker.pickImage(source: ImageSource.gallery, imageQuality: 80);
+    final image = await _picker.pickImage(
+      source: ImageSource.gallery,
+      imageQuality: 80,
+    );
     if (image != null && mounted) setState(() => _image = image);
   }
 
   Future<void> _pickLocation() async {
     final result = await Navigator.of(context).push<LatLng>(
       MaterialPageRoute(
-        builder: (_) => report_map.LocationSelectionPage(initialLocation: _location),
+        builder: (_) =>
+            report_map.LocationSelectionPage(initialLocation: _location),
       ),
     );
     if (result != null && mounted) setState(() => _location = result);
@@ -334,19 +426,32 @@ class _LostFoundCreatePageState extends ConsumerState<_LostFoundCreatePage> {
         'latitude': _location!.latitude,
         'longitude': _location!.longitude,
         if (_area.text.trim().isNotEmpty) 'area_name': _area.text.trim(),
-        if (_incidentDate != null) 'incident_date': _incidentDate!.toIso8601String().split('T').first,
-        if (_category == 'pet' && _petType.text.trim().isNotEmpty) 'pet_type': _petType.text.trim(),
-        if (_category == 'pet' && _petMarks.text.trim().isNotEmpty) 'pet_identifying_marks': _petMarks.text.trim(),
+        if (_incidentDate != null)
+          'incident_date': _incidentDate!.toIso8601String().split('T').first,
+        if (_category == 'pet' && _petType.text.trim().isNotEmpty)
+          'pet_type': _petType.text.trim(),
+        if (_category == 'pet' && _petMarks.text.trim().isNotEmpty)
+          'pet_identifying_marks': _petMarks.text.trim(),
         if (_category == 'pet') 'pet_has_collar': _petHasCollar ? 1 : 0,
-        if (_image != null) 'image': await MultipartFile.fromFile(_image!.path, filename: 'lost-found.jpg'),
+        if (_image != null)
+          'image': await MultipartFile.fromFile(
+            _image!.path,
+            filename: 'lost-found.jpg',
+          ),
       });
 
-      final response = await ref.read(dioProvider).post(ApiConstants.lostFound, data: form);
-      final warning = response.data is Map ? response.data['documents_warning']?.toString() : null;
+      final response = await ref
+          .read(dioProvider)
+          .post(ApiConstants.lostFound, data: form);
+      final warning = response.data is Map
+          ? response.data['documents_warning']?.toString()
+          : null;
       if (!mounted) return;
       Navigator.of(context).pop(true);
       if (warning?.isNotEmpty == true) {
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(warning!)));
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text(warning!)));
       }
     } catch (e) {
       _showMessage(_messageFromError(e), isError: true);
@@ -357,7 +462,10 @@ class _LostFoundCreatePageState extends ConsumerState<_LostFoundCreatePage> {
 
   void _showMessage(String message, {bool isError = false}) {
     ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text(message), backgroundColor: isError ? Colors.red[700] : null),
+      SnackBar(
+        content: Text(message),
+        backgroundColor: isError ? Colors.red[700] : null,
+      ),
     );
   }
 
@@ -379,16 +487,26 @@ class _LostFoundCreatePageState extends ConsumerState<_LostFoundCreatePage> {
                   ButtonSegment(value: 'lost', label: Text('أبحث عنه')),
                 ],
                 selected: {_itemType},
-                onSelectionChanged: (value) => setState(() => _itemType = value.first),
+                onSelectionChanged: (value) =>
+                    setState(() => _itemType = value.first),
               ),
               const SizedBox(height: 12),
               DropdownButtonFormField<String>(
                 initialValue: _category,
-                decoration: const InputDecoration(labelText: 'تصنيف الغرض', border: OutlineInputBorder()),
+                decoration: const InputDecoration(
+                  labelText: 'تصنيف الغرض',
+                  border: OutlineInputBorder(),
+                ),
                 items: _LostFoundItem.categoryLabels.entries
-                    .map((entry) => DropdownMenuItem(value: entry.key, child: Text(entry.value)))
+                    .map(
+                      (entry) => DropdownMenuItem(
+                        value: entry.key,
+                        child: Text(entry.value),
+                      ),
+                    )
                     .toList(),
-                onChanged: (value) => setState(() => _category = value ?? 'keys'),
+                onChanged: (value) =>
+                    setState(() => _category = value ?? 'keys'),
               ),
               if (_category == 'documents')
                 const Padding(
@@ -401,22 +519,44 @@ class _LostFoundCreatePageState extends ConsumerState<_LostFoundCreatePage> {
               const SizedBox(height: 12),
               TextFormField(
                 controller: _title,
-                decoration: const InputDecoration(labelText: 'العنوان', border: OutlineInputBorder()),
-                validator: (value) => value == null || value.trim().isEmpty ? 'العنوان مطلوب' : null,
+                decoration: const InputDecoration(
+                  labelText: 'العنوان',
+                  border: OutlineInputBorder(),
+                ),
+                validator: (value) => value == null || value.trim().isEmpty
+                    ? 'العنوان مطلوب'
+                    : null,
               ),
               const SizedBox(height: 12),
               TextFormField(
                 controller: _description,
                 minLines: 3,
                 maxLines: 5,
-                decoration: const InputDecoration(labelText: 'الوصف', border: OutlineInputBorder()),
-                validator: (value) => value == null || value.trim().isEmpty ? 'الوصف مطلوب' : null,
+                decoration: const InputDecoration(
+                  labelText: 'الوصف',
+                  border: OutlineInputBorder(),
+                ),
+                validator: (value) => value == null || value.trim().isEmpty
+                    ? 'الوصف مطلوب'
+                    : null,
               ),
               if (_category == 'pet') ...[
                 const SizedBox(height: 12),
-                TextField(controller: _petType, decoration: const InputDecoration(labelText: 'نوع الحيوان', border: OutlineInputBorder())),
+                TextField(
+                  controller: _petType,
+                  decoration: const InputDecoration(
+                    labelText: 'نوع الحيوان',
+                    border: OutlineInputBorder(),
+                  ),
+                ),
                 const SizedBox(height: 12),
-                TextField(controller: _petMarks, decoration: const InputDecoration(labelText: 'علامات مميزة', border: OutlineInputBorder())),
+                TextField(
+                  controller: _petMarks,
+                  decoration: const InputDecoration(
+                    labelText: 'علامات مميزة',
+                    border: OutlineInputBorder(),
+                  ),
+                ),
                 SwitchListTile(
                   value: _petHasCollar,
                   onChanged: (value) => setState(() => _petHasCollar = value),
@@ -426,13 +566,20 @@ class _LostFoundCreatePageState extends ConsumerState<_LostFoundCreatePage> {
               const SizedBox(height: 12),
               TextField(
                 controller: _area,
-                decoration: const InputDecoration(labelText: 'الحي أو الموقع التقريبي', border: OutlineInputBorder()),
+                decoration: const InputDecoration(
+                  labelText: 'الحي أو الموقع التقريبي',
+                  border: OutlineInputBorder(),
+                ),
               ),
               const SizedBox(height: 12),
               OutlinedButton.icon(
                 onPressed: _pickLocation,
                 icon: const Icon(Icons.map_outlined),
-                label: Text(_location == null ? 'تحديد الموقع على الخريطة' : 'تم تحديد الموقع'),
+                label: Text(
+                  _location == null
+                      ? 'تحديد الموقع على الخريطة'
+                      : 'تم تحديد الموقع',
+                ),
               ),
               const SizedBox(height: 8),
               OutlinedButton.icon(
@@ -440,31 +587,45 @@ class _LostFoundCreatePageState extends ConsumerState<_LostFoundCreatePage> {
                   final picked = await showDatePicker(
                     context: context,
                     initialDate: _incidentDate ?? DateTime.now(),
-                    firstDate: DateTime.now().subtract(const Duration(days: 365)),
+                    firstDate: DateTime.now().subtract(
+                      const Duration(days: 365),
+                    ),
                     lastDate: DateTime.now(),
                   );
                   if (picked != null) setState(() => _incidentDate = picked);
                 },
                 icon: const Icon(Icons.calendar_today_outlined),
-                label: Text(_incidentDate == null ? 'تاريخ العثور/الفقدان التقريبي' : _formatDate(_incidentDate!)),
+                label: Text(
+                  _incidentDate == null
+                      ? 'تاريخ العثور/الفقدان التقريبي'
+                      : _formatDate(_incidentDate!),
+                ),
               ),
               const SizedBox(height: 8),
               OutlinedButton.icon(
                 onPressed: _pickImage,
                 icon: const Icon(Icons.image_outlined),
-                label: Text(_image == null ? 'اختيار صورة' : 'تم اختيار الصورة'),
+                label: Text(
+                  _image == null ? 'اختيار صورة' : 'تم اختيار الصورة',
+                ),
               ),
               if (_image != null) ...[
                 const SizedBox(height: 10),
                 ClipRRect(
                   borderRadius: BorderRadius.circular(12),
-                  child: Image.file(File(_image!.path), height: 170, fit: BoxFit.cover),
+                  child: Image.file(
+                    File(_image!.path),
+                    height: 170,
+                    fit: BoxFit.cover,
+                  ),
                 ),
               ],
               const SizedBox(height: 18),
               FilledButton(
                 onPressed: _isSubmitting ? null : _submit,
-                child: _isSubmitting ? const CircularProgressIndicator() : const Text('نشر'),
+                child: _isSubmitting
+                    ? const CircularProgressIndicator()
+                    : const Text('نشر'),
               ),
             ],
           ),
@@ -480,7 +641,8 @@ class _LostFoundDetailsPage extends ConsumerStatefulWidget {
   const _LostFoundDetailsPage({required this.item});
 
   @override
-  ConsumerState<_LostFoundDetailsPage> createState() => _LostFoundDetailsPageState();
+  ConsumerState<_LostFoundDetailsPage> createState() =>
+      _LostFoundDetailsPageState();
 }
 
 class _LostFoundDetailsPageState extends ConsumerState<_LostFoundDetailsPage> {
@@ -504,7 +666,9 @@ class _LostFoundDetailsPageState extends ConsumerState<_LostFoundDetailsPage> {
   Future<void> _load() async {
     setState(() => _isLoading = true);
     try {
-      final response = await ref.read(dioProvider).get('${ApiConstants.lostFound}/${_item.id}');
+      final response = await ref
+          .read(dioProvider)
+          .get('${ApiConstants.lostFound}/${_item.id}');
       if (!mounted) return;
       setState(() {
         _item = _LostFoundItem.fromJson(response.data['item'] ?? {});
@@ -522,10 +686,12 @@ class _LostFoundDetailsPageState extends ConsumerState<_LostFoundDetailsPage> {
     if (text.isEmpty) return;
     setState(() => _isBusy = true);
     try {
-      await ref.read(dioProvider).post(
-        '${ApiConstants.lostFound}/${_item.id}/comments',
-        data: {'comment_text': text},
-      );
+      await ref
+          .read(dioProvider)
+          .post(
+            '${ApiConstants.lostFound}/${_item.id}/comments',
+            data: {'comment_text': text},
+          );
       _commentController.clear();
       await _load();
     } catch (e) {
@@ -538,7 +704,9 @@ class _LostFoundDetailsPageState extends ConsumerState<_LostFoundDetailsPage> {
   Future<void> _startChat() async {
     setState(() => _isBusy = true);
     try {
-      final response = await ref.read(dioProvider).post('${ApiConstants.lostFound}/${_item.id}/threads');
+      final response = await ref
+          .read(dioProvider)
+          .post('${ApiConstants.lostFound}/${_item.id}/threads');
       final thread = _LostFoundThread.fromJson(response.data['thread'] ?? {});
       if (!mounted) return;
       await Navigator.of(context).push(
@@ -575,10 +743,16 @@ class _LostFoundDetailsPageState extends ConsumerState<_LostFoundDetailsPage> {
     final reason = await _askReason(context);
     if (reason == null || reason.trim().isEmpty) return;
     try {
-      await ref.read(dioProvider).post(
-        '${ApiConstants.lostFound}/report-abuse',
-        data: {'reportable_type': 'item', 'reportable_id': _item.id, 'reason': reason},
-      );
+      await ref
+          .read(dioProvider)
+          .post(
+            '${ApiConstants.lostFound}/report-abuse',
+            data: {
+              'reportable_type': 'item',
+              'reportable_id': _item.id,
+              'reason': reason,
+            },
+          );
       _showMessage('تم إرسال البلاغ للمراجعة.');
     } catch (e) {
       _showError(e);
@@ -589,15 +763,21 @@ class _LostFoundDetailsPageState extends ConsumerState<_LostFoundDetailsPage> {
     if (_item.latitude == null || _item.longitude == null) return;
     final lat = _item.latitude!;
     final lng = _item.longitude!;
-    final uri = Uri.parse('https://www.google.com/maps/search/?api=1&query=$lat,$lng');
+    final uri = Uri.parse(
+      'https://www.google.com/maps/search/?api=1&query=$lat,$lng',
+    );
     await launchUrl(uri, mode: LaunchMode.externalApplication);
   }
 
-  void _showError(Object error) => _showMessage(_messageFromError(error), isError: true);
+  void _showError(Object error) =>
+      _showMessage(_messageFromError(error), isError: true);
 
   void _showMessage(String message, {bool isError = false}) {
     ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text(message), backgroundColor: isError ? Colors.red[700] : null),
+      SnackBar(
+        content: Text(message),
+        backgroundColor: isError ? Colors.red[700] : null,
+      ),
     );
   }
 
@@ -611,7 +791,10 @@ class _LostFoundDetailsPageState extends ConsumerState<_LostFoundDetailsPage> {
         appBar: AppBar(
           title: Text(_item.title),
           actions: [
-            IconButton(onPressed: _reportItem, icon: const Icon(Icons.flag_outlined)),
+            IconButton(
+              onPressed: _reportItem,
+              icon: const Icon(Icons.flag_outlined),
+            ),
           ],
         ),
         body: _isLoading
@@ -622,7 +805,12 @@ class _LostFoundDetailsPageState extends ConsumerState<_LostFoundDetailsPage> {
                   if (imageUrl != null)
                     ClipRRect(
                       borderRadius: BorderRadius.circular(12),
-                      child: Image.network(imageUrl, height: 220, width: double.infinity, fit: BoxFit.cover),
+                      child: Image.network(
+                        imageUrl,
+                        height: 220,
+                        width: double.infinity,
+                        fit: BoxFit.cover,
+                      ),
                     ),
                   const SizedBox(height: 12),
                   Row(
@@ -640,15 +828,24 @@ class _LostFoundDetailsPageState extends ConsumerState<_LostFoundDetailsPage> {
                     const SizedBox(height: 10),
                     Text('الموقع التقريبي: ${_item.areaName}'),
                   ],
-                  if (_item.petType?.isNotEmpty == true) Text('نوع الحيوان: ${_item.petType}'),
-                  if (_item.petIdentifyingMarks?.isNotEmpty == true) Text('علامات مميزة: ${_item.petIdentifyingMarks}'),
+                  if (_item.petType?.isNotEmpty == true)
+                    Text('نوع الحيوان: ${_item.petType}'),
+                  if (_item.petIdentifyingMarks?.isNotEmpty == true)
+                    Text('علامات مميزة: ${_item.petIdentifyingMarks}'),
                   if (_item.category == 'documents')
                     const Padding(
                       padding: EdgeInsets.only(top: 10),
-                      child: Text('تنبيه: يفضل التبليغ عن الوثائق الرسمية لدى الجهات المختصة أيضاً.', style: TextStyle(color: Colors.orange)),
+                      child: Text(
+                        'تنبيه: يفضل التبليغ عن الوثائق الرسمية لدى الجهات المختصة أيضاً.',
+                        style: TextStyle(color: Colors.orange),
+                      ),
                     ),
                   const SizedBox(height: 12),
-                  OutlinedButton.icon(onPressed: _openLocation, icon: const Icon(Icons.map_outlined), label: const Text('عرض الموقع على الخريطة')),
+                  OutlinedButton.icon(
+                    onPressed: _openLocation,
+                    icon: const Icon(Icons.map_outlined),
+                    label: const Text('عرض الموقع على الخريطة'),
+                  ),
                   const SizedBox(height: 12),
                   if (!_item.isOwner && _item.status == 'active')
                     FilledButton.icon(
@@ -657,11 +854,20 @@ class _LostFoundDetailsPageState extends ConsumerState<_LostFoundDetailsPage> {
                       label: const Text('أتواصل مع الناشر بشكل مجهول'),
                     ),
                   if (_item.isOwner && _item.status == 'active')
-                    FilledButton(onPressed: _isBusy ? null : _resolve, child: const Text('تم الحل')),
+                    FilledButton(
+                      onPressed: _isBusy ? null : _resolve,
+                      child: const Text('تم الحل'),
+                    ),
                   if (_item.isOwner && _item.status == 'expired')
-                    FilledButton(onPressed: _isBusy ? null : _republish, child: const Text('إعادة النشر')),
+                    FilledButton(
+                      onPressed: _isBusy ? null : _republish,
+                      child: const Text('إعادة النشر'),
+                    ),
                   const SizedBox(height: 20),
-                  const Text('التعليقات العامة', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+                  const Text(
+                    'التعليقات العامة',
+                    style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+                  ),
                   const SizedBox(height: 8),
                   if (_item.comments.isEmpty)
                     const Text('لا توجد تعليقات بعد.')
@@ -679,7 +885,10 @@ class _LostFoundDetailsPageState extends ConsumerState<_LostFoundDetailsPage> {
                     controller: _commentController,
                     minLines: 2,
                     maxLines: 4,
-                    decoration: const InputDecoration(hintText: 'اكتب تعليقاً عاماً...', border: OutlineInputBorder()),
+                    decoration: const InputDecoration(
+                      hintText: 'اكتب تعليقاً عاماً...',
+                      border: OutlineInputBorder(),
+                    ),
                   ),
                   const SizedBox(height: 8),
                   FilledButton.icon(
@@ -723,7 +932,9 @@ class _LostFoundChatPageState extends ConsumerState<_LostFoundChatPage> {
   Future<void> _load() async {
     setState(() => _isLoading = true);
     try {
-      final response = await ref.read(dioProvider).get('${ApiConstants.lostFound}/threads/${_thread.id}');
+      final response = await ref
+          .read(dioProvider)
+          .get('${ApiConstants.lostFound}/threads/${_thread.id}');
       if (!mounted) return;
       setState(() {
         _thread = _LostFoundThread.fromJson(response.data['thread'] ?? {});
@@ -732,7 +943,9 @@ class _LostFoundChatPageState extends ConsumerState<_LostFoundChatPage> {
     } catch (e) {
       if (!mounted) return;
       setState(() => _isLoading = false);
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(_messageFromError(e))));
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text(_messageFromError(e))));
     }
   }
 
@@ -741,14 +954,18 @@ class _LostFoundChatPageState extends ConsumerState<_LostFoundChatPage> {
     if (text.isEmpty) return;
     _controller.clear();
     try {
-      await ref.read(dioProvider).post(
-        '${ApiConstants.lostFound}/threads/${_thread.id}/messages',
-        data: {'message_text': text},
-      );
+      await ref
+          .read(dioProvider)
+          .post(
+            '${ApiConstants.lostFound}/threads/${_thread.id}/messages',
+            data: {'message_text': text},
+          );
       await _load();
     } catch (e) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(_messageFromError(e))));
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text(_messageFromError(e))));
     }
   }
 
@@ -762,7 +979,9 @@ class _LostFoundChatPageState extends ConsumerState<_LostFoundChatPage> {
           children: [
             Padding(
               padding: const EdgeInsets.all(12),
-              child: Text('المحادثة مجهولة: أنت تظهر باسم "${_thread.viewerAlias}" والطرف الآخر باسم "${_thread.otherAlias}".'),
+              child: Text(
+                'المحادثة مجهولة: أنت تظهر باسم "${_thread.viewerAlias}" والطرف الآخر باسم "${_thread.otherAlias}".',
+              ),
             ),
             Expanded(
               child: _isLoading
@@ -773,21 +992,30 @@ class _LostFoundChatPageState extends ConsumerState<_LostFoundChatPage> {
                       itemBuilder: (context, index) {
                         final message = _thread.messages[index];
                         return Align(
-                          alignment: message.isMine ? Alignment.centerRight : Alignment.centerLeft,
+                          alignment: message.isMine
+                              ? Alignment.centerRight
+                              : Alignment.centerLeft,
                           child: Container(
                             margin: const EdgeInsets.only(bottom: 8),
                             padding: const EdgeInsets.all(12),
                             constraints: const BoxConstraints(maxWidth: 280),
                             decoration: BoxDecoration(
                               color: message.isMine
-                                  ? Theme.of(context).colorScheme.primary.withValues(alpha: 0.15)
+                                  ? Theme.of(context).colorScheme.primary
+                                        .withValues(alpha: 0.15)
                                   : Theme.of(context).cardColor,
                               borderRadius: BorderRadius.circular(12),
                             ),
                             child: Column(
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
-                                Text(message.senderAlias, style: const TextStyle(fontSize: 11, fontWeight: FontWeight.bold)),
+                                Text(
+                                  message.senderAlias,
+                                  style: const TextStyle(
+                                    fontSize: 11,
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                ),
                                 const SizedBox(height: 4),
                                 Text(message.messageText),
                               ],
@@ -805,11 +1033,17 @@ class _LostFoundChatPageState extends ConsumerState<_LostFoundChatPage> {
                     Expanded(
                       child: TextField(
                         controller: _controller,
-                        decoration: const InputDecoration(hintText: 'اكتب رسالة...', border: OutlineInputBorder()),
+                        decoration: const InputDecoration(
+                          hintText: 'اكتب رسالة...',
+                          border: OutlineInputBorder(),
+                        ),
                       ),
                     ),
                     const SizedBox(width: 8),
-                    IconButton.filled(onPressed: _send, icon: const Icon(Icons.send_rounded)),
+                    IconButton.filled(
+                      onPressed: _send,
+                      icon: const Icon(Icons.send_rounded),
+                    ),
                   ],
                 ),
               ),
@@ -839,7 +1073,12 @@ class _LostFoundItemCard extends StatelessWidget {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             if (imageUrl != null)
-              Image.network(imageUrl, height: 160, width: double.infinity, fit: BoxFit.cover),
+              Image.network(
+                imageUrl,
+                height: 160,
+                width: double.infinity,
+                fit: BoxFit.cover,
+              ),
             Padding(
               padding: const EdgeInsets.all(14),
               child: Column(
@@ -847,19 +1086,42 @@ class _LostFoundItemCard extends StatelessWidget {
                 children: [
                   Row(
                     children: [
-                      Expanded(child: Text(item.title, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16))),
+                      Expanded(
+                        child: Text(
+                          item.title,
+                          style: const TextStyle(
+                            fontWeight: FontWeight.bold,
+                            fontSize: 16,
+                          ),
+                        ),
+                      ),
                       _Chip(label: item.typeLabel),
                     ],
                   ),
                   const SizedBox(height: 6),
-                  Text(item.description, maxLines: 2, overflow: TextOverflow.ellipsis),
+                  Text(
+                    item.description,
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                  ),
                   const SizedBox(height: 8),
                   Row(
                     children: [
-                      Text(item.categoryLabel, style: const TextStyle(fontSize: 12)),
+                      Text(
+                        item.categoryLabel,
+                        style: const TextStyle(fontSize: 12),
+                      ),
                       const Spacer(),
-                      if (item.areaName?.isNotEmpty == true) Text(item.areaName!, style: const TextStyle(fontSize: 12)),
-                      if (item.distanceKm != null) Text(' · ${item.distanceKm!.toStringAsFixed(1)} كم', style: const TextStyle(fontSize: 12)),
+                      if (item.areaName?.isNotEmpty == true)
+                        Text(
+                          item.areaName!,
+                          style: const TextStyle(fontSize: 12),
+                        ),
+                      if (item.distanceKm != null)
+                        Text(
+                          ' · ${item.distanceKm!.toStringAsFixed(1)} كم',
+                          style: const TextStyle(fontSize: 12),
+                        ),
                     ],
                   ),
                 ],
@@ -885,7 +1147,13 @@ class _Chip extends StatelessWidget {
         color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.1),
         borderRadius: BorderRadius.circular(20),
       ),
-      child: Text(label, style: TextStyle(fontSize: 11, color: Theme.of(context).colorScheme.primary)),
+      child: Text(
+        label,
+        style: TextStyle(
+          fontSize: 11,
+          color: Theme.of(context).colorScheme.primary,
+        ),
+      ),
     );
   }
 }
@@ -937,7 +1205,10 @@ class _LostFoundItem {
   factory _LostFoundItem.fromJson(Map<dynamic, dynamic> json) {
     final rawComments = json['comments'];
     final comments = rawComments is List
-        ? rawComments.whereType<Map>().map((item) => _LostFoundComment.fromJson(item)).toList(growable: false)
+        ? rawComments
+              .whereType<Map>()
+              .map((item) => _LostFoundComment.fromJson(item))
+              .toList(growable: false)
         : <_LostFoundComment>[];
 
     return _LostFoundItem(
@@ -982,7 +1253,11 @@ class _LostFoundComment {
   final String commentText;
   final String authorAlias;
 
-  const _LostFoundComment({required this.id, required this.commentText, required this.authorAlias});
+  const _LostFoundComment({
+    required this.id,
+    required this.commentText,
+    required this.authorAlias,
+  });
 
   factory _LostFoundComment.fromJson(Map<dynamic, dynamic> json) {
     return _LostFoundComment(
@@ -1015,7 +1290,10 @@ class _LostFoundThread {
   factory _LostFoundThread.fromJson(Map<dynamic, dynamic> json) {
     final rawMessages = json['messages'];
     final messages = rawMessages is List
-        ? rawMessages.whereType<Map>().map((item) => _LostFoundMessage.fromJson(item)).toList(growable: false)
+        ? rawMessages
+              .whereType<Map>()
+              .map((item) => _LostFoundMessage.fromJson(item))
+              .toList(growable: false)
         : <_LostFoundMessage>[];
     return _LostFoundThread(
       id: _int(json['id']),
@@ -1065,8 +1343,14 @@ Future<String?> _askReason(BuildContext context) async {
         decoration: const InputDecoration(hintText: 'اكتب سبب الإبلاغ...'),
       ),
       actions: [
-        TextButton(onPressed: () => Navigator.pop(context), child: const Text('إلغاء')),
-        FilledButton(onPressed: () => Navigator.pop(context, controller.text.trim()), child: const Text('إرسال')),
+        TextButton(
+          onPressed: () => Navigator.pop(context),
+          child: const Text('إلغاء'),
+        ),
+        FilledButton(
+          onPressed: () => Navigator.pop(context, controller.text.trim()),
+          child: const Text('إرسال'),
+        ),
       ],
     ),
   );
@@ -1077,8 +1361,12 @@ Future<String?> _askReason(BuildContext context) async {
 String _messageFromError(Object error) {
   if (error is DioException) {
     final data = error.response?.data;
-    if (data is Map && data['message'] != null) return data['message'].toString();
-    if (error.type == DioExceptionType.connectionError) return 'تعذر الاتصال بالخادم';
+    if (data is Map && data['message'] != null) {
+      return data['message'].toString();
+    }
+    if (error.type == DioExceptionType.connectionError) {
+      return 'تعذر الاتصال بالخادم';
+    }
   }
   return error.toString();
 }

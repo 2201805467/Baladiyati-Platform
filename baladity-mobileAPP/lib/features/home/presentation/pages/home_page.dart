@@ -80,13 +80,15 @@ class _HomePageState extends ConsumerState<HomePage> {
         ),
       );
 
-      await ref.read(dioProvider).patch(
-        ApiConstants.geoBroadcastLocation,
-        data: {
-          'latitude': position.latitude,
-          'longitude': position.longitude,
-        },
-      );
+      await ref
+          .read(dioProvider)
+          .patch(
+            ApiConstants.geoBroadcastLocation,
+            data: {
+              'latitude': position.latitude,
+              'longitude': position.longitude,
+            },
+          );
     } catch (_) {
       // Silent sync: the normal notifications flow should not be interrupted.
     }
@@ -125,18 +127,21 @@ class _HomePageState extends ConsumerState<HomePage> {
 
   Future<void> _fetchActiveGeoBroadcasts() async {
     try {
-      final response = await ref.read(dioProvider).get(
-        ApiConstants.geoBroadcasts,
-        queryParameters: {'active_only': true, 'per_page': 20},
-      );
+      final response = await ref
+          .read(dioProvider)
+          .get(
+            ApiConstants.geoBroadcasts,
+            queryParameters: {'active_only': true, 'per_page': 20},
+          );
       final raw = response.data['data'] ?? response.data;
       final list = raw is List ? raw : const [];
-      final broadcasts = list
-          .whereType<Map>()
-          .map((item) => _HomeGeoBroadcast.fromJson(item))
-          .where((item) => item.status != 'cancelled')
-          .toList()
-        ..sort((a, b) => a.priority.compareTo(b.priority));
+      final broadcasts =
+          list
+              .whereType<Map>()
+              .map((item) => _HomeGeoBroadcast.fromJson(item))
+              .where((item) => item.status != 'cancelled')
+              .toList()
+            ..sort((a, b) => a.priority.compareTo(b.priority));
 
       if (!mounted) return;
       setState(() {
@@ -249,9 +254,9 @@ class _HomePageState extends ConsumerState<HomePage> {
     }
 
     if (relatedType.contains('initiative')) {
-      Navigator.of(
-        context,
-      ).push(MaterialPageRoute(builder: (_) => const CommunityInitiativesPage()));
+      Navigator.of(context).push(
+        MaterialPageRoute(builder: (_) => const CommunityInitiativesPage()),
+      );
       return;
     }
 
@@ -263,10 +268,19 @@ class _HomePageState extends ConsumerState<HomePage> {
       return;
     }
 
+    if (relatedType.contains('lostfoundchatthread') ||
+        relatedType.contains('lost_found_chat_thread')) {
+      Navigator.of(context).push(
+        MaterialPageRoute(
+          builder: (_) => LostFoundThreadPage(threadId: relatedId),
+        ),
+      );
+      return;
+    }
+
     if (relatedType.contains('lostfound') ||
         relatedType.contains('lost_found') ||
-        relatedType.contains('lostfounditem') ||
-        relatedType.contains('lostfoundchatthread')) {
+        relatedType.contains('lostfounditem')) {
       Navigator.of(
         context,
       ).push(MaterialPageRoute(builder: (_) => const LostFoundPage()));
@@ -510,9 +524,8 @@ class _HomePageState extends ConsumerState<HomePage> {
                 reports: reports,
                 activeGeoBroadcast: _activeGeoBroadcasts.isEmpty
                     ? null
-                    : _activeGeoBroadcasts[
-                        _geoBroadcastIndex % _activeGeoBroadcasts.length
-                      ],
+                    : _activeGeoBroadcasts[_geoBroadcastIndex %
+                          _activeGeoBroadcasts.length],
               ),
               const PublicFacilitiesPage(),
               const MunicipalProjectsPage(),
@@ -851,10 +864,7 @@ class _HomeGeoBroadcastDetailsPage extends StatelessWidget {
                     icon: Icons.category_outlined,
                     text: 'النوع: ${broadcast.typeLabel}',
                   ),
-                  _GeoDetailRow(
-                    icon: Icons.schedule,
-                    text: broadcast.dateText,
-                  ),
+                  _GeoDetailRow(icon: Icons.schedule, text: broadcast.dateText),
                   _GeoDetailRow(
                     icon: Icons.radar,
                     text: 'النطاق: ${broadcast.radiusMeters} متر',
@@ -1385,7 +1395,8 @@ class _HomeGeoBroadcast {
     if (start == null) return '-';
     final startText = _formatDateTime(start);
     if (end == null) return 'من $startText';
-    final sameDay = start.year == end.year &&
+    final sameDay =
+        start.year == end.year &&
         start.month == end.month &&
         start.day == end.day;
     final endText = sameDay ? _formatTime(end) : _formatDateTime(end);
