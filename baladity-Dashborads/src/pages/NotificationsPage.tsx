@@ -70,6 +70,11 @@ const relatedPath = (notification: Notification, role?: string | null) => {
     return "/admin/initiatives";
   }
 
+  if (relatedType.includes("MunicipalityChatThread")) {
+    const query = relatedId ? `?threadId=${encodeURIComponent(relatedId)}` : "";
+    return `/admin/chats${query}`;
+  }
+
   return "/admin/notifications";
 };
 

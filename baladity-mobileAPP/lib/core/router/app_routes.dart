@@ -24,6 +24,7 @@ abstract class AppRoutes {
   static const String geoBroadcasts = '/geo-broadcasts';
   static const String lostFound = '/lost-found';
   static const String polls = '/polls';
+  static const String municipalityChat = '/municipality-chat';
 
   // ─── Profile ──────────────────────────────────────────────────────────────
   static const String profile = '/profile';

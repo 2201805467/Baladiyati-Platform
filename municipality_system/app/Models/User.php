@@ -173,6 +173,16 @@ class User extends Authenticatable
         return $this->hasMany(LostFoundChatMessage::class, 'sender_id');
     }
 
+    public function municipalityChatThread(): HasMany
+    {
+        return $this->hasMany(MunicipalityChatThread::class, 'citizen_id');
+    }
+
+    public function municipalityChatMessages(): HasMany
+    {
+        return $this->hasMany(MunicipalityChatMessage::class, 'sender_id');
+    }
+
     // المستخدم يستقبل العديد من الإشعارات
     public function notifications(): HasMany
     {

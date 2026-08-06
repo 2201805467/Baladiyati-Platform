@@ -16,6 +16,7 @@ import PermissionsSecurityPage from "./pages/PermissionsSecurityPage";
 import InitiativesPage from "./pages/InitiativesPage";
 import GeoBroadcastsPage from "./pages/GeoBroadcastsPage";
 import LostFoundModerationPage from "./pages/LostFoundModerationPage";
+import MunicipalityChatsPage from "./pages/MunicipalityChatsPage";
 import PollsPage from "./pages/PollsPage";
 
 function ProtectedRoute({ children, roles }: { children: React.ReactNode; roles?: string[] }) {
@@ -48,6 +49,7 @@ export default function App() {
         <Route path="categories" element={<ProtectedRoute roles={["admin"]}><CategoriesPage /></ProtectedRoute>} />
         <Route path="security" element={<ProtectedRoute roles={["admin"]}><PermissionsSecurityPage /></ProtectedRoute>} />
         <Route path="notifications" element={<ProtectedRoute roles={["reception", "department"]}><NotificationsPage /></ProtectedRoute>} />
+        <Route path="chats" element={<ProtectedRoute roles={["reception", "department"]}><MunicipalityChatsPage /></ProtectedRoute>} />
         <Route path="map" element={<ProtectedRoute roles={["reception", "department", "admin"]}><ReportsMapPage /></ProtectedRoute>} />
         <Route path="content" element={<ProtectedRoute roles={["admin", "reception"]}><ContentPage /></ProtectedRoute>} />
         <Route path="initiatives" element={<ProtectedRoute roles={["admin", "reception"]}><InitiativesPage /></ProtectedRoute>} />

@@ -12,6 +12,7 @@ const navItems = [
   { path: "/admin/categories", label: "التصنيفات", icon: "📋", roles: ["admin"] },
   { path: "/admin/security", label: "الصلاحيات والسجلات", icon: "🔐", roles: ["admin"] },
   { path: "/admin/notifications", label: "الإشعارات", icon: "🔔", roles: ["reception", "department"] },
+  { path: "/admin/chats", label: "المحادثات", icon: "💬", roles: ["reception", "department"] },
   { path: "/admin/map", label: "الخريطة", icon: "🗺️", roles: ["reception", "department", "admin"] },
   { path: "/admin/content", label: "المحتوى", icon: "📦", roles: ["admin", "reception"] },
   { path: "/admin/initiatives", label: "المبادرات", icon: "✦", roles: ["admin", "reception"] },

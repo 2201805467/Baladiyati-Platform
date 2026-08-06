@@ -55,6 +55,9 @@ abstract class ApiConstants {
   static const String geoBroadcastLocation = '/citizen/geo-broadcasts/location';
   static const String lostFound = '/citizen/lost-found';
   static const String polls = '/citizen/polls';
+  static const String municipalityChat = '/citizen/municipality-chat';
+  static const String municipalityChatMessages =
+      '/citizen/municipality-chat/messages';
   static const String departmentReports = '/department/reports';
 
   // ─── Profile ─────────────────────────────────────────────────────────────────

@@ -20,11 +20,14 @@ use App\Http\Controllers\Api\Citizen\CommunityReportController as CitizenCommuni
 use App\Http\Controllers\Api\Citizen\CommunityInitiativeController as CitizenCommunityInitiativeController;
 use App\Http\Controllers\Api\Citizen\GeoBroadcastController as CitizenGeoBroadcastController;
 use App\Http\Controllers\Api\Citizen\LostFoundController as CitizenLostFoundController;
+use App\Http\Controllers\Api\Citizen\MunicipalityChatController as CitizenMunicipalityChatController;
 use App\Http\Controllers\Api\Citizen\PollController as CitizenPollController;
 use App\Http\Controllers\Api\Citizen\PublicInfoController as CitizenPublicInfoController;
 use App\Http\Controllers\Api\Citizen\ReportController as CitizenReportController;
 use App\Http\Controllers\Api\Citizen\SuggestionController as CitizenSuggestionController;
+use App\Http\Controllers\Api\Department\MunicipalityChatController as DepartmentMunicipalityChatController;
 use App\Http\Controllers\Api\Department\ReportController as DepartmentReportController;
+use App\Http\Controllers\Api\Reception\MunicipalityChatController as ReceptionMunicipalityChatController;
 use App\Http\Controllers\Api\Reception\ReportController as ReceptionReportController;
 use App\Http\Controllers\Api\Reception\SuggestionController as ReceptionSuggestionController;
 use Illuminate\Support\Facades\Route;
@@ -112,6 +115,9 @@ Route::middleware(['auth:sanctum', 'role:citizen'])
         Route::get('/polls', [CitizenPollController::class, 'index'])->name('polls.index');
         Route::get('/polls/{poll}', [CitizenPollController::class, 'show'])->name('polls.show');
         Route::post('/polls/{poll}/vote', [CitizenPollController::class, 'vote'])->name('polls.vote');
+
+        Route::get('/municipality-chat', [CitizenMunicipalityChatController::class, 'show'])->name('municipality-chat.show');
+        Route::post('/municipality-chat/messages', [CitizenMunicipalityChatController::class, 'sendMessage'])->name('municipality-chat.messages.store');
     });
 
 Route::middleware(['auth:sanctum', 'role:admin'])
@@ -261,6 +267,12 @@ Route::middleware(['auth:sanctum', 'role:reception'])
         Route::patch('/suggestions/{suggestion}/accept', [ReceptionSuggestionController::class, 'accept'])->middleware('permission:review_suggestions')->name('suggestions.accept');
         Route::patch('/suggestions/{suggestion}/reject', [ReceptionSuggestionController::class, 'reject'])->middleware('permission:review_suggestions')->name('suggestions.reject');
         Route::patch('/suggestions/{suggestion}/implementation', [ReceptionSuggestionController::class, 'updateImplementation'])->middleware('permission:review_suggestions')->name('suggestions.implementation.update');
+
+        Route::get('/chats', [ReceptionMunicipalityChatController::class, 'index'])->name('chats.index');
+        Route::get('/chats/{thread}', [ReceptionMunicipalityChatController::class, 'show'])->name('chats.show');
+        Route::post('/chats/{thread}/reply', [ReceptionMunicipalityChatController::class, 'reply'])->name('chats.reply');
+        Route::patch('/chats/{thread}/transfer', [ReceptionMunicipalityChatController::class, 'transfer'])->name('chats.transfer');
+        Route::patch('/chats/{thread}/close', [ReceptionMunicipalityChatController::class, 'close'])->name('chats.close');
     });
 
 Route::middleware(['auth:sanctum', 'role:department'])
@@ -277,4 +289,8 @@ Route::middleware(['auth:sanctum', 'role:department'])
         Route::post('/reports/{report}/field/cannot-complete', [DepartmentReportController::class, 'cannotComplete'])->middleware('permission:process_department_reports')->name('reports.field.cannot-complete');
         Route::patch('/reports/{report}/close', [DepartmentReportController::class, 'close'])->middleware('permission:process_department_reports')->name('reports.close');
 
+        Route::get('/chats', [DepartmentMunicipalityChatController::class, 'index'])->name('chats.index');
+        Route::get('/chats/{thread}', [DepartmentMunicipalityChatController::class, 'show'])->name('chats.show');
+        Route::post('/chats/{thread}/reply', [DepartmentMunicipalityChatController::class, 'reply'])->name('chats.reply');
+        Route::patch('/chats/{thread}/close', [DepartmentMunicipalityChatController::class, 'close'])->name('chats.close');
     });

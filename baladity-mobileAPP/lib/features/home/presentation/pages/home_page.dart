@@ -25,6 +25,7 @@ import '../../../facilities/presentation/pages/public_facilities_page.dart';
 import '../../../geo_broadcasts/presentation/pages/geo_broadcasts_page.dart';
 import '../../../initiatives/presentation/pages/community_initiatives_page.dart';
 import '../../../lost_found/presentation/pages/lost_found_page.dart';
+import '../../../municipality_chat/presentation/pages/municipality_chat_page.dart';
 import '../../../polls/presentation/pages/polls_page.dart';
 import '../../../projects/presentation/pages/municipal_projects_page.dart';
 
@@ -294,6 +295,14 @@ class _HomePageState extends ConsumerState<HomePage> {
       return;
     }
 
+    if (relatedType.contains('municipalitychatthread') ||
+        relatedType.contains('municipality_chat_thread')) {
+      Navigator.of(context).push(
+        MaterialPageRoute(builder: (_) => const MunicipalityChatPage()),
+      );
+      return;
+    }
+
     if (relatedType.contains('report')) {
       await ref
           .read(reportsControllerProvider.notifier)
@@ -458,7 +467,11 @@ class _HomePageState extends ConsumerState<HomePage> {
       length: 9,
       child: Directionality(
         textDirection: TextDirection.rtl,
-        child: Scaffold(
+        child: Builder(
+          builder: (context) {
+            final tabController = DefaultTabController.of(context);
+
+            return Scaffold(
           backgroundColor: colorScheme.surface,
           appBar: AppBar(
             backgroundColor: colorScheme.surface,
@@ -537,6 +550,26 @@ class _HomePageState extends ConsumerState<HomePage> {
               const EmergencyNumbersView(),
             ],
           ),
+          floatingActionButton: AnimatedBuilder(
+            animation: tabController,
+            builder: (context, _) {
+              if (tabController.index != 0) return const SizedBox.shrink();
+
+              return FloatingActionButton(
+                heroTag: 'municipality-chat',
+                backgroundColor: const Color(0xFFFFC107),
+                foregroundColor: Colors.black87,
+                onPressed: () => Navigator.of(context).push(
+                  MaterialPageRoute(
+                    builder: (_) => const MunicipalityChatPage(),
+                  ),
+                ),
+                child: const Icon(Icons.support_agent_rounded),
+              );
+            },
+          ),
+            );
+          },
         ),
       ),
     );
