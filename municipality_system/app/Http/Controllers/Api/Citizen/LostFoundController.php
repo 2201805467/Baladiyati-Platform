@@ -297,7 +297,20 @@ class LostFoundController extends Controller
             ? LostFoundItem::class
             : LostFoundChatMessage::class;
 
-        $reportableClass::findOrFail($data['reportable_id']);
+        if ($reportableClass === LostFoundItem::class) {
+            $item = LostFoundItem::findOrFail($data['reportable_id']);
+
+            if ($item->user_id === $request->user()->id) {
+                throw new AuthorizationException('You cannot report your own post.');
+            }
+        } else {
+            $message = LostFoundChatMessage::with('thread')->findOrFail($data['reportable_id']);
+            $this->ensureThreadParticipant($request, $message->thread);
+
+            if ($message->sender_id === $request->user()->id) {
+                throw new AuthorizationException('You cannot report your own message.');
+            }
+        }
 
         $report = LostFoundAbuseReport::create([
             'reporter_id' => $request->user()->id,

@@ -1,7 +1,9 @@
 import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flutter_map/flutter_map.dart';
 import 'package:geolocator/geolocator.dart';
+import 'package:latlong2/latlong.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import '../../../../core/network/api_constants.dart';
@@ -138,15 +140,40 @@ class _CommunityReportsPageState extends ConsumerState<CommunityReportsPage> {
 
   @override
   Widget build(BuildContext context) {
+    final reportsWithLocation = _reports
+        .where((report) => report.latitude != null && report.longitude != null)
+        .toList();
+    final mapCenter = _position != null
+        ? LatLng(_position!.latitude, _position!.longitude)
+        : reportsWithLocation.isNotEmpty
+            ? LatLng(
+                reportsWithLocation.first.latitude!,
+                reportsWithLocation.first.longitude!,
+              )
+            : const LatLng(32.8872, 13.1913);
+
     return Directionality(
       textDirection: TextDirection.rtl,
       child: Scaffold(
-        appBar: AppBar(title: const Text('بلاغات الجيران'), centerTitle: true),
+        appBar: AppBar(
+          title: const Text('بلاغات قريبة'),
+          centerTitle: true,
+        ),
         body: RefreshIndicator(
           onRefresh: _loadReports,
           child: ListView(
-            padding: const EdgeInsets.all(16),
+            padding: const EdgeInsets.fromLTRB(12, 8, 12, 18),
             children: [
+              _CommunityReportsMap(
+                center: mapCenter,
+                reports: reportsWithLocation,
+                radiusKm: _radiusKm,
+                userLocation: _position == null
+                    ? null
+                    : LatLng(_position!.latitude, _position!.longitude),
+                onOpenReport: _openDetails,
+              ),
+              const SizedBox(height: 10),
               _RadiusSelector(
                 radiusKm: _radiusKm,
                 onChanged: (value) {
@@ -155,18 +182,25 @@ class _CommunityReportsPageState extends ConsumerState<CommunityReportsPage> {
                 },
               ),
               if (_position == null)
-                const Padding(
-                  padding: EdgeInsets.only(top: 8),
+                Padding(
+                  padding: const EdgeInsets.only(top: 8),
                   child: Text(
                     'لم يتم تحديد موقعك حالياً، لذلك قد تظهر أحدث البلاغات المتاحة بدلاً من الأقرب إليك.',
-                    style: TextStyle(fontSize: 12),
+                    style: TextStyle(
+                      fontSize: 12,
+                      color: _secondaryTextColor(context),
+                    ),
                   ),
                 ),
               const SizedBox(height: 12),
               if (_isLoading)
-                const Padding(
-                  padding: EdgeInsets.only(top: 80),
-                  child: Center(child: CircularProgressIndicator()),
+                Padding(
+                  padding: const EdgeInsets.only(top: 80),
+                  child: Center(
+                    child: CircularProgressIndicator(
+                      color: Theme.of(context).colorScheme.primary,
+                    ),
+                  ),
                 )
               else if (_error != null)
                 _EmptyState(
@@ -192,6 +226,198 @@ class _CommunityReportsPageState extends ConsumerState<CommunityReportsPage> {
                     ),
                   ),
                 ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _CommunityReportsMap extends StatelessWidget {
+  const _CommunityReportsMap({
+    required this.center,
+    required this.reports,
+    required this.radiusKm,
+    required this.onOpenReport,
+    this.userLocation,
+  });
+
+  final LatLng center;
+  final LatLng? userLocation;
+  final List<ReportEntity> reports;
+  final double radiusKm;
+  final ValueChanged<ReportEntity> onOpenReport;
+
+  @override
+  Widget build(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
+    final overlayColor = Theme.of(context).brightness == Brightness.dark
+        ? const Color(0xDD0B1B15)
+        : colorScheme.surface.withOpacity(0.92);
+    final overlayTextColor = colorScheme.onSurface;
+
+    return ClipRRect(
+      borderRadius: BorderRadius.circular(18),
+      child: SizedBox(
+        height: 235,
+        child: Stack(
+          children: [
+            FlutterMap(
+              options: MapOptions(
+                initialCenter: center,
+                initialZoom: 12,
+                minZoom: 3,
+                maxZoom: 18,
+              ),
+              children: [
+                TileLayer(
+                  urlTemplate: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
+                  userAgentPackageName: 'com.example.baladity',
+                ),
+                MarkerLayer(
+                  markers: [
+                    if (userLocation != null)
+                      Marker(
+                        point: userLocation!,
+                        width: 42,
+                        height: 42,
+                        child: Icon(
+                          Icons.my_location_rounded,
+                          color: colorScheme.primary,
+                          size: 30,
+                        ),
+                      ),
+                    ...reports.map(
+                      (report) => Marker(
+                        point: LatLng(report.latitude!, report.longitude!),
+                        width: 44,
+                        height: 44,
+                        child: GestureDetector(
+                          onTap: () => _showMapReport(context, report),
+                          child: DecoratedBox(
+                            decoration: BoxDecoration(
+                              color: _reportAccentColor(report),
+                              shape: BoxShape.circle,
+                              border: Border.all(color: Colors.white, width: 2),
+                              boxShadow: const [
+                                BoxShadow(
+                                  color: Colors.black38,
+                                  blurRadius: 8,
+                                  offset: Offset(0, 3),
+                                ),
+                              ],
+                            ),
+                            child: const Icon(
+                              Icons.report_problem_outlined,
+                              color: Colors.white,
+                              size: 20,
+                            ),
+                          ),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+            Positioned(
+              left: 12,
+              right: 12,
+              bottom: 12,
+              child: DecoratedBox(
+                decoration: BoxDecoration(
+                  color: overlayColor,
+                  borderRadius: BorderRadius.circular(14),
+                  border: Border.all(color: _subtleBorderColor(context)),
+                ),
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 12,
+                    vertical: 10,
+                  ),
+                  child: Row(
+                    children: [
+                      Icon(
+                        Icons.near_me_outlined,
+                        color: overlayTextColor.withOpacity(0.72),
+                        size: 18,
+                      ),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: Text(
+                          reports.isEmpty
+                              ? 'داخل نطاق ${_formatRadius(radiusKm)} كم'
+                              : 'داخل نطاق ${_formatRadius(radiusKm)} كم · ${reports.length} بلاغ',
+                          style: TextStyle(
+                            color: overlayTextColor,
+                            fontWeight: FontWeight.w700,
+                          ),
+                        ),
+                      ),
+                      IconButton(
+                        visualDensity: VisualDensity.compact,
+                        onPressed: reports.isEmpty
+                            ? null
+                            : () => onOpenReport(reports.first),
+                        icon: Icon(
+                          Icons.gps_fixed_rounded,
+                          color: colorScheme.primary,
+                          size: 20,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  void _showMapReport(BuildContext context, ReportEntity report) {
+    showModalBottomSheet<void>(
+      context: context,
+      backgroundColor: Theme.of(context).colorScheme.surface,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(18)),
+      ),
+      builder: (context) => Directionality(
+        textDirection: TextDirection.rtl,
+        child: Padding(
+          padding: const EdgeInsets.all(16),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                report.category.isEmpty ? 'بلاغ خدمي' : report.category,
+                style: TextStyle(
+                  color: Theme.of(context).colorScheme.onSurface,
+                  fontSize: 16,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+              const SizedBox(height: 8),
+              Text(
+                report.description.isEmpty ? 'بدون وصف' : report.description,
+                maxLines: 2,
+                overflow: TextOverflow.ellipsis,
+                style: TextStyle(color: _secondaryTextColor(context)),
+              ),
+              const SizedBox(height: 12),
+              SizedBox(
+                width: double.infinity,
+                child: FilledButton(
+                  onPressed: () {
+                    Navigator.pop(context);
+                    onOpenReport(report);
+                  },
+                  child: const Text('عرض التفاصيل'),
+                ),
+              ),
             ],
           ),
         ),
@@ -462,16 +688,33 @@ class _RadiusSelector extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
+
     return Card(
+      color: _adaptiveCardColor(context),
+      elevation: 0,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(14),
+        side: BorderSide(color: _subtleBorderColor(context)),
+      ),
       child: Padding(
         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
         child: Row(
           children: [
-            const Icon(Icons.social_distance_outlined),
+            const Icon(
+              Icons.social_distance_outlined,
+              color: Color(0xFF22C55E),
+            ),
             const SizedBox(width: 10),
-            const Expanded(child: Text('نطاق بلاغات الجيران')),
+            const Expanded(
+              child: Text(
+                'نطاق بلاغات الجيران',
+              ),
+            ),
             DropdownButton<double>(
               value: radiusKm,
+              dropdownColor: _adaptiveCardColor(context),
+              style: TextStyle(color: colorScheme.onSurface),
               underline: const SizedBox.shrink(),
               items: const [
                 DropdownMenuItem(value: 1.0, child: Text('1 كم')),
@@ -500,79 +743,133 @@ class _CommunityReportCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final imageUrl = _absoluteImageUrl(report.imageUrl);
+    final accent = _reportAccentColor(report);
+    final colorScheme = Theme.of(context).colorScheme;
+    final secondaryTextColor = _secondaryTextColor(context);
 
     return Card(
+      color: _adaptiveCardColor(context),
+      elevation: 0,
       clipBehavior: Clip.antiAlias,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(14),
+        side: BorderSide(color: accent.withOpacity(0.35)),
+      ),
       child: InkWell(
         onTap: onTap,
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            if (imageUrl != null)
-              Image.network(
-                imageUrl,
-                height: 170,
-                width: double.infinity,
-                fit: BoxFit.cover,
-                errorBuilder: (_, _, _) => const SizedBox.shrink(),
-              ),
-            Padding(
-              padding: const EdgeInsets.all(14),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Row(
-                    children: [
-                      Expanded(
-                        child: Text(
-                          report.category.isEmpty
-                              ? 'بلاغ خدمي'
-                              : report.category,
-                          style: const TextStyle(
-                            fontWeight: FontWeight.bold,
-                            fontSize: 16,
+        child: Padding(
+          padding: const EdgeInsets.all(10),
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              if (imageUrl != null) ...[
+                ClipRRect(
+                  borderRadius: BorderRadius.circular(10),
+                  child: Image.network(
+                    imageUrl,
+                    height: 86,
+                    width: 92,
+                    fit: BoxFit.cover,
+                    errorBuilder: (_, _, _) => Container(
+                      height: 86,
+                      width: 92,
+                      color: colorScheme.onSurface.withOpacity(0.08),
+                      child: Icon(
+                        Icons.image_not_supported_outlined,
+                        color: secondaryTextColor,
+                      ),
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 10),
+              ],
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      children: [
+                        _CompactBadge(label: report.status, color: accent),
+                        const Spacer(),
+                        if (report.createdAt != null)
+                          Text(
+                            _shortTime(report.createdAt!),
+                            style: TextStyle(
+                              color: secondaryTextColor,
+                              fontSize: 11,
+                            ),
+                          ),
+                      ],
+                    ),
+                    const SizedBox(height: 7),
+                    Text(
+                      report.category.isEmpty ? 'بلاغ خدمي' : report.category,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(
+                        fontWeight: FontWeight.bold,
+                        fontSize: 14,
+                      ),
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      report.description.isEmpty
+                          ? 'بدون وصف'
+                          : report.description,
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                      style: TextStyle(
+                        color: secondaryTextColor,
+                        fontSize: 12,
+                        height: 1.35,
+                      ),
+                    ),
+                    const SizedBox(height: 9),
+                    Row(
+                      children: [
+                        Icon(
+                          Icons.thumb_up_alt_outlined,
+                          size: 16,
+                          color: Colors.green[400],
+                        ),
+                        const SizedBox(width: 4),
+                        Text(
+                          '${report.upvotesCount}',
+                          style: TextStyle(
+                            color: secondaryTextColor,
+                            fontSize: 12,
                           ),
                         ),
-                      ),
-                      _StatusBadge(label: report.status),
-                    ],
-                  ),
-                  const SizedBox(height: 8),
-                  Text(
-                    report.description.isEmpty
-                        ? 'بدون وصف'
-                        : report.description,
-                    maxLines: 2,
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                  const SizedBox(height: 12),
-                  Row(
-                    children: [
-                      Icon(
-                        Icons.thumb_up_alt_outlined,
-                        size: 18,
-                        color: Colors.green[700],
-                      ),
-                      const SizedBox(width: 4),
-                      Text('${report.upvotesCount}'),
-                      const SizedBox(width: 14),
-                      Icon(
-                        Icons.thumb_down_alt_outlined,
-                        size: 18,
-                        color: Colors.red[700],
-                      ),
-                      const SizedBox(width: 4),
-                      Text('${report.downvotesCount}'),
-                      const Spacer(),
-                      if (report.distanceKm != null)
-                        Text('${report.distanceKm!.toStringAsFixed(2)} كم'),
-                    ],
-                  ),
-                ],
+                        const SizedBox(width: 12),
+                        Icon(
+                          Icons.thumb_down_alt_outlined,
+                          size: 16,
+                          color: Colors.red[300],
+                        ),
+                        const SizedBox(width: 4),
+                        Text(
+                          '${report.downvotesCount}',
+                          style: TextStyle(
+                            color: secondaryTextColor,
+                            fontSize: 12,
+                          ),
+                        ),
+                        const Spacer(),
+                        if (report.distanceKm != null)
+                          Text(
+                            '${report.distanceKm!.toStringAsFixed(1)} كم',
+                            style: TextStyle(
+                              color: secondaryTextColor,
+                              fontSize: 12,
+                            ),
+                          ),
+                      ],
+                    ),
+                  ],
+                ),
               ),
-            ),
-          ],
+            ],
+          ),
         ),
       ),
     );
@@ -616,6 +913,37 @@ class _VoteBar extends StatelessWidget {
           ),
         ),
       ],
+    );
+  }
+}
+
+class _CompactBadge extends StatelessWidget {
+  const _CompactBadge({required this.label, required this.color});
+
+  final String label;
+  final Color color;
+
+  @override
+  Widget build(BuildContext context) {
+    return DecoratedBox(
+      decoration: BoxDecoration(
+        color: color.withOpacity(0.18),
+        borderRadius: BorderRadius.circular(999),
+        border: Border.all(color: color.withOpacity(0.5)),
+      ),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+        child: Text(
+          label,
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
+          style: TextStyle(
+            color: color,
+            fontWeight: FontWeight.w700,
+            fontSize: 10,
+          ),
+        ),
+      ),
     );
   }
 }
@@ -751,21 +1079,27 @@ class _EmptyState extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
+
     return Padding(
       padding: const EdgeInsets.only(top: 80),
       child: Column(
         children: [
-          Icon(icon, size: 54, color: Theme.of(context).colorScheme.primary),
+          Icon(icon, size: 54, color: colorScheme.primary),
           const SizedBox(height: 14),
           Text(
             title,
-            style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+            style: TextStyle(
+              fontSize: 18,
+              fontWeight: FontWeight.bold,
+              color: colorScheme.onSurface,
+            ),
           ),
           const SizedBox(height: 8),
           Text(
             subtitle,
             textAlign: TextAlign.center,
-            style: Theme.of(context).textTheme.bodyMedium,
+            style: TextStyle(color: _secondaryTextColor(context)),
           ),
           if (actionLabel != null && onAction != null) ...[
             const SizedBox(height: 14),
@@ -801,6 +1135,66 @@ ReportEntity _copyReport(
     viewerVote: current.viewerVote,
     distanceKm: current.distanceKm,
   );
+}
+
+Color _adaptiveCardColor(BuildContext context) {
+  final theme = Theme.of(context);
+  if (theme.brightness == Brightness.dark) {
+    return const Color(0xFF0D1A14);
+  }
+  return theme.cardColor;
+}
+
+Color _subtleBorderColor(BuildContext context) {
+  return Theme.of(context).colorScheme.outline.withOpacity(0.18);
+}
+
+Color _secondaryTextColor(BuildContext context) {
+  return Theme.of(context).colorScheme.onSurface.withOpacity(0.68);
+}
+
+Color _reportAccentColor(ReportEntity report) {
+  final status = report.status.toLowerCase();
+  final category = report.category.toLowerCase();
+
+  if (status.contains('مغل') ||
+      status.contains('closed') ||
+      status.contains('resolved')) {
+    return const Color(0xFF22C55E);
+  }
+  if (status.contains('مراج') || status.contains('review')) {
+    return const Color(0xFFF59E0B);
+  }
+  if (status.contains('محال') || status.contains('assigned')) {
+    return const Color(0xFF38BDF8);
+  }
+  if (status.contains('معالج') || status.contains('progress')) {
+    return const Color(0xFFA855F7);
+  }
+  if (category.contains('طريق') || category.contains('road')) {
+    return const Color(0xFFF97316);
+  }
+  if (category.contains('إنارة') || category.contains('light')) {
+    return const Color(0xFF3B82F6);
+  }
+  if (category.contains('نظاف') || category.contains('garbage')) {
+    return const Color(0xFF10B981);
+  }
+  return const Color(0xFF8B5CF6);
+}
+
+String _shortTime(DateTime value) {
+  final now = DateTime.now();
+  final diff = now.difference(value);
+  if (diff.inMinutes < 1) return 'الآن';
+  if (diff.inMinutes < 60) return '${diff.inMinutes} د';
+  if (diff.inHours < 24) return '${diff.inHours} س';
+  return '${diff.inDays} ي';
+}
+
+String _formatRadius(double value) {
+  if (value == value.roundToDouble()) return value.toStringAsFixed(0);
+  return value.toStringAsFixed(1);
 }
 
 String _messageFromError(Object error) {

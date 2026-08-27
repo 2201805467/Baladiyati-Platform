@@ -8,6 +8,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import '../../../../core/router/app_routes.dart';
+import '../../../../core/widgets/baladity_logo.dart';
 import '../controllers/auth_controller.dart';
 import '../controllers/auth_state.dart';
 
@@ -81,22 +82,11 @@ class _LoginPageState extends ConsumerState<LoginPage> {
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
                 const SizedBox(height: 60),
-                const Icon(
-                  Icons.location_city_rounded,
-                  size: 80,
-                  color: primaryGreen,
+                const Align(
+                  alignment: Alignment.center,
+                  child: BaladityLogo(height: 72),
                 ),
-                const SizedBox(height: 24),
-                const Text(
-                  'منصة بلديتي',
-                  textAlign: TextAlign.center,
-                  style: TextStyle(
-                    fontSize: 28,
-                    fontWeight: FontWeight.bold,
-                    color: Colors.black87,
-                  ),
-                ),
-                const SizedBox(height: 8),
+                const SizedBox(height: 18),
                 const Text(
                   'تواصل مع بلديتك بكل سهولة',
                   textAlign: TextAlign.center,

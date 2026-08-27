@@ -116,6 +116,32 @@ const assetUrl = (url?: string | null) => {
   return `${apiOrigin}${url.startsWith("/") ? url : `/${url}`}`;
 };
 
+const reportThumbnailUrl = (report: Report) => {
+  const image = report.images?.find((item) => item.image_type !== "after") || report.images?.[0];
+  return assetUrl(image?.image_url);
+};
+
+const ReportThumbnail = ({ report }: { report: Report }) => {
+  const thumbnail = reportThumbnailUrl(report);
+
+  if (!thumbnail) {
+    return (
+      <div className="h-16 w-20 shrink-0 rounded-lg border border-slate-700 bg-slate-800/80 flex items-center justify-center text-slate-500">
+        📷
+      </div>
+    );
+  }
+
+  return (
+    <img
+      src={thumbnail}
+      alt="صورة البلاغ"
+      className="h-16 w-20 shrink-0 rounded-lg border border-slate-700 object-cover"
+      loading="lazy"
+    />
+  );
+};
+
 const personName = (person?: { full_name?: string; name?: string } | null) => person?.full_name || person?.name || "-";
 const departmentName = (department?: Department | null) => department?.dept_name || department?.name || "-";
 const commenterRole = (comment: ReportComment) => {
@@ -407,15 +433,18 @@ export default function ReceptionPage() {
               {reports.map((report) => (
                 <button key={report.id} onClick={() => openReport(report.id)} className={`w-full text-right p-3 rounded-lg border transition-colors ${selectedReport?.id === report.id ? "bg-emerald-600/10 border-emerald-500" : "bg-slate-800/50 border-slate-800 hover:border-slate-700"}`}>
                   <div className="flex items-start justify-between gap-3">
-                    <div className="min-w-0">
-                      <div className="font-medium truncate">{report.report_number || `#${report.id}`} - {report.title || "بلاغ بدون عنوان"}</div>
-                      <p className="text-xs text-slate-500 line-clamp-1 mt-1">{report.description || "-"}</p>
-                      <div className="flex flex-wrap gap-2 mt-2 text-xs">
-                        <span>{personName(report.citizen)}</span>
-                        <span>{report.category?.category_name || "بدون تصنيف"}</span>
-                        <span>{departmentName(report.department)}</span>
-                        <span className="text-emerald-400">👍 {report.upvotes_count ?? 0}</span>
-                        <span className="text-red-400">👎 {report.downvotes_count ?? 0}</span>
+                    <div className="flex min-w-0 flex-1 items-start gap-3">
+                      <ReportThumbnail report={report} />
+                      <div className="min-w-0 flex-1">
+                        <div className="font-medium truncate">{report.report_number || `#${report.id}`} - {report.title || "بلاغ بدون عنوان"}</div>
+                        <p className="text-xs text-slate-500 line-clamp-1 mt-1">{report.description || "-"}</p>
+                        <div className="flex flex-wrap gap-2 mt-2 text-xs">
+                          <span>{personName(report.citizen)}</span>
+                          <span>{report.category?.category_name || "بدون تصنيف"}</span>
+                          <span>{departmentName(report.department)}</span>
+                          <span className="text-emerald-400">👍 {report.upvotes_count ?? 0}</span>
+                          <span className="text-red-400">👎 {report.downvotes_count ?? 0}</span>
+                        </div>
                       </div>
                     </div>
                     <div className="flex flex-col gap-1 items-end">

@@ -94,6 +94,17 @@ class AuthController extends Notifier<AuthState> {
         departmentName: departmentName,
       ),
     );
+
+    try {
+      final user = await _repository.getProfile();
+      await _tokenStorage.saveUserId(user.id.toString());
+      await _tokenStorage.saveUserRole(user.role);
+      await _tokenStorage.saveDepartmentName(user.departmentName);
+      state = AuthState.authenticated(user);
+    } catch (_) {
+      // Keep the stored session during temporary connection failures. A 401
+      // response is handled by the Dio interceptor through forceLogout().
+    }
   }
 
   Future<void> login({required String email, required String password}) async {

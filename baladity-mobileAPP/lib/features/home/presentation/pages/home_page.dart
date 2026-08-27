@@ -7,6 +7,7 @@ import 'package:go_router/go_router.dart';
 import 'package:url_launcher/url_launcher.dart';
 import '../../../../core/network/api_constants.dart';
 import '../../../../core/router/app_routes.dart';
+import '../../../../core/widgets/baladity_logo.dart';
 import '../../../../theme_manager.dart';
 import '../../../auth/presentation/controllers/auth_controller.dart';
 import '../../../emergency/presentation/pages/emergency_numbers_page.dart';
@@ -476,10 +477,7 @@ class _HomePageState extends ConsumerState<HomePage> {
           appBar: AppBar(
             backgroundColor: colorScheme.surface,
             elevation: 0,
-            title: const Text(
-              'منصة بلديتي',
-              style: TextStyle(fontWeight: FontWeight.bold),
-            ),
+            title: const BaladityLogo(height: 38),
             centerTitle: false,
             actions: [
               IconButton(

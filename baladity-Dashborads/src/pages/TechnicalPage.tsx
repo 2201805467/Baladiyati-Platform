@@ -65,6 +65,32 @@ const assetUrl = (url?: string | null) => {
   return `${apiOrigin}${url.startsWith("/") ? url : `/${url}`}`;
 };
 
+const reportThumbnailUrl = (report: Report) => {
+  const image = report.images?.find((item) => item.image_type !== "after") || report.images?.[0];
+  return assetUrl(image?.image_url);
+};
+
+const ReportThumbnail = ({ report }: { report: Report }) => {
+  const thumbnail = reportThumbnailUrl(report);
+
+  if (!thumbnail) {
+    return (
+      <div className="h-16 w-20 shrink-0 rounded-lg border border-slate-700 bg-slate-800/80 flex items-center justify-center text-slate-500">
+        📷
+      </div>
+    );
+  }
+
+  return (
+    <img
+      src={thumbnail}
+      alt="صورة البلاغ"
+      className="h-16 w-20 shrink-0 rounded-lg border border-slate-700 object-cover"
+      loading="lazy"
+    />
+  );
+};
+
 const personName = (person?: { full_name?: string; name?: string } | null) => person?.full_name || person?.name || "-";
 const commenterRole = (comment: ReportComment) => {
   const role = comment.user?.role?.role_name;
@@ -81,11 +107,17 @@ const formatDateTime = (value?: string | null) => {
   }).format(new Date(value));
 };
 
+const formatDepartmentTitle = (departmentName?: string | null) => {
+  const name = departmentName?.trim();
+  if (!name) return "لوحة موظف القسم";
+  return name.startsWith("قسم") ? `لوحة موظف ${name}` : `لوحة موظف قسم ${name}`;
+};
+
 export default function TechnicalPage() {
   const { user, isLoading } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
-  const departmentTitle = user?.department?.dept_name ? `لوحة موظف قسم ${user.department.dept_name}` : "لوحة موظف القسم";
+  const departmentTitle = formatDepartmentTitle(user?.department?.dept_name);
   const [reports, setReports] = useState<Report[]>([]);
   const [selected, setSelected] = useState<Report | null>(null);
   const [statusFilter, setStatusFilter] = useState("");
@@ -239,10 +271,13 @@ export default function TechnicalPage() {
             {reports.map((report) => (
               <button key={report.id} onClick={() => openReport(report.id)} className={`text-right p-3 rounded-lg border transition-colors ${selected?.id === report.id ? "bg-emerald-600/10 border-emerald-500" : "bg-slate-800/50 border-slate-800 hover:border-slate-700"}`}>
                 <div className="flex items-start justify-between gap-3">
-                  <div className="min-w-0">
-                    <div className="font-medium truncate">{report.report_number || `#${report.id}`}</div>
-                    <p className="text-xs text-slate-500 line-clamp-2 mt-1">{report.title || report.description || "-"}</p>
-                    <p className="text-xs text-slate-600 mt-2">{report.category?.category_name || "بدون تصنيف"}</p>
+                  <div className="flex min-w-0 flex-1 items-start gap-3">
+                    <ReportThumbnail report={report} />
+                    <div className="min-w-0 flex-1">
+                      <div className="font-medium truncate">{report.report_number || `#${report.id}`}</div>
+                      <p className="text-xs text-slate-500 line-clamp-2 mt-1">{report.title || report.description || "-"}</p>
+                      <p className="text-xs text-slate-600 mt-2">{report.category?.category_name || "بدون تصنيف"}</p>
+                    </div>
                   </div>
                   <div className="flex flex-col gap-1 items-end">
                     <span className={`px-2 py-0.5 rounded text-xs ${statusClasses[report.status] || "bg-slate-500/20 text-slate-400"}`}>{statusLabels[report.status] || report.status}</span>

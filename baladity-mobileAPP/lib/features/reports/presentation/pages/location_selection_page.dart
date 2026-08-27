@@ -42,6 +42,8 @@ class LocationSelectionPage extends ConsumerStatefulWidget {
 }
 
 class _LocationSelectionPageState extends ConsumerState<LocationSelectionPage> {
+  static const _tripoliCenter = LatLng(32.8872, 13.1913);
+
   LatLng? _selectedLocation;
   List<ReportEntity> _similarReports = const [];
   bool _isLoadingSimilar = false;
@@ -141,7 +143,7 @@ class _LocationSelectionPageState extends ConsumerState<LocationSelectionPage> {
   @override
   Widget build(BuildContext context) {
     const primaryGreen = Color(0xFF2E7D32);
-    final initialCenter = _selectedLocation ?? const LatLng(32.8872, 13.5828);
+    final initialCenter = _selectedLocation ?? _tripoliCenter;
 
     return Scaffold(
       appBar: AppBar(

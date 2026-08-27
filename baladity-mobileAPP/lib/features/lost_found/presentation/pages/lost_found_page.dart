@@ -1,4 +1,4 @@
-import 'dart:io';
+import 'dart:typed_data';
 
 import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
@@ -215,6 +215,10 @@ class _LostFoundPageState extends ConsumerState<LostFoundPage> {
 
   @override
   Widget build(BuildContext context) {
+    final filterCategoryValue =
+        _category.isEmpty || _LostFoundItem.categoryLabels.containsKey(_category)
+        ? _category
+        : '';
     final body = Column(
       children: [
         Padding(
@@ -238,7 +242,7 @@ class _LostFoundPageState extends ConsumerState<LostFoundPage> {
               if (_scope != 'threads') ...[
                 const SizedBox(height: 10),
                 DropdownButtonFormField<String>(
-                  initialValue: _category,
+                  value: filterCategoryValue,
                   decoration: const InputDecoration(
                     labelText: 'التصنيف',
                     border: OutlineInputBorder(),
@@ -374,6 +378,8 @@ class _LostFoundCreatePageState extends ConsumerState<_LostFoundCreatePage> {
   DateTime? _incidentDate;
   LatLng? _location;
   XFile? _image;
+  Uint8List? _imageBytes;
+  String? _imageName;
   bool _petHasCollar = false;
   bool _isSubmitting = false;
 
@@ -392,7 +398,15 @@ class _LostFoundCreatePageState extends ConsumerState<_LostFoundCreatePage> {
       source: ImageSource.gallery,
       imageQuality: 80,
     );
-    if (image != null && mounted) setState(() => _image = image);
+    if (image == null || !mounted) return;
+
+    final bytes = await image.readAsBytes();
+    if (!mounted) return;
+    setState(() {
+      _image = image;
+      _imageBytes = bytes;
+      _imageName = image.name.isNotEmpty ? image.name : 'lost-found.jpg';
+    });
   }
 
   Future<void> _pickLocation() async {
@@ -433,10 +447,10 @@ class _LostFoundCreatePageState extends ConsumerState<_LostFoundCreatePage> {
         if (_category == 'pet' && _petMarks.text.trim().isNotEmpty)
           'pet_identifying_marks': _petMarks.text.trim(),
         if (_category == 'pet') 'pet_has_collar': _petHasCollar ? 1 : 0,
-        if (_image != null)
-          'image': await MultipartFile.fromFile(
-            _image!.path,
-            filename: 'lost-found.jpg',
+        if (_imageBytes != null)
+          'image': MultipartFile.fromBytes(
+            _imageBytes!,
+            filename: _imageName ?? 'lost-found.jpg',
           ),
       });
 
@@ -471,6 +485,11 @@ class _LostFoundCreatePageState extends ConsumerState<_LostFoundCreatePage> {
 
   @override
   Widget build(BuildContext context) {
+    final selectedCategory =
+        _LostFoundItem.categoryLabels.containsKey(_category)
+        ? _category
+        : 'keys';
+
     return Directionality(
       textDirection: TextDirection.rtl,
       child: Scaffold(
@@ -492,7 +511,7 @@ class _LostFoundCreatePageState extends ConsumerState<_LostFoundCreatePage> {
               ),
               const SizedBox(height: 12),
               DropdownButtonFormField<String>(
-                initialValue: _category,
+                value: selectedCategory,
                 decoration: const InputDecoration(
                   labelText: 'تصنيف الغرض',
                   border: OutlineInputBorder(),
@@ -609,12 +628,12 @@ class _LostFoundCreatePageState extends ConsumerState<_LostFoundCreatePage> {
                   _image == null ? 'اختيار صورة' : 'تم اختيار الصورة',
                 ),
               ),
-              if (_image != null) ...[
+              if (_imageBytes != null) ...[
                 const SizedBox(height: 10),
                 ClipRRect(
                   borderRadius: BorderRadius.circular(12),
-                  child: Image.file(
-                    File(_image!.path),
+                  child: Image.memory(
+                    _imageBytes!,
                     height: 170,
                     fit: BoxFit.cover,
                   ),
@@ -791,10 +810,11 @@ class _LostFoundDetailsPageState extends ConsumerState<_LostFoundDetailsPage> {
         appBar: AppBar(
           title: Text(_item.title),
           actions: [
-            IconButton(
-              onPressed: _reportItem,
-              icon: const Icon(Icons.flag_outlined),
-            ),
+            if (!_item.isOwner)
+              IconButton(
+                onPressed: _reportItem,
+                icon: const Icon(Icons.flag_outlined),
+              ),
           ],
         ),
         body: _isLoading
@@ -969,6 +989,33 @@ class _LostFoundChatPageState extends ConsumerState<_LostFoundChatPage> {
     }
   }
 
+  Future<void> _reportMessage(_LostFoundMessage message) async {
+    final reason = await _askReason(context);
+    if (reason == null || reason.trim().isEmpty) return;
+
+    try {
+      await ref
+          .read(dioProvider)
+          .post(
+            '${ApiConstants.lostFound}/report-abuse',
+            data: {
+              'reportable_type': 'message',
+              'reportable_id': message.id,
+              'reason': reason,
+            },
+          );
+      if (!mounted) return;
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('تم إرسال البلاغ للمراجعة.')));
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text(_messageFromError(e))));
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Directionality(
@@ -1018,6 +1065,18 @@ class _LostFoundChatPageState extends ConsumerState<_LostFoundChatPage> {
                                 ),
                                 const SizedBox(height: 4),
                                 Text(message.messageText),
+                                if (!message.isMine)
+                                  Align(
+                                    alignment: AlignmentDirectional.centerEnd,
+                                    child: TextButton.icon(
+                                      onPressed: () => _reportMessage(message),
+                                      icon: const Icon(
+                                        Icons.flag_outlined,
+                                        size: 16,
+                                      ),
+                                      label: const Text('إبلاغ'),
+                                    ),
+                                  ),
                               ],
                             ),
                           ),
@@ -1331,31 +1390,50 @@ class _LostFoundMessage {
 }
 
 Future<String?> _askReason(BuildContext context) async {
-  final controller = TextEditingController();
-  final result = await showDialog<String>(
+  return showDialog<String>(
     context: context,
-    builder: (_) => AlertDialog(
+    builder: (_) => const _AbuseReasonDialog(),
+  );
+}
+
+class _AbuseReasonDialog extends StatefulWidget {
+  const _AbuseReasonDialog();
+
+  @override
+  State<_AbuseReasonDialog> createState() => _AbuseReasonDialogState();
+}
+
+class _AbuseReasonDialogState extends State<_AbuseReasonDialog> {
+  final _controller = TextEditingController();
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AlertDialog(
       title: const Text('سبب الإبلاغ'),
       content: TextField(
-        controller: controller,
+        controller: _controller,
         minLines: 2,
         maxLines: 4,
         decoration: const InputDecoration(hintText: 'اكتب سبب الإبلاغ...'),
       ),
       actions: [
         TextButton(
-          onPressed: () => Navigator.pop(context),
+          onPressed: () => Navigator.of(context).pop(),
           child: const Text('إلغاء'),
         ),
         FilledButton(
-          onPressed: () => Navigator.pop(context, controller.text.trim()),
+          onPressed: () => Navigator.of(context).pop(_controller.text.trim()),
           child: const Text('إرسال'),
         ),
       ],
-    ),
-  );
-  controller.dispose();
-  return result;
+    );
+  }
 }
 
 String _messageFromError(Object error) {

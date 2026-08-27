@@ -4,6 +4,7 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\MorphTo;
 
 class LostFoundAbuseReport extends Model
 {
@@ -29,5 +30,10 @@ class LostFoundAbuseReport extends Model
     public function reviewer(): BelongsTo
     {
         return $this->belongsTo(User::class, 'reviewed_by');
+    }
+
+    public function reportable(): MorphTo
+    {
+        return $this->morphTo();
     }
 }

@@ -71,10 +71,28 @@ class LostFoundModerationController extends Controller
 
     public function abuseReports(Request $request): JsonResponse
     {
-        $reports = LostFoundAbuseReport::with('reporter:id,full_name,email,phone')
+        $reports = LostFoundAbuseReport::with([
+                'reporter:id,full_name,email,phone',
+                'reportable',
+            ])
             ->when($request->filled('status'), fn ($query) => $query->where('status', $request->string('status')))
             ->latest()
             ->paginate($request->integer('per_page', 30));
+
+        $reports->getCollection()->transform(function (LostFoundAbuseReport $report) {
+            $reportable = $report->reportable;
+            $item = $reportable instanceof LostFoundItem
+                ? $reportable
+                : $reportable?->thread?->item;
+
+            $payload = $report->toArray();
+            unset($payload['reportable']);
+
+            return array_merge($payload, [
+                'reportable_label' => $item?->title,
+                'reportable_item_id' => $item?->id,
+            ]);
+        });
 
         return response()->json($reports);
     }

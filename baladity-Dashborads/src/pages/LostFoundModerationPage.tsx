@@ -27,6 +27,8 @@ interface AbuseReport {
   status: string;
   reportable_type: string;
   reportable_id: number;
+  reportable_label?: string | null;
+  reportable_item_id?: number | null;
   created_at?: string;
   reporter?: { full_name?: string; email?: string } | null;
 }
@@ -59,6 +61,15 @@ const assetUrl = (url?: string | null) => {
   return `${apiBase}${url.startsWith("/") ? url : `/${url}`}`;
 };
 
+const abuseReportTargetLabel = (report: AbuseReport) => {
+  const label = report.reportable_label?.trim();
+  if (report.reportable_type.includes("Message")) {
+    return label ? `رسالة بخصوص: ${label}` : `رسالة دردشة #${report.reportable_id}`;
+  }
+
+  return label || `منشور #${report.reportable_id}`;
+};
+
 export default function LostFoundModerationPage() {
   const { user } = useAuth();
   const basePath = user?.role === "reception" ? "/reception/content/lost-found" : "/admin/lost-found";
@@ -66,6 +77,7 @@ export default function LostFoundModerationPage() {
   const [items, setItems] = useState<LostFoundItem[]>([]);
   const [abuseReports, setAbuseReports] = useState<AbuseReport[]>([]);
   const [selected, setSelected] = useState<LostFoundItem | null>(null);
+  const [selectedAbuseReport, setSelectedAbuseReport] = useState<AbuseReport | null>(null);
   const [status, setStatus] = useState("");
   const [itemType, setItemType] = useState("");
   const [category, setCategory] = useState("");
@@ -111,8 +123,25 @@ export default function LostFoundModerationPage() {
     try {
       const response = await api.get<{ item: LostFoundItem }>(`${basePath}/${item.id}`);
       setSelected(response.item);
+      setSelectedAbuseReport(null);
     } catch (err: any) {
       alert(err.message || "تعذر فتح التفاصيل.");
+    }
+  };
+
+  const openAbuseDetails = async (report: AbuseReport) => {
+    const itemId = report.reportable_item_id || (!report.reportable_type.includes("Message") ? report.reportable_id : null);
+    if (!itemId) {
+      alert("لا يمكن تحديد المنشور المرتبط بهذا البلاغ.");
+      return;
+    }
+
+    try {
+      const response = await api.get<{ item: LostFoundItem }>(`${basePath}/${itemId}`);
+      setSelected(response.item);
+      setSelectedAbuseReport(report);
+    } catch (err: any) {
+      alert(err.message || "تعذر فتح تفاصيل بلاغ الإساءة.");
     }
   };
 
@@ -123,6 +152,7 @@ export default function LostFoundModerationPage() {
     try {
       await api.patch(`${basePath}/${item.id}/remove`, { removal_reason: reason });
       setSelected(null);
+      setSelectedAbuseReport(null);
       await loadItems();
     } catch (err: any) {
       alert(err.message || "تعذر حذف المنشور.");
@@ -132,6 +162,7 @@ export default function LostFoundModerationPage() {
   const updateAbuseReport = async (report: AbuseReport, nextStatus: "reviewed" | "dismissed") => {
     try {
       await api.patch(`${basePath}/abuse-reports/${report.id}`, { status: nextStatus });
+      if (selectedAbuseReport?.id === report.id) setSelectedAbuseReport(null);
       await loadAbuseReports();
     } catch (err: any) {
       alert(err.message || "تعذر تحديث بلاغ الإساءة.");
@@ -211,9 +242,10 @@ export default function LostFoundModerationPage() {
           {abuseReports.length === 0 && <p className="text-sm text-slate-500">لا توجد بلاغات إساءة معلقة.</p>}
           {abuseReports.map((report) => (
             <div key={report.id} className="rounded-lg border border-slate-800 p-3 space-y-2">
-              <div className="text-xs text-slate-500">{report.reportable_type.includes("Message") ? "رسالة دردشة" : "منشور"} #{report.reportable_id}</div>
+              <div className="text-xs text-slate-500">{abuseReportTargetLabel(report)}</div>
               <p className="text-sm">{report.reason}</p>
-              <div className="flex gap-2">
+              <div className="flex flex-wrap gap-2">
+                <button onClick={() => openAbuseDetails(report)} className="px-2 py-1 rounded bg-blue-600 hover:bg-blue-500 text-xs">عرض التفاصيل</button>
                 <button onClick={() => updateAbuseReport(report, "reviewed")} className="px-2 py-1 rounded bg-emerald-600 hover:bg-emerald-500 text-xs">تمت المراجعة</button>
                 <button onClick={() => updateAbuseReport(report, "dismissed")} className="px-2 py-1 rounded bg-slate-700 hover:bg-slate-600 text-xs">رفض البلاغ</button>
               </div>
@@ -230,14 +262,39 @@ export default function LostFoundModerationPage() {
                 <h2 className="text-xl font-bold text-emerald-400">{selected.title}</h2>
                 <p className="text-sm text-slate-400">{typeLabels[selected.item_type]} - {categoryLabels[selected.category] || selected.category}</p>
               </div>
-              <button onClick={() => setSelected(null)} className="text-slate-400 hover:text-white">×</button>
+              <button onClick={() => { setSelected(null); setSelectedAbuseReport(null); }} className="text-slate-400 hover:text-white">×</button>
             </div>
+
+            {selectedAbuseReport && (
+              <div className="rounded-xl border border-red-500/30 bg-red-500/10 p-4 text-sm">
+                <div className="mb-2 font-bold text-red-300">تفاصيل بلاغ الإساءة</div>
+                <div className="grid gap-2 md:grid-cols-2">
+                  <div>
+                    <span className="text-slate-400">المبلّغ: </span>
+                    {selectedAbuseReport.reporter?.full_name || selectedAbuseReport.reporter?.email || "مواطن"}
+                  </div>
+                  <div>
+                    <span className="text-slate-400">نوع المحتوى: </span>
+                    {selectedAbuseReport.reportable_type.includes("Message") ? "رسالة دردشة" : "منشور"}
+                  </div>
+                </div>
+                <div className="mt-3 rounded-lg bg-slate-950/60 p-3 leading-7">
+                  <span className="text-slate-400">سبب الإبلاغ: </span>
+                  {selectedAbuseReport.reason}
+                </div>
+              </div>
+            )}
 
             {selected.image_url && <img src={assetUrl(selected.image_url)} alt="صورة المنشور" className="w-full max-h-80 object-cover rounded-lg border border-slate-800" />}
             <p className="text-slate-200 leading-7">{selected.description}</p>
 
             <div className="grid md:grid-cols-3 gap-3 text-sm">
-              <div className="bg-slate-800 rounded-lg p-3">الناشر: {selected.publisher?.full_name || selected.publisher?.email || "غير معروف"}</div>
+              <div className="bg-slate-800 rounded-lg p-3 space-y-1">
+                <div>الناشر: {selected.publisher?.full_name || "غير معروف"}</div>
+                <div className="text-xs text-slate-400">
+                  البريد الإلكتروني: {selected.publisher?.email || "-"}
+                </div>
+              </div>
               <div className="bg-slate-800 rounded-lg p-3">الموقع التقريبي: {selected.area_name || "غير محدد"}</div>
               <div className="bg-slate-800 rounded-lg p-3">تاريخ الفقد/العثور: {selected.incident_date || "-"}</div>
             </div>
@@ -267,7 +324,7 @@ export default function LostFoundModerationPage() {
               {selected.status !== "removed" && (
                 <button onClick={() => removeItem(selected)} className="px-3 py-2 bg-red-600 hover:bg-red-500 rounded-lg text-sm">حذف/إزالة رقابية</button>
               )}
-              <button onClick={() => setSelected(null)} className="px-3 py-2 bg-slate-800 hover:bg-slate-700 rounded-lg text-sm">إغلاق</button>
+              <button onClick={() => { setSelected(null); setSelectedAbuseReport(null); }} className="px-3 py-2 bg-slate-800 hover:bg-slate-700 rounded-lg text-sm">إغلاق</button>
             </div>
           </div>
         </div>

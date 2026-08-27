@@ -2,8 +2,15 @@ import { useEffect, useRef, useState } from "react";
 import { Outlet, useLocation, useNavigate } from "react-router-dom";
 import { api } from "../lib/api-client";
 import { useAuth } from "../lib/auth";
+import baladityLogo from "../assets/baladity-logo.png";
 
-const navItems = [
+const navItems: {
+  path: string;
+  label: string;
+  icon: string;
+  roles: string[];
+  requiredPermission?: string;
+}[] = [
   { path: "/admin/reception", label: "لوحة الاستقبال", icon: "📋", roles: ["reception"] },
   { path: "/admin/technical", label: "لوحة القسم", icon: "🔧", roles: ["department"] },
   { path: "/admin/analytics", label: "الإحصائيات", icon: "📊", roles: ["admin"] },
@@ -15,7 +22,7 @@ const navItems = [
   { path: "/admin/chats", label: "المحادثات", icon: "💬", roles: ["reception", "department"] },
   { path: "/admin/map", label: "الخريطة", icon: "🗺️", roles: ["reception", "department", "admin"] },
   { path: "/admin/content", label: "المحتوى", icon: "📦", roles: ["admin", "reception"] },
-  { path: "/admin/initiatives", label: "المبادرات", icon: "✦", roles: ["admin", "reception"] },
+  { path: "/admin/initiatives", label: "المبادرات", icon: "✦", roles: ["admin", "reception"], requiredPermission: "manage_initiatives" },
   { path: "/admin/geo-broadcasts", label: "التنبيهات الجغرافية", icon: "!", roles: ["admin", "reception"] },
   { path: "/admin/lost-found", label: "رقابة المفقودات", icon: "?", roles: ["admin", "reception"] },
   { path: "/admin/polls", label: "استطلاعات الرأي", icon: "%", roles: ["admin", "reception"] },
@@ -61,7 +68,12 @@ export default function AdminLayout() {
     return () => clearInterval(interval);
   }, [user?.role]);
 
-  const allowed = navItems.filter((item) => user?.role && item.roles.includes(user.role));
+  const userPermissions = new Set(user?.roleData?.permissions?.map((permission) => permission.permission_name) || []);
+  const allowed = navItems.filter((item) => {
+    if (!user?.role || !item.roles.includes(user.role)) return false;
+    if (user.role === "admin" || !item.requiredPermission) return true;
+    return userPermissions.has(item.requiredPermission);
+  });
   const canChangePassword = user?.role === "reception" || user?.role === "department";
 
   const resetPasswordForm = () => {
@@ -103,7 +115,11 @@ export default function AdminLayout() {
       <aside className={`${open ? "w-64" : "w-16"} transition-all duration-300 bg-slate-900 border-l border-slate-800 flex flex-col`}>
         <div className="p-4 border-b border-slate-800 flex items-center gap-2">
           <button onClick={() => setOpen(!open)} className="text-xl" aria-label="تبديل القائمة">☰</button>
-          {open && <span className="font-bold text-emerald-400">بلديتي</span>}
+          {open && (
+            <div className="flex items-center gap-2">
+              <img src={baladityLogo} alt="شعار بلديتي" className="h-7 w-auto object-contain" />
+            </div>
+          )}
         </div>
 
         <nav className="flex-1 p-2 space-y-1 overflow-y-auto">
